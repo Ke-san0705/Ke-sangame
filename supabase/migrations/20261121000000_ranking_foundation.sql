@@ -79,11 +79,13 @@ begin
     raise exception using errcode = '22023', message = 'Nickname contains a blocked word';
   end if;
 
-  calculated_score := round(
-    p_correct_count * 100 * (
-      1 + greatest(0, p_correct_count::numeric / nullif(attempts, 0) - 0.8)
-    ) - p_miss_count * 20
-  );
+  -- Match the client score tiers using integer arithmetic.
+  calculated_score := case
+    when attempts = 0 then 0
+    when p_miss_count = 0 then p_correct_count * 120
+    when p_correct_count * 10 >= attempts * 9 then p_correct_count * 110
+    else p_correct_count * 100
+  end - p_miss_count * 20;
 
   -- The unique device row serializes submissions, including across categories.
   insert into public.ranking_cooldowns as cooldown (device_id, submitted_at)

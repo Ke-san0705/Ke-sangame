@@ -94,4 +94,29 @@ begin
 end;
 $$;
 
+do $$
+declare
+  test_case record;
+  actual_score integer;
+begin
+  for test_case in
+    select * from (values
+      (0, 0, 0),
+      (10, 2, 960),
+      (19, 2, 2050),
+      (0, 2, -40)
+    ) as cases(correct_count, miss_count, expected_score)
+  loop
+    select score into strict actual_score
+    from public.submit_ranking_score(
+      'テスト', 'add', 1, 30, test_case.correct_count, test_case.miss_count, gen_random_uuid()
+    );
+    if actual_score is distinct from test_case.expected_score then
+      raise exception 'Expected score % for % correct and % misses, got %',
+        test_case.expected_score, test_case.correct_count, test_case.miss_count, actual_score;
+    end if;
+  end loop;
+end;
+$$;
+
 rollback;
