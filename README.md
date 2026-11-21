@@ -37,3 +37,37 @@ npm run build
 本番用の静的ファイルは `dist/` に生成されます。GitHub Pages 用の base は
 `/Ke-sangame/` です。PWA は `npm run build` の後に `npm run preview` で確認できます。
 Service Worker は本番ビルドで登録され、初回の読み込み後はトップ画面をオフラインで再表示できます。
+
+## ランキング基盤（Supabase）
+
+Supabase の無料プロジェクトの SQL Editor で
+`supabase/migrations/20261121000000_ranking_foundation.sql` を適用します。
+クライアントを接続する際は、`.env.example` をもとに `.env.local` の
+`VITE_SUPABASE_URL` と `VITE_SUPABASE_ANON_KEY` にプロジェクト URL と公開用の
+`anon` キーを設定します。管理キーは Vite の環境変数に設定しません。
+アプリの起動にランキングの設定や通信は不要です。
+
+| RPC | 引数 |
+| --- | --- |
+| `submit_ranking_score` | `p_nickname`、`p_operation`、`p_level`、`p_duration_seconds`、`p_correct_count`、`p_miss_count`、`p_device_id` |
+| `get_rankings` | `p_operation`、`p_level`、`p_duration_seconds`、任意の `p_limit`（既定50、1〜100件） |
+
+演算は `add`（足し算）、`subtract`（引き算）、`multiply`（掛け算）、
+`divide`（割り算）、`mix`（ミックス）、レベルは1〜5、制限時間は30・60・120秒です。
+どちらの RPC も `id`、`nickname`、`score`、`submitted_at` を含む配列を返します。
+取得順はスコアの降順、同点は登録の早い順です。
+
+端末 ID はブラウザーで `crypto.randomUUID()` を使って一度作り、同じ UUID を
+`localStorage` から再利用します。登録間隔が30秒未満の場合は HTTP 429 を返します。
+この制限は端末 ID 単位で、ストレージを削除すると別の端末 ID として扱われます。
+オフラインで開始したプレイの結果はクライアント側で登録対象外にし、事後送信しません。
+
+正解数は制限時間×5、正解数とミス数の合計は制限時間×10を上限とします。
+正確率係数は100%で1.2、90%以上100%未満で1.1、90%未満で1.0です。
+正解数とミス数がともに0の場合、スコアは0点です。
+ニックネームは前後の空白を除いて1〜10文字とし、NGワード照合では NFKC 正規化と
+小文字化を行います。NGワードは DB の `ranking_blocked_words` で管理します。
+
+DB の動作確認は、マイグレーション適用済みのテスト用 Supabase に対して
+`psql "$TEST_DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/tests/ranking.sql` を実行します。
+テストは匿名ロールから RPC を呼び、最後にテストデータをロールバックします。
