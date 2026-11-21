@@ -4,7 +4,7 @@
   --color-card: #1e293b;
   --color-accent: #ffc700;
   --color-text: #f8fafc;
-  font-family: system-ui, sans-serif;
+  font-family: "Noto Sans JP", system-ui, sans-serif;
   background: var(--color-background);
   color: var(--color-text);
 }
@@ -13,31 +13,125 @@ body {
   margin: 0;
 }
 
-.top-screen {
-  display: grid;
-  place-items: center;
-  box-sizing: border-box;
-  min-block-size: 100vh;
-  min-block-size: 100dvh;
-  padding: 1rem;
+button {
+  border: 0;
+  border-radius: 12px;
+  background: var(--color-card);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
 }
 
-.top-card {
+button:focus-visible {
+  outline: 2px solid var(--color-text);
+  outline-offset: 3px;
+}
+
+button[aria-pressed="true"],
+.start-button {
+  background: var(--color-accent);
+  color: var(--color-background);
+}
+
+.top-screen {
   box-sizing: border-box;
-  inline-size: min(100%, 30rem);
-  padding: clamp(2rem, 8vw, 4rem) 1rem;
-  border-radius: 1rem;
-  background: var(--color-card);
+  max-inline-size: 390px;
+  margin-inline: auto;
+  padding: 26px 24px 52px;
+}
+
+.top-header {
+  display: grid;
+  gap: 2px;
+}
+
+.top-header h1 {
+  margin: 0;
+  font-size: 46px;
+  line-height: 69px;
   text-align: center;
 }
 
-.top-card h1 {
-  margin: 0;
-  color: var(--color-accent);
-  font-size: clamp(2rem, 8vw, 3.5rem);
-  line-height: 1.2;
+.ranking-button {
+  justify-self: end;
+  inline-size: 108px;
+  min-block-size: 36px;
+  border-radius: 18px;
+  font-size: 13px;
+  font-weight: 700;
 }
 
-.top-card p {
-  margin: 1rem 0 0;
+.operation-options,
+.level-options,
+.duration-options {
+  display: grid;
+}
+
+.operation-options {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin-block-start: 43px;
+}
+
+.operation-options button {
+  min-block-size: 64px;
+  padding: 0;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.operation-options .mix-option {
+  font-size: 16px;
+}
+
+.level-options {
+  gap: 10px;
+  margin-block-start: 52px;
+}
+
+.level-options button {
+  min-block-size: 48px;
+  padding-inline: 16px;
+  text-align: start;
+}
+
+.level-options button[aria-pressed="true"] {
+  font-weight: 700;
+}
+
+.duration-options {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-block-start: 40px;
+}
+
+.duration-options button {
+  min-block-size: 52px;
+  font-weight: 700;
+}
+
+.start-button {
+  inline-size: 100%;
+  min-block-size: 80px;
+  margin-block-start: 48px;
+  border-radius: 16px;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.secondary-screen {
+  max-inline-size: 390px;
+  margin-inline: auto;
+  padding: 26px 24px;
+  text-align: center;
+}
+
+.secondary-screen button {
+  min-block-size: 48px;
+  padding-inline: 16px;
+}
+
+.secondary-screen progress {
+  inline-size: 100%;
+  accent-color: var(--color-accent);
 }
