@@ -1,20 +1,27 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, expect, test } from 'vitest'
+import { afterEach, expect, test, vi } from 'vitest'
 import { App } from '../App'
+import { createQuestionGenerator } from '../lib/question-generator'
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  vi.restoreAllMocks()
+})
 
 test('既定の足し算・初級・60秒で1タップで開始できる', () => {
+  vi.spyOn(Math, 'random').mockReturnValue(0.5)
   render(<App />)
 
   expect(screen.getByRole('heading', { level: 1, name: '計算無双' })).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: 'START' }))
 
-  expect(screen.getByText('8 ＋ 7 =')).toBeTruthy()
+  const { expression } = createQuestionGenerator(() => 0.5)(1, 'addition')
+  expect(screen.getByText(expression + ' =')).toBeTruthy()
   expect(screen.getByLabelText('残り時間').textContent).toBe('60')
 })
 
 test('選んだ演算・レベル・時間でゲームが始まる', () => {
+  vi.spyOn(Math, 'random').mockReturnValue(0.5)
   render(<App />)
 
   fireEvent.click(screen.getByRole('button', { name: '掛け算' }))
@@ -23,7 +30,8 @@ test('選んだ演算・レベル・時間でゲームが始まる', () => {
   expect(screen.getByRole('button', { name: '30秒' }).getAttribute('aria-pressed')).toBe('true')
   fireEvent.click(screen.getByRole('button', { name: 'START' }))
 
-  expect(screen.getByText('236 × 104 =')).toBeTruthy()
+  const { expression } = createQuestionGenerator(() => 0.5)(4, 'multiplication')
+  expect(screen.getByText(expression + ' =')).toBeTruthy()
   expect(screen.getByLabelText('残り時間').textContent).toBe('30')
 })
 

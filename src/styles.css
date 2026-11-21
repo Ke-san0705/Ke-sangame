@@ -130,8 +130,3 @@ button[aria-pressed="true"],
   min-block-size: 48px;
   padding-inline: 16px;
 }
-
-.secondary-screen progress {
-  inline-size: 100%;
-  accent-color: var(--color-accent);
-}
