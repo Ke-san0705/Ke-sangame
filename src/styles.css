@@ -1,0 +1,43 @@
+:root {
+  color-scheme: dark;
+  --color-background: #0f172a;
+  --color-card: #1e293b;
+  --color-accent: #ffc700;
+  --color-text: #f8fafc;
+  font-family: system-ui, sans-serif;
+  background: var(--color-background);
+  color: var(--color-text);
+}
+
+body {
+  margin: 0;
+}
+
+.top-screen {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  min-block-size: 100vh;
+  min-block-size: 100dvh;
+  padding: 1rem;
+}
+
+.top-card {
+  box-sizing: border-box;
+  inline-size: min(100%, 30rem);
+  padding: clamp(2rem, 8vw, 4rem) 1rem;
+  border-radius: 1rem;
+  background: var(--color-card);
+  text-align: center;
+}
+
+.top-card h1 {
+  margin: 0;
+  color: var(--color-accent);
+  font-size: clamp(2rem, 8vw, 3.5rem);
+  line-height: 1.2;
+}
+
+.top-card p {
+  margin: 1rem 0 0;
+}
