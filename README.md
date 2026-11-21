@@ -18,3 +18,22 @@
 
 ## 開発体制
 GitHub Issueを中心に、Codex（実装主軸）／Gemini（STEP毎の評価・提案）／Muse（設計・Issue監視と操作・統括）で開発します。人間の役割はアイデア出し、設計変更への判断（8時間ルール）、最終承認です。詳細は `docs/design/dev-form-v2.md` を参照してください。
+
+## ローカル開発
+
+Node.js 24 LTS を推奨します。
+
+```sh
+npm ci
+npm run dev
+npm test
+npm run lint
+npm run build
+```
+
+開発サーバーの既定 URL は `http://localhost:5173/Ke-sangame/` です。
+画面は `src/components/`、出題生成やスコア計算などのロジックは `src/lib/` に配置します。
+
+本番用の静的ファイルは `dist/` に生成されます。GitHub Pages 用の base は
+`/Ke-sangame/` です。PWA は `npm run build` の後に `npm run preview` で確認できます。
+Service Worker は本番ビルドで登録され、初回の読み込み後はトップ画面をオフラインで再表示できます。
