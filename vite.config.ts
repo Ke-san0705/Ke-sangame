@@ -9,7 +9,6 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
       injectRegister: 'script',
       manifest: {
         name: '計算無双',
@@ -26,7 +25,8 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{html,js,css,png}'],
+        clientsClaim: true,
+        skipWaiting: true,
         navigateFallback: 'index.html',
       },
     }),
