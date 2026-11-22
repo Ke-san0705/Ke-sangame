@@ -6,6 +6,7 @@ import { GameScreen } from './GameScreen'
 
 afterEach(() => {
   cleanup()
+  localStorage.clear()
   vi.useRealTimers()
   vi.restoreAllMocks()
 })
@@ -41,8 +42,8 @@ test('STARTからキーボードで回答し、時間切れで結果へ進む', 
   expect(screen.getByRole('timer').textContent).toBe('57')
   act(() => vi.advanceTimersByTime(57_000))
   expect(screen.getByRole('heading', { name: 'TIME UP!' })).toBeTruthy()
-  expect(screen.getByText('正解 1')).toBeTruthy()
-  expect(screen.getByText('ミス 2')).toBeTruthy()
+  expect(screen.getByText('1 問')).toBeTruthy()
+  expect(screen.getByText('2 回')).toBeTruthy()
   expect(fireEvent.keyDown(document.body, { key: 'Tab' })).toBe(true)
 })
 
@@ -63,7 +64,9 @@ test('タッチ用テンキーで負数・小数を入力し、Cでミスを増�
 
   act(() => vi.advanceTimersByTime(28_000))
   press('pass')
-  expect(onFinish).toHaveBeenCalledExactlyOnceWith({ correctCount: 0, missCount: 1 })
+  expect(onFinish).toHaveBeenCalledExactlyOnceWith({
+    correctCount: 0, missCount: 1, accuracy: 0, score: -20, averageAnswerSeconds: 0,
+  })
 })
 
 test('Lv.2の小数問題にテンキーで末尾ゼロを付けて正解できる', () => {

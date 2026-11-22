@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { GameScreen, type GameResult } from './components/GameScreen'
+import { ResultScreen } from './components/ResultScreen'
+import { savePersonalBest } from './lib/personalBest'
 import { TopScreen } from './components/TopScreen'
 import { defaultMode, type GameMode } from './lib/gameMode'
 import type { QuestionMode } from './lib/question-generator'
@@ -15,7 +17,7 @@ const questionModes = {
 type Screen =
   | { name: 'top' }
   | { name: 'game'; mode: GameMode }
-  | { name: 'result'; mode: GameMode; result: GameResult }
+  | { name: 'result'; mode: GameMode; result: GameResult; isNewRecord: boolean }
   | { name: 'ranking' }
 
 export function App() {
@@ -30,20 +32,22 @@ export function App() {
         level={gameMode.level}
         mode={questionModes[gameMode.operation]}
         duration={gameMode.duration}
-        onFinish={(result) => setScreen({ name: 'result', mode: gameMode, result })}
+        onFinish={(result) => {
+          const isNewRecord = savePersonalBest(gameMode, result.score)
+          setScreen({ name: 'result', mode: gameMode, result, isNewRecord })
+        }}
       />
     )
   }
 
   if (screen.name === 'result') {
     return (
-      <main className="secondary-screen">
-        <h1>TIME UP!</h1>
-        <p>正解 {screen.result.correctCount}</p>
-        <p>ミス {screen.result.missCount}</p>
-        <button type="button" onClick={() => setScreen({ name: 'game', mode: screen.mode })}>もう一度</button>
-        <button type="button" onClick={goBack}>戻る</button>
-      </main>
+      <ResultScreen
+        result={screen.result}
+        isNewRecord={screen.isNewRecord}
+        onReplay={() => setScreen({ name: 'game', mode: screen.mode })}
+        onBack={goBack}
+      />
     )
   }
 
