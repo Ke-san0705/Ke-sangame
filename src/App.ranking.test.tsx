@@ -20,7 +20,7 @@ afterEach(() => {
 
 const click = (name: string) => fireEvent.click(screen.getByRole('button', { name }))
 const advance = (ms: number) => act(() => vi.advanceTimersByTime(ms))
-const finish = () => advance(30_000)
+const finish = () => advance(30_001)
 
 test('任意の登録をRPCで行い、同じ条件のランキングを取得する', async () => {
   const entries: { id: number; nickname: string; score: number }[] = []

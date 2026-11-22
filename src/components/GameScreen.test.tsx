@@ -38,6 +38,8 @@ test.each(countdownModes)('Lv.$level・$duration 秒の開始前に 3、2、1 �
   expect(screen.getByRole('timer').textContent).toBe('1')
   expect(onFinish).not.toHaveBeenCalled()
   act(() => vi.advanceTimersByTime(1_000))
+  expect(screen.getByRole('timer').textContent).toBe('0')
+  act(() => vi.advanceTimersByTime(1))
   expect(onFinish).toHaveBeenCalledTimes(1)
 })
 
@@ -72,7 +74,7 @@ test('STARTからキーボードで回答し、時間切れで結果へ進む', 
   expect(fireEvent.keyDown(document.body, { key: 'Tab' })).toBe(false)
   expect(screen.getByText('ミス 2')).toBeTruthy()
   expect(screen.getByRole('timer').textContent).toBe('57')
-  act(() => vi.advanceTimersByTime(57_000))
+  act(() => vi.advanceTimersByTime(57_001))
   expect(screen.getByRole('heading', { name: 'TIME UP!' })).toBeTruthy()
   expect(screen.getByText('1 問')).toBeTruthy()
   expect(screen.getByText('2 回')).toBeTruthy()
@@ -113,4 +115,40 @@ test('Lv.2の小数問題にテンキーで末尾ゼロを付けて正解でき�
   for (const key of answer + '0') fireEvent.click(screen.getByRole('button', { name: key }))
   fireEvent.click(screen.getByRole('button', { name: 'Enter' }))
   expect(screen.getByText('正解 1')).toBeTruthy()
+})
+
+test.each([
+  { timing: 'タイマーより先', offset: 0, scheduleBeforeStart: true, expected: 1 },
+  { timing: 'タイマーより後', offset: 0, scheduleBeforeStart: false, expected: 1 },
+  { timing: '締切直前', offset: -1, scheduleBeforeStart: false, expected: 1 },
+  { timing: '締切後', offset: 1, scheduleBeforeStart: false, expected: 0 },
+  { timing: '画面テンキー', offset: 0, scheduleBeforeStart: false, expected: 1 },
+  { timing: '未確定', offset: null, scheduleBeforeStart: false, expected: 0 },
+])('時間切れ時の集計（$timing）', ({ timing, offset, scheduleBeforeStart, expected }) => {
+  vi.useFakeTimers()
+  vi.spyOn(Math, 'random').mockReturnValue(0.25)
+  const { answer } = createQuestionGenerator()(1, 'addition')
+  const onFinish = vi.fn()
+  const submit = () => {
+    if (timing === '画面テンキー') {
+      fireEvent.click(screen.getByRole('button', { name: 'Enter' }))
+    } else {
+      fireEvent.keyDown(window, { key: 'Enter' })
+    }
+  }
+  if (scheduleBeforeStart) window.setTimeout(submit, 33_000)
+
+  render(<GameScreen level={1} mode="addition" duration={30} onFinish={onFinish} />)
+  act(() => vi.advanceTimersByTime(3_000))
+  for (const key of answer) fireEvent.keyDown(window, { key })
+  if (!scheduleBeforeStart && offset !== null) window.setTimeout(submit, 30_000 + offset)
+
+  act(() => vi.advanceTimersByTime(30_002))
+  expect(onFinish).toHaveBeenCalledExactlyOnceWith({
+    correctCount: expected,
+    missCount: 0,
+    accuracy: expected,
+    score: expected * 120,
+    averageAnswerSeconds: expected ? (30_000 + (offset ?? 0)) / 1000 : 0,
+  })
 })

@@ -32,9 +32,9 @@ export function GameScreen({ level, mode, duration, onSound, onFinish }: GameScr
   })
   const [question, setQuestion] = useState(firstQuestion)
   const [answer, setAnswer] = useState('')
-  const [correctCount, setCorrectCount] = useState(0)
-  const [incorrectCount, setIncorrectCount] = useState(0)
-  const [passCount, setPassCount] = useState(0)
+  const [counts, setCounts] = useState({ correctCount: 0, incorrectCount: 0, passCount: 0 })
+  const latestCounts = useRef(counts)
+  const { correctCount, incorrectCount, passCount } = counts
   const [countdown, setCountdown] = useState(START_COUNTDOWN_SECONDS)
   const playing = countdown === 0
   const [remaining, setRemaining] = useState(duration * 1000)
@@ -47,13 +47,22 @@ export function GameScreen({ level, mode, duration, onSound, onFinish }: GameScr
   const acceptsDecimal = level >= 2
   const acceptsNegative = level >= 3
 
-  function finish(finalPassCount = passCount) {
+  function recordAnswer(kind: keyof typeof counts) {
+    const current = latestCounts.current
+    const next = { ...current, [kind]: current[kind] + 1 }
+    latestCounts.current = next
+    setCounts(next)
+  }
+
+  function finish() {
     if (finished.current) return
     finished.current = true
+    const finalCounts = latestCounts.current
+    const { correctCount } = finalCounts
     onSound?.('timeUp')
     onFinish({
       correctCount,
-      ...calculateScore({ correctCount, incorrectCount, passCount: finalPassCount }),
+      ...calculateScore(finalCounts),
       averageAnswerSeconds: correctCount === 0 ? 0 : totalCorrectAnswerMs.current / correctCount / 1000,
     })
   }
@@ -72,28 +81,25 @@ export function GameScreen({ level, mode, duration, onSound, onFinish }: GameScr
     setQuestion(generateQuestion(level, mode))
   }
 
-  function handleKey(key: string) {
+  function handleKey(key: string, submittedAt?: number) {
     if (finished.current) return
     const now = performance.now()
-    if (now >= deadline.current) {
-      finish()
-      return
-    }
+    const answerTime = submittedAt ?? now
+    if (key === 'Enter' ? answerTime > deadline.current : now >= deadline.current) return
 
     switch (key) {
       case 'C':
         setAnswer('')
         return
       case 'pass': {
-        const nextPassCount = passCount + 1
+        recordAnswer('passCount')
         deadline.current -= PASS_PENALTY_MS
         const timeLeft = Math.max(0, deadline.current - now)
         updateRemaining(timeLeft)
         if (timeLeft === 0) {
-          finish(nextPassCount)
+          finish()
           return
         }
-        setPassCount(nextPassCount)
         setAnswer('')
         nextQuestion(now)
         return
@@ -103,12 +109,12 @@ export function GameScreen({ level, mode, duration, onSound, onFinish }: GameScr
         setAnswer('')
         if (isCorrectAnswer(question, answer)) {
           onSound?.('correct')
-          totalCorrectAnswerMs.current += now - questionStartedAt.current
-          setCorrectCount(correctCount + 1)
+          totalCorrectAnswerMs.current += Math.max(0, answerTime - questionStartedAt.current)
+          recordAnswer('correctCount')
           nextQuestion(now)
         } else {
           onSound?.('incorrect')
-          setIncorrectCount(incorrectCount + 1)
+          recordAnswer('incorrectCount')
         }
         return
       default:
@@ -128,15 +134,17 @@ export function GameScreen({ level, mode, duration, onSound, onFinish }: GameScr
     if (!['C', 'pass', 'Enter', '.', '-'].includes(key) && !/^\d$/.test(key)) return
     event.preventDefault()
     if (event.repeat && (key === 'pass' || key === 'Enter')) return
-    handleKey(key)
+    handleKey(key, key === 'Enter' && event.isTrusted ? event.timeStamp : undefined)
   })
 
   const updateTimer = useEffectEvent(() => {
     const timeLeft = Math.max(0, deadline.current - performance.now())
-    if (finished.current) return
+    if (finished.current) return false
     updateRemaining(timeLeft)
-    if (timeLeft === 0) finish()
+    return timeLeft === 0
   })
+
+  const finishOnTimeUp = useEffectEvent(() => finish())
 
   useEffect(() => {
     let count = START_COUNTDOWN_SECONDS
@@ -154,13 +162,22 @@ export function GameScreen({ level, mode, duration, onSound, onFinish }: GameScr
     questionStartedAt.current = now
     lastCountdownSecond.current = 0
     deadline.current = now + duration * 1000
-    const interval = window.setInterval(updateTimer, 50)
-    const timeout = window.setTimeout(updateTimer, duration * 1000)
+    let finishTimeout: number | undefined
+    const tick = () => {
+      if (!updateTimer()) return
+      window.clearInterval(interval)
+      window.clearTimeout(timeout)
+      // Let a pending Enter at the deadline run before taking the result snapshot.
+      finishTimeout = window.setTimeout(() => finishOnTimeUp(), 0)
+    }
+    const interval = window.setInterval(tick, 50)
+    const timeout = window.setTimeout(tick, duration * 1000)
     const onKeyDown = (event: KeyboardEvent) => handleKeyboard(event)
     window.addEventListener('keydown', onKeyDown)
     return () => {
       window.clearInterval(interval)
       window.clearTimeout(timeout)
+      window.clearTimeout(finishTimeout)
       window.removeEventListener('keydown', onKeyDown)
     }
   }, [duration, playing])
@@ -204,7 +221,10 @@ export function GameScreen({ level, mode, duration, onSound, onFinish }: GameScr
             key={key}
             type="button"
             className={`game-key game-key-${key === '.' ? 'decimal' : key === '−' ? 'minus' : key}`}
-            onClick={() => handleKey(key === '−' ? '-' : key)}
+            onClick={(event) => handleKey(
+              key === '−' ? '-' : key,
+              key === 'Enter' && event.isTrusted ? event.timeStamp : undefined,
+            )}
           >
             {key}
           </button>
