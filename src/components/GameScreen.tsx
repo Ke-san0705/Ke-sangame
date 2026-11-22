@@ -1,6 +1,7 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { createQuestionGenerator, isCorrectAnswer } from '../lib/question-generator'
 import type { Level, QuestionMode } from '../lib/question-generator'
+import { calculateScore } from '../lib/score'
 import './GameScreen.css'
 
 const PASS_PENALTY_MS = 3_000
@@ -9,6 +10,9 @@ const KEYPAD_ROWS = ['7', '8', '9', 'C', '4', '5', '6', 'pass', '1', '2', '3', '
 export type GameResult = {
   correctCount: number
   missCount: number
+  accuracy: number
+  score: number
+  averageAnswerSeconds: number
 }
 
 type GameScreenProps = {
@@ -26,21 +30,29 @@ export function GameScreen({ level, mode, duration, onFinish }: GameScreenProps)
   const [question, setQuestion] = useState(firstQuestion)
   const [answer, setAnswer] = useState('')
   const [correctCount, setCorrectCount] = useState(0)
-  const [missCount, setMissCount] = useState(0)
+  const [incorrectCount, setIncorrectCount] = useState(0)
+  const [passCount, setPassCount] = useState(0)
   const [remaining, setRemaining] = useState(duration * 1000)
   const deadline = useRef(0)
+  const questionStartedAt = useRef(0)
+  const totalCorrectAnswerMs = useRef(0)
   const finished = useRef(false)
 
   const acceptsDecimal = level >= 2
   const acceptsNegative = level >= 3
 
-  function finish(finalMissCount = missCount) {
+  function finish(finalPassCount = passCount) {
     if (finished.current) return
     finished.current = true
-    onFinish({ correctCount, missCount: finalMissCount })
+    onFinish({
+      correctCount,
+      ...calculateScore({ correctCount, incorrectCount, passCount: finalPassCount }),
+      averageAnswerSeconds: correctCount === 0 ? 0 : totalCorrectAnswerMs.current / correctCount / 1000,
+    })
   }
 
-  function nextQuestion() {
+  function nextQuestion(now: number) {
+    questionStartedAt.current = now
     setQuestion(generateQuestion(level, mode))
   }
 
@@ -57,27 +69,28 @@ export function GameScreen({ level, mode, duration, onFinish }: GameScreenProps)
         setAnswer('')
         return
       case 'pass': {
-        const nextMissCount = missCount + 1
+        const nextPassCount = passCount + 1
         deadline.current -= PASS_PENALTY_MS
         const timeLeft = Math.max(0, deadline.current - now)
         setRemaining(timeLeft)
         if (timeLeft === 0) {
-          finish(nextMissCount)
+          finish(nextPassCount)
           return
         }
-        setMissCount(nextMissCount)
+        setPassCount(nextPassCount)
         setAnswer('')
-        nextQuestion()
+        nextQuestion(now)
         return
       }
       case 'Enter':
         if (answer === '') return
         setAnswer('')
         if (isCorrectAnswer(question, answer)) {
+          totalCorrectAnswerMs.current += now - questionStartedAt.current
           setCorrectCount(correctCount + 1)
-          nextQuestion()
+          nextQuestion(now)
         } else {
-          setMissCount(missCount + 1)
+          setIncorrectCount(incorrectCount + 1)
         }
         return
       default:
@@ -107,7 +120,9 @@ export function GameScreen({ level, mode, duration, onFinish }: GameScreenProps)
   })
 
   useEffect(() => {
-    deadline.current = performance.now() + duration * 1000
+    const now = performance.now()
+    questionStartedAt.current = now
+    deadline.current = now + duration * 1000
     const interval = window.setInterval(updateTimer, 50)
     const timeout = window.setTimeout(updateTimer, duration * 1000)
     const onKeyDown = (event: KeyboardEvent) => handleKeyboard(event)
@@ -138,7 +153,7 @@ export function GameScreen({ level, mode, duration, onFinish }: GameScreenProps)
           {Math.ceil(remaining / 1000)}
         </div>
         <span className="game-correct">正解 {correctCount}</span>
-        <span className="game-misses">ミス {missCount}</span>
+        <span className="game-misses">ミス {incorrectCount + passCount}</span>
       </header>
       <div className="game-problem">
         <span>{question.expression} =</span>
