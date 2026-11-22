@@ -65,7 +65,7 @@ export function getRankings(mode: GameMode, signal: AbortSignal) {
   return rankingRpc('get_rankings', categoryParams(mode), signal)
 }
 
-export async function submitRanking(mode: GameMode, nickname: string, correctCount: number, missCount: number) {
+export async function submitRanking(mode: GameMode, nickname: string, correctCount: number, missCount: number, maxCombo: number) {
   let deviceId = localStorage.getItem(deviceKey)
   if (!deviceId) {
     deviceId = crypto.randomUUID()
@@ -76,6 +76,7 @@ export async function submitRanking(mode: GameMode, nickname: string, correctCou
     p_nickname: nickname,
     p_correct_count: correctCount,
     p_miss_count: missCount,
+    p_max_combo: maxCombo,
     p_device_id: deviceId,
   })
   if (!entries.length) throw new RankingError('登録結果を確認できませんでした。')

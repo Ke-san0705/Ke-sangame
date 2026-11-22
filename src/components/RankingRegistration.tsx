@@ -6,11 +6,12 @@ type Props = {
   mode: GameMode
   correctCount: number
   missCount: number
+  maxCombo: number
   online: boolean
   onViewRanking: () => void
 }
 
-export function RankingRegistration({ mode, correctCount, missCount, online, onViewRanking }: Props) {
+export function RankingRegistration({ mode, correctCount, missCount, maxCombo, online, onViewRanking }: Props) {
   const [nickname, setNickname] = useState('')
   const [status, setStatus] = useState<'idle' | 'submitting' | 'submitted'>('idle')
   const [error, setError] = useState('')
@@ -31,7 +32,7 @@ export function RankingRegistration({ mode, correctCount, missCount, online, onV
     setStatus('submitting')
     setError('')
     try {
-      await submitRanking(mode, name, correctCount, missCount)
+      await submitRanking(mode, name, correctCount, missCount, maxCombo)
       setStatus('submitted')
     } catch (failure) {
       setError(failure instanceof RankingError

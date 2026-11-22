@@ -7,26 +7,44 @@ declare
   device constant uuid := '0d844e6e-2812-40eb-9fa8-8161c650c36b';
 begin
   begin
-    perform public.submit_ranking_score('テスト', 'add', 1, 30, 151, 0, device);
+    perform public.submit_ranking_score('テスト', 'add', 1, 30, 151, 0, 151, device);
     raise exception 'Impossible correct count was accepted';
   exception when invalid_parameter_value then null;
   end;
 
   begin
-    perform public.submit_ranking_score('テスト', 'add', 1, 30, 100, 201, device);
+    perform public.submit_ranking_score('テスト', 'add', 1, 30, 100, 201, 5, device);
     raise exception 'Impossible input pace was accepted';
   exception when invalid_parameter_value then null;
   end;
 
   begin
-    perform public.submit_ranking_score('１２３４５６７８９０１', 'add', 1, 30, 9, 1, device);
+    perform public.submit_ranking_score('１２３４５６７８９０１', 'add', 1, 30, 9, 1, 5, device);
     raise exception 'Long nickname was accepted';
   exception when invalid_parameter_value then null;
   end;
 
   begin
-    perform public.submit_ranking_score(' ＦｕＣｋ ', 'add', 1, 30, 9, 1, device);
+    perform public.submit_ranking_score(' ＦｕＣｋ ', 'add', 1, 30, 9, 1, 5, device);
     raise exception 'Blocked nickname was accepted';
+  exception when invalid_parameter_value then null;
+  end;
+
+  begin
+    perform public.submit_ranking_score('テスト', 'add', 1, 30, 9, 1, 4, device);
+    raise exception 'An impossibly short maximum combo was accepted';
+  exception when invalid_parameter_value then null;
+  end;
+
+  begin
+    perform public.submit_ranking_score('テスト', 'add', 1, 30, 9, 1, 10, device);
+    raise exception 'An impossibly long maximum combo was accepted';
+  exception when invalid_parameter_value then null;
+  end;
+
+  begin
+    perform public.submit_ranking_score('テスト', 'add', 1, 30, 9, 1, null, device);
+    raise exception 'A missing maximum combo was accepted';
   exception when invalid_parameter_value then null;
   end;
 
@@ -50,14 +68,14 @@ declare
   entry record;
 begin
   select * into strict entry
-  from public.submit_ranking_score(' てすと ', 'add', 1, 30, 9, 1, device);
-  if entry.score <> 970 or entry.nickname <> 'てすと' then
+  from public.submit_ranking_score(' てすと ', 'add', 1, 30, 9, 1, 5, device);
+  if entry.score <> 1069 or entry.nickname <> 'てすと' then
     raise exception 'Unexpected registration result: %', entry;
   end if;
 
   if not exists (
     select 1 from public.get_rankings('add', 1, 30)
-    where id = entry.id and score = 970 and nickname = 'てすと'
+    where id = entry.id and score = 1069 and nickname = 'てすと'
   ) then
     raise exception 'The registered score did not appear in rankings';
   end if;
@@ -67,7 +85,7 @@ begin
   end if;
 
   begin
-    perform public.submit_ranking_score('別の名前', 'mix', 5, 60, 10, 0, device);
+    perform public.submit_ranking_score('別の名前', 'mix', 5, 60, 10, 0, 10, device);
     raise exception 'Device cooldown was bypassed across categories';
   exception when sqlstate 'PT429' then null;
   end;
@@ -86,9 +104,9 @@ declare
 begin
   select score into strict score_after_cooldown
   from public.submit_ranking_score(
-    'てすと', 'add', 1, 30, 10, 0, '0d844e6e-2812-40eb-9fa8-8161c650c36b'
+    'てすと', 'add', 1, 30, 10, 0, 10, '0d844e6e-2812-40eb-9fa8-8161c650c36b'
   );
-  if score_after_cooldown <> 1200 then
+  if score_after_cooldown <> 1440 then
     raise exception 'Unexpected score after cooldown: %', score_after_cooldown;
   end if;
 end;
@@ -100,16 +118,24 @@ declare
   actual_score integer;
 begin
   for test_case in
+    -- Keep these cases in sync with src/lib/score.test.ts.
     select * from (values
-      (0, 0, 0),
-      (10, 2, 960),
-      (19, 2, 2050),
-      (0, 2, -40)
-    ) as cases(correct_count, miss_count, expected_score)
+      (1, 0, 0, 0, 0),
+      (1, 0, 2, 0, -40),
+      (1, 9, 1, 5, 1069),
+      (1, 10, 2, 4, 960),
+      (2, 15, 1, 9, 2340),
+      (2, 19, 2, 9, 2949),
+      (3, 8, 1, 5, 1476),
+      (4, 24, 0, 24, 8870),
+      (5, 25, 0, 25, 12600),
+      (5, 30, 0, 30, 15120)
+    ) as cases(level, correct_count, miss_count, max_combo, expected_score)
   loop
     select score into strict actual_score
     from public.submit_ranking_score(
-      'テスト', 'add', 1, 30, test_case.correct_count, test_case.miss_count, gen_random_uuid()
+      'テスト', 'add', test_case.level, 30,
+      test_case.correct_count, test_case.miss_count, test_case.max_combo, gen_random_uuid()
     );
     if actual_score is distinct from test_case.expected_score then
       raise exception 'Expected score % for % correct and % misses, got %',

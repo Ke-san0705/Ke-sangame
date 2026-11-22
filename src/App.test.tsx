@@ -61,6 +61,10 @@ test('結果に正確率・回答時間・スコア・称号を表示し、同�
   expect(screen.getByText('2 回')).toBeTruthy()
   expect(screen.getByText('33.3 %')).toBeTruthy()
   expect(screen.getByText('1.5 秒/問')).toBeTruthy()
+  expect(screen.getByText('100 pt/問')).toBeTruthy()
+  expect(screen.getByText('正確率係数').nextElementSibling?.textContent).toBe('×1.0')
+  expect(screen.getByText('コンボ係数').nextElementSibling?.textContent).toBe('×1.0')
+  expect(screen.getByText('1 連続')).toBeTruthy()
   const review = within(screen.getByRole('region', { name: '復習リスト' }))
   expect(review.getAllByRole('listitem').map((item) => item.textContent)).toEqual(
     [first(), second].map(({ expression, answer }) => expression + ' = ' + answer),

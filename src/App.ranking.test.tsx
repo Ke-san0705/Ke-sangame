@@ -51,7 +51,7 @@ test('任意の登録をRPCで行い、同じ条件のランキングを取得�
     method: 'POST',
     body: JSON.stringify({
       p_operation: 'multiply', p_level: 1, p_duration_seconds: 30,
-      p_nickname: '計算好き', p_correct_count: 0, p_miss_count: 0,
+      p_nickname: '計算好き', p_correct_count: 0, p_miss_count: 0, p_max_combo: 0,
       p_device_id: localStorage.getItem('ke-sangame:ranking-device'),
     }),
   }))
