@@ -28,12 +28,12 @@ function nextMany(level: Level, operation: Operation | 'mix', count = 200) {
 
 // Evaluate only generated arithmetic tokens in tests, independently of the generator.
 function evaluate(expression: string) {
-  const tokens = expression.split(' ').join('').match(/\d+(?:\.\d+)?|[+−×÷()-]/g) ?? []
+  const tokens = expression.split(' ').join('').match(/\(−\d+(?:\.\d+)?\)|\d+(?:\.\d+)?|[+−×÷()]/g) ?? []
   let cursor = 0
 
   function operand(): number {
     const token = tokens[cursor++]
-    if (token === '-') return -operand()
+    if (token.startsWith('(−')) return -Number(token.slice(2, -1))
     if (token === '(') {
       const value = sum()
       expect(tokens[cursor++]).toBe(')')
@@ -75,6 +75,7 @@ describe.each(levels)('Lv.%i', (level) => {
     for (const question of nextMany(level, operation)) {
       expect(question.operation).toBe(operation)
       expect(question.expression).toContain(symbols[operation])
+      expect(question.expression.replaceAll(' ', '')).not.toMatch(/[+−-][−-]/)
       const values = question.expression.match(/\d+(?:\.\d+)?/g)!.map(Number)
       const [left, right, third] = values
       expect(left).toBeGreaterThan(0)
@@ -119,16 +120,28 @@ describe.each(levels)('Lv.%i', (level) => {
 
 it('introduces decimals, signed operands, grouping and chains at the specified levels', () => {
   expect(nextMany(1, 'mix').every(({ expression }) => !/[.()-]/.test(expression))).toBe(true)
+  const groupedExpression = /\((?!−\d+(?:\.\d+)?\))/
   for (const operation of ['addition', 'subtraction'] as const) {
     const level2 = nextMany(2, operation)
     expect(level2.some(({ expression }) => expression.includes('.'))).toBe(true)
     expect(level2.every(({ expression }) => !/[()-]/.test(expression))).toBe(true)
-    expect(nextMany(3, operation).some(({ expression }) => expression.includes('-'))).toBe(true)
-    expect(nextMany(4, operation).some(({ expression }) => /\([^()]* [−+] /.test(expression))).toBe(true)
+    expect(nextMany(3, operation).some(({ expression }) => expression.includes('(−'))).toBe(true)
+    expect(nextMany(4, operation).some(({ expression }) => groupedExpression.test(expression))).toBe(true)
     const level5 = nextMany(5, operation)
-    expect(level5.some(({ expression }) => /\([^()]* [−+] /.test(expression) && /[.-]/.test(expression))).toBe(true)
-    expect(level5.some(({ expression }) => expression.split(' ').length === 5 && !expression.includes('('))).toBe(true)
+    expect(level5.some(({ expression }) => groupedExpression.test(expression) && (expression.includes('.') || expression.includes('(−')))).toBe(true)
+    expect(level5.some(({ expression }) => expression.split(' ').length === 5 && !groupedExpression.test(expression))).toBe(true)
   }
+})
+
+it.each([
+  { level: 3, operation: 'division', draws: [0, 0, 0, 0], expression: '(−1) ÷ (−1)' },
+  { level: 4, operation: 'subtraction', draws: [0.5, 0.82175, 0.9338, 0.5, 0, 0.5], expression: '8395 − (−9404)' },
+  { level: 4, operation: 'addition', draws: [0.5, 0, 0, 0, 0, 0, 0, 0], expression: '(−1000) + ((−1000) − (−1000))' },
+  { level: 5, operation: 'addition', draws: [0.5, 0.809, 0.6967, 0.5, 0, 0, 0.1975, 0.5, 0.5], expression: '8281 + (−7270) + 2777' },
+] as const)('formats Lv.$level $operation as $expression', ({ level, operation, draws, expression }) => {
+  const samples = [...draws]
+  const next = createQuestionGenerator(() => samples.shift()!)
+  expect(next(level, operation).expression).toBe(expression)
 })
 
 it.each(operations)('excludes the last five %s questions even when the random source repeats', (operation) => {
@@ -173,6 +186,6 @@ it('keeps exact answers when subtracting and multiplying decimal operands', () =
 
   const multiplicationDraws = [0, 0, 0.002, 0.5, 0]
   const multiplication = createQuestionGenerator(() => multiplicationDraws.shift() ?? 0)(3, 'multiplication')
-  expect(multiplication.expression).toBe('0.1 × -0.2')
+  expect(multiplication.expression).toBe('0.1 × (−0.2)')
   expect(multiplication.answer).toBe('-0.02')
 })

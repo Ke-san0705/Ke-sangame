@@ -120,7 +120,8 @@ function format(value: bigint) {
 }
 
 function literal(value: bigint): Expression {
-  return { value, text: format(value), key: String(value) }
+  const text = value < 0n ? `(−${format(-value)})` : format(value)
+  return { value, text, key: String(value) }
 }
 
 function combine(
