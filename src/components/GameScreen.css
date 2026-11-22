@@ -10,6 +10,13 @@
   font-weight: 700;
 }
 
+.game-start-countdown {
+  display: grid;
+  place-items: center;
+  font-size: clamp(4rem, 16vw, 8rem);
+  font-variant-numeric: tabular-nums;
+}
+
 .game-timer-bar {
   block-size: 10px;
   background: var(--color-card);
