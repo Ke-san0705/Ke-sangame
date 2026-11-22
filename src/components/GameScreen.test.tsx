@@ -99,8 +99,12 @@ test('タッチ用テンキーで負数・小数を入力し、Cでミスを増�
 
   act(() => vi.advanceTimersByTime(28_000))
   press('pass')
+  expect(screen.getByRole('status').textContent).toMatch(/^正解：/)
+  expect(onFinish).not.toHaveBeenCalled()
+  act(() => vi.advanceTimersByTime(1_000))
   expect(onFinish).toHaveBeenCalledExactlyOnceWith({
     correctCount: 0, missCount: 1, accuracy: 0, score: -20, averageAnswerSeconds: 0,
+    reviewQuestions: [expect.objectContaining({ expression: expect.any(String), answer: expect.any(String) })],
   })
 })
 
@@ -149,6 +153,7 @@ test.each([
     missCount: 0,
     accuracy: expected,
     score: expected * 120,
+    reviewQuestions: [],
     averageAnswerSeconds: expected ? (30_000 + (offset ?? 0)) / 1000 : 0,
   })
 })

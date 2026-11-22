@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { App } from './App'
 import { createQuestionGenerator } from './lib/question-generator'
@@ -37,11 +37,22 @@ test('結果に正確率・回答時間・スコア・称号を表示し、同�
   const generate = createQuestionGenerator()
   generate(1, 'multiplication')
   const second = generate(1, 'multiplication')
+  expect(screen.getByRole('status').textContent).toBe('正解：' + first().answer)
+  expect(screen.getByText(first().expression + ' =')).toBeTruthy()
+  fireEvent.keyDown(window, { key: 'Tab' })
+  enter('9')
+  expect(screen.getByText('ミス 1')).toBeTruthy()
+  advance(999)
+  expect(screen.getByRole('status')).toBeTruthy()
+  advance(1)
+  expect(screen.getByText(second.expression + ' =')).toBeTruthy()
   advance(500)
   enter('0')
+  expect(screen.queryByRole('status')).toBeNull()
+  expect(screen.getByText(second.expression + ' =')).toBeTruthy()
   advance(1_000)
   enter(second.answer)
-  advance(23_501)
+  advance(22_501)
 
   expect(screen.getByRole('heading', { name: 'TIME UP!' })).toBeTruthy()
   expect(screen.getByText('60 pt')).toBeTruthy()
@@ -50,6 +61,10 @@ test('結果に正確率・回答時間・スコア・称号を表示し、同�
   expect(screen.getByText('2 回')).toBeTruthy()
   expect(screen.getByText('33.3 %')).toBeTruthy()
   expect(screen.getByText('1.5 秒/問')).toBeTruthy()
+  const review = within(screen.getByRole('region', { name: '復習リスト' }))
+  expect(review.getAllByRole('listitem').map((item) => item.textContent)).toEqual(
+    [first(), second].map(({ expression, answer }) => expression + ' = ' + answer),
+  )
 
   click('もう一度遊ぶ')
   expect(screen.getByRole('status').textContent).toBe('3')
@@ -58,6 +73,8 @@ test('結果に正確率・回答時間・スコア・称号を表示し、同�
   expect(screen.getByText(first().expression + ' =')).toBeTruthy()
   expect(screen.getByText('正解 0')).toBeTruthy()
   expect(screen.getByText('ミス 0')).toBeTruthy()
+  advance(30_001)
+  expect(screen.getByText('復習する問題はありません。')).toBeTruthy()
 })
 
 test('再読み込み後も条件別の自己ベストを保持し、初回と上回ったときだけ通知する', () => {
