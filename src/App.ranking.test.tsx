@@ -19,7 +19,8 @@ afterEach(() => {
 })
 
 const click = (name: string) => fireEvent.click(screen.getByRole('button', { name }))
-const finish = () => act(() => vi.advanceTimersByTime(30_000))
+const advance = (ms: number) => act(() => vi.advanceTimersByTime(ms))
+const finish = () => advance(30_000)
 
 test('任意の登録をRPCで行い、同じ条件のランキングを取得する', async () => {
   const entries: { id: number; nickname: string; score: number }[] = []
@@ -35,6 +36,7 @@ test('任意の登録をRPCで行い、同じ条件のランキングを取得�
   click('掛け算')
   click('30秒')
   click('START')
+  advance(3_000)
   finish()
 
   const nickname = screen.getByRole('textbox', { name: 'ニックネーム' })
@@ -71,6 +73,7 @@ test('プレイ中に切断して再接続した場合も自己ベストのみ�
   render(<App />)
   click('30秒')
   click('START')
+  advance(3_000)
   online.mockReturnValue(false)
   act(() => window.dispatchEvent(new Event('offline')))
   online.mockReturnValue(true)
@@ -92,10 +95,12 @@ test('未設定でもランキング画面から戻ってリプレイできる',
   click('モード選択に戻る')
   click('30秒')
   click('START')
+  advance(3_000)
   finish()
   expect(screen.getByText('NEW RECORD!')).toBeTruthy()
   expect(screen.queryByRole('button', { name: '登録' })).toBeNull()
   click('もう一度遊ぶ')
+  advance(3_000)
   expect(screen.getByRole('timer').textContent).toBe('30')
   expect(fetchRanking).not.toHaveBeenCalled()
 })

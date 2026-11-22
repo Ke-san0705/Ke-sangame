@@ -1,6 +1,7 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, expect, test, vi } from 'vitest'
 import { createQuestionGenerator } from '../lib/question-generator'
+import { durations, levels, type GameMode } from '../lib/gameMode'
 import { App } from '../App'
 import { GameScreen } from './GameScreen'
 
@@ -11,6 +12,35 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
+const countdownModes = (Object.keys(levels).map(Number) as GameMode['level'][])
+  .flatMap((level) => durations.map((duration) => ({ level, duration })))
+
+test.each(countdownModes)('Lv.$level・$duration 秒の開始前に 3、2、1 を表示する', ({ level, duration }) => {
+  vi.useFakeTimers()
+  vi.spyOn(Math, 'random').mockReturnValue(0.25)
+  const first = createQuestionGenerator()(level, 'addition')
+  const onFinish = vi.fn()
+  render(<GameScreen level={level} mode="addition" duration={duration} onFinish={onFinish} />)
+
+  for (const count of [3, 2, 1]) {
+    expect(screen.getByRole('status').textContent).toBe(String(count))
+    expect(screen.queryByRole('timer')).toBeNull()
+    expect(screen.queryByText(first.expression + ' =')).toBeNull()
+    fireEvent.keyDown(window, { key: 'Tab' })
+    act(() => vi.advanceTimersByTime(1_000))
+  }
+
+  expect(screen.queryByRole('status')).toBeNull()
+  expect(screen.getByText(first.expression + ' =')).toBeTruthy()
+  expect(screen.getByRole('timer').textContent).toBe(String(duration))
+  expect(screen.getByText('ミス 0')).toBeTruthy()
+  act(() => vi.advanceTimersByTime((duration - 1) * 1_000))
+  expect(screen.getByRole('timer').textContent).toBe('1')
+  expect(onFinish).not.toHaveBeenCalled()
+  act(() => vi.advanceTimersByTime(1_000))
+  expect(onFinish).toHaveBeenCalledTimes(1)
+})
+
 test('STARTからキーボードで回答し、時間切れで結果へ進む', () => {
   vi.useFakeTimers()
   vi.spyOn(Math, 'random').mockReturnValue(0.25)
@@ -18,6 +48,8 @@ test('STARTからキーボードで回答し、時間切れで結果へ進む', 
   render(<App />)
   fireEvent.click(screen.getByRole('button', { name: 'ミックス' }))
   fireEvent.click(screen.getByRole('button', { name: 'START' }))
+  expect(screen.getByRole('status').textContent).toBe('3')
+  act(() => vi.advanceTimersByTime(3_000))
   expect(screen.getByText(first.expression + ' =')).toBeTruthy()
 
   fireEvent.keyDown(document.body, { key: '9' })
@@ -53,6 +85,7 @@ test('タッチ用テンキーで負数・小数を入力し、Cでミスを増�
   const { container } = render(
     <GameScreen level={3} mode="addition" duration={30} onFinish={onFinish} />,
   )
+  act(() => vi.advanceTimersByTime(3_000))
   const press = (name: string) => fireEvent.click(screen.getByRole('button', { name }))
   expect(container.querySelector('input, textarea, [contenteditable]')).toBeNull()
 
@@ -70,9 +103,11 @@ test('タッチ用テンキーで負数・小数を入力し、Cでミスを増�
 })
 
 test('Lv.2の小数問題にテンキーで末尾ゼロを付けて正解できる', () => {
+  vi.useFakeTimers()
   vi.spyOn(Math, 'random').mockReturnValue(0)
   const { answer } = createQuestionGenerator()(2, 'addition')
   render(<GameScreen level={2} mode="addition" duration={30} onFinish={vi.fn()} />)
+  act(() => vi.advanceTimersByTime(3_000))
   expect(answer).toContain('.')
   expect(screen.queryByRole('button', { name: '−' })).toBeNull()
   for (const key of answer + '0') fireEvent.click(screen.getByRole('button', { name: key }))

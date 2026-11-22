@@ -4,6 +4,7 @@ import type { Level, QuestionMode } from '../lib/question-generator'
 import { calculateScore } from '../lib/score'
 import './GameScreen.css'
 
+const START_COUNTDOWN_SECONDS = 3
 const PASS_PENALTY_MS = 3_000
 const KEYPAD_ROWS = ['7', '8', '9', 'C', '4', '5', '6', 'pass', '1', '2', '3', 'Enter']
 
@@ -32,6 +33,8 @@ export function GameScreen({ level, mode, duration, onFinish }: GameScreenProps)
   const [correctCount, setCorrectCount] = useState(0)
   const [incorrectCount, setIncorrectCount] = useState(0)
   const [passCount, setPassCount] = useState(0)
+  const [countdown, setCountdown] = useState(START_COUNTDOWN_SECONDS)
+  const playing = countdown === 0
   const [remaining, setRemaining] = useState(duration * 1000)
   const deadline = useRef(0)
   const questionStartedAt = useRef(0)
@@ -120,6 +123,17 @@ export function GameScreen({ level, mode, duration, onFinish }: GameScreenProps)
   })
 
   useEffect(() => {
+    let count = START_COUNTDOWN_SECONDS
+    const interval = window.setInterval(() => {
+      count -= 1
+      setCountdown(count)
+      if (count === 0) window.clearInterval(interval)
+    }, 1_000)
+    return () => window.clearInterval(interval)
+  }, [])
+
+  useEffect(() => {
+    if (!playing) return
     const now = performance.now()
     questionStartedAt.current = now
     deadline.current = now + duration * 1000
@@ -132,7 +146,15 @@ export function GameScreen({ level, mode, duration, onFinish }: GameScreenProps)
       window.clearTimeout(timeout)
       window.removeEventListener('keydown', onKeyDown)
     }
-  }, [duration])
+  }, [duration, playing])
+
+  if (!playing) {
+    return (
+      <main className="game-screen game-start-countdown" aria-label="ゲーム">
+        <div role="status" aria-label="開始までの秒数">{countdown}</div>
+      </main>
+    )
+  }
 
   const percentage = remaining / (duration * 1000) * 100
   const keypad = [...KEYPAD_ROWS, '0']
