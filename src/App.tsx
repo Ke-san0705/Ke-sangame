@@ -1,11 +1,21 @@
 import { useState } from 'react'
-import { GameStartScreen } from './components/GameStartScreen'
+import { GameScreen, type GameResult } from './components/GameScreen'
 import { TopScreen } from './components/TopScreen'
 import { defaultMode, type GameMode } from './lib/gameMode'
+import type { QuestionMode } from './lib/question-generator'
+
+const questionModes = {
+  add: 'addition',
+  subtract: 'subtraction',
+  multiply: 'multiplication',
+  divide: 'division',
+  mix: 'mix',
+} satisfies Record<GameMode['operation'], QuestionMode>
 
 type Screen =
   | { name: 'top' }
-  | { name: 'game'; mode: GameMode; startedAt: number }
+  | { name: 'game'; mode: GameMode }
+  | { name: 'result'; mode: GameMode; result: GameResult }
   | { name: 'ranking' }
 
 export function App() {
@@ -14,7 +24,27 @@ export function App() {
   const goBack = () => setScreen({ name: 'top' })
 
   if (screen.name === 'game') {
-    return <GameStartScreen mode={screen.mode} startedAt={screen.startedAt} onBack={goBack} />
+    const gameMode = screen.mode
+    return (
+      <GameScreen
+        level={gameMode.level}
+        mode={questionModes[gameMode.operation]}
+        duration={gameMode.duration}
+        onFinish={(result) => setScreen({ name: 'result', mode: gameMode, result })}
+      />
+    )
+  }
+
+  if (screen.name === 'result') {
+    return (
+      <main className="secondary-screen">
+        <h1>TIME UP!</h1>
+        <p>正解 {screen.result.correctCount}</p>
+        <p>ミス {screen.result.missCount}</p>
+        <button type="button" onClick={() => setScreen({ name: 'game', mode: screen.mode })}>もう一度</button>
+        <button type="button" onClick={goBack}>戻る</button>
+      </main>
+    )
   }
 
   if (screen.name === 'ranking') {
@@ -31,7 +61,7 @@ export function App() {
     <TopScreen
       mode={mode}
       onModeChange={setMode}
-      onStart={() => setScreen({ name: 'game', mode, startedAt: Date.now() })}
+      onStart={() => setScreen({ name: 'game', mode })}
       onRanking={() => setScreen({ name: 'ranking' })}
     />
   )
