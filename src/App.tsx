@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { GameScreen, type GameResult } from './components/GameScreen'
+import { RankingScreen } from './components/RankingScreen'
 import { ResultScreen } from './components/ResultScreen'
 import { savePersonalBest } from './lib/personalBest'
 import { TopScreen } from './components/TopScreen'
@@ -17,12 +18,35 @@ const questionModes = {
 type Screen =
   | { name: 'top' }
   | { name: 'game'; mode: GameMode }
-  | { name: 'result'; mode: GameMode; result: GameResult; isNewRecord: boolean }
-  | { name: 'ranking' }
+  | { name: 'result'; mode: GameMode; result: GameResult; isNewRecord: boolean; playedOnline: boolean }
+  | { name: 'ranking'; mode: GameMode }
+
+function subscribeOnline(onChange: () => void) {
+  window.addEventListener('online', onChange)
+  window.addEventListener('offline', onChange)
+  return () => {
+    window.removeEventListener('online', onChange)
+    window.removeEventListener('offline', onChange)
+  }
+}
+
+const isOnline = () => navigator.onLine
 
 export function App() {
   const [mode, setMode] = useState(defaultMode)
   const [screen, setScreen] = useState<Screen>({ name: 'top' })
+  const online = useSyncExternalStore(subscribeOnline, isOnline)
+  const playedOnline = useRef(false)
+  useEffect(() => {
+    const markOffline = () => { playedOnline.current = false }
+    window.addEventListener('offline', markOffline)
+    return () => window.removeEventListener('offline', markOffline)
+  }, [])
+
+  const startGame = (gameMode: GameMode) => {
+    playedOnline.current = isOnline()
+    setScreen({ name: 'game', mode: gameMode })
+  }
   const goBack = () => setScreen({ name: 'top' })
 
   if (screen.name === 'game') {
@@ -34,7 +58,10 @@ export function App() {
         duration={gameMode.duration}
         onFinish={(result) => {
           const isNewRecord = savePersonalBest(gameMode, result.score)
-          setScreen({ name: 'result', mode: gameMode, result, isNewRecord })
+          setScreen({
+            name: 'result', mode: gameMode, result, isNewRecord,
+            playedOnline: playedOnline.current && isOnline(),
+          })
         }}
       />
     )
@@ -45,28 +72,26 @@ export function App() {
       <ResultScreen
         result={screen.result}
         isNewRecord={screen.isNewRecord}
-        onReplay={() => setScreen({ name: 'game', mode: screen.mode })}
+        mode={screen.mode}
+        playedOnline={screen.playedOnline}
+        online={online}
+        onViewRanking={() => setScreen({ name: 'ranking', mode: screen.mode })}
+        onReplay={() => startGame(screen.mode)}
         onBack={goBack}
       />
     )
   }
 
   if (screen.name === 'ranking') {
-    return (
-      <main className="secondary-screen">
-        <h1>ランキング</h1>
-        <p>ランキングは準備中です。</p>
-        <button type="button" onClick={goBack}>モード選択に戻る</button>
-      </main>
-    )
+    return <RankingScreen initialMode={screen.mode} online={online} onBack={goBack} />
   }
 
   return (
     <TopScreen
       mode={mode}
       onModeChange={setMode}
-      onStart={() => setScreen({ name: 'game', mode })}
-      onRanking={() => setScreen({ name: 'ranking' })}
+      onStart={() => startGame(mode)}
+      onRanking={() => setScreen({ name: 'ranking', mode })}
     />
   )
 }

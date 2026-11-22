@@ -99,3 +99,61 @@
   border: 2px solid #94a3b8;
   background: transparent;
 }
+
+.result-registration {
+  margin-block-start: 30px;
+  text-align: start;
+}
+
+.result-registration label {
+  display: block;
+  margin-block-end: 7px;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 21px;
+}
+
+.result-registration-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(108px, auto);
+  align-items: center;
+  gap: 12px;
+}
+
+.result-registration input,
+.result-registration button {
+  box-sizing: border-box;
+  min-block-size: 48px;
+  min-inline-size: 0;
+  padding-inline: 12px;
+  border: 0;
+  border-radius: 10px;
+  font: inherit;
+}
+
+.result-registration input {
+  background: var(--color-card);
+  color: var(--color-text);
+}
+
+.result-registration input::placeholder {
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.result-registration button {
+  background: var(--color-accent);
+  color: var(--color-background);
+  font-weight: 700;
+}
+
+.result-registration button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.result-registration p,
+.result-ranking-status {
+  margin: 8px 0 0;
+  font-size: 14px;
+}

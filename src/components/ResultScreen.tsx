@@ -1,15 +1,22 @@
 import type { GameResult } from './GameScreen'
 import { getRankTitle } from '../lib/score'
+import type { GameMode } from '../lib/gameMode'
+import { rankingConfigured } from '../lib/ranking'
+import { RankingRegistration } from './RankingRegistration'
 import './ResultScreen.css'
 
 type ResultScreenProps = {
   result: GameResult
   isNewRecord: boolean
+  mode: GameMode
+  playedOnline: boolean
+  online: boolean
+  onViewRanking: () => void
   onReplay: () => void
   onBack: () => void
 }
 
-export function ResultScreen({ result, isNewRecord, onReplay, onBack }: ResultScreenProps) {
+export function ResultScreen({ result, isNewRecord, mode, playedOnline, online, onViewRanking, onReplay, onBack }: ResultScreenProps) {
   const { correctCount, missCount, accuracy, score, averageAnswerSeconds } = result
 
   return (
@@ -41,6 +48,16 @@ export function ResultScreen({ result, isNewRecord, onReplay, onBack }: ResultSc
           <dd>{averageAnswerSeconds.toFixed(1)} 秒/問</dd>
         </div>
       </dl>
+      {!playedOnline && <p className="result-ranking-status">オフラインでのプレイは自己ベストのみ対象です。</p>}
+      {playedOnline && rankingConfigured() && (
+        <RankingRegistration
+          mode={mode}
+          correctCount={correctCount}
+          missCount={missCount}
+          online={online}
+          onViewRanking={onViewRanking}
+        />
+      )}
       <div className="result-actions">
         <button type="button" className="result-replay" onClick={onReplay}>もう一度遊ぶ</button>
         <button type="button" className="result-back" onClick={onBack}>モード選択に戻る</button>
