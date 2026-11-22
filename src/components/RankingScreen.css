@@ -1,0 +1,52 @@
+.ranking-screen {
+  max-inline-size: 560px;
+}
+
+.ranking-filters {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.ranking-filters select {
+  min-block-size: 44px;
+  padding-inline: 6px;
+  border: 1px solid #94a3b8;
+  border-radius: 10px;
+  background: var(--color-card);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.ranking-screen table {
+  inline-size: 100%;
+  margin-block-start: 24px;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.ranking-screen caption {
+  margin-block-end: 8px;
+  text-align: start;
+}
+
+.ranking-screen th,
+.ranking-screen td {
+  padding: 10px 4px;
+  border-block-end: 1px solid #475569;
+  overflow-wrap: anywhere;
+}
+
+.ranking-screen tbody td:first-child {
+  color: var(--color-accent);
+  font-weight: 700;
+}
+
+.ranking-screen tbody td:nth-child(3) {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.ranking-back {
+  margin-block-start: 24px;
+}
