@@ -22,6 +22,30 @@ const click = (name: string) => fireEvent.click(screen.getByRole('button', { nam
 const advance = (ms: number) => act(() => vi.advanceTimersByTime(ms))
 const finish = () => advance(30_001)
 
+test('トップから看板種目を表示し、ドロップダウンで条件を切り替えられる', async () => {
+  const fetchRanking = vi.fn(async (_url: string, options: RequestInit) => {
+    const { p_operation, p_level, p_duration_seconds } = JSON.parse(String(options.body))
+    return Response.json([{ id: 1, nickname: `${p_operation}-${p_level}-${p_duration_seconds}`, score: 100 }])
+  })
+  vi.stubGlobal('fetch', fetchRanking)
+  render(<App />)
+  click('掛け算')
+  click('30秒')
+
+  await act(async () => click('ランキング'))
+  expect(fetchRanking).toHaveBeenCalledTimes(1)
+  expect(screen.getByRole('row', { name: /1 mix-1-60 100 pt ミックス Lv\.1 60秒/ })).toBeTruthy()
+
+  for (const [label, value, nickname] of [
+    ['レベル', '2', 'mix-2-60'],
+    ['演算', 'subtract', 'subtract-2-60'],
+    ['制限時間', '120', 'subtract-2-120'],
+  ]) {
+    await act(async () => fireEvent.change(screen.getByRole('combobox', { name: label }), { target: { value } }))
+    expect(screen.getByRole('rowheader', { name: nickname })).toBeTruthy()
+  }
+})
+
 test('任意の登録をRPCで行い、同じ条件のランキングを取得する', async () => {
   const entries: { id: number; nickname: string; score: number }[] = []
   const fetchRanking = vi.fn(async (url: string, options: RequestInit) => {

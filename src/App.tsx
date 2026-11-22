@@ -8,6 +8,8 @@ import { defaultMode, type GameMode } from './lib/gameMode'
 import { createSoundEffects, readMuted, saveMuted } from './lib/soundEffects'
 import type { QuestionMode } from './lib/question-generator'
 
+const featuredRankingMode: GameMode = { operation: 'mix', level: 1, duration: 60 }
+
 const questionModes = {
   add: 'addition',
   subtract: 'subtraction',
@@ -103,7 +105,7 @@ export function App() {
       }}
       onModeChange={setMode}
       onStart={() => startGame(mode)}
-      onRanking={() => setScreen({ name: 'ranking', mode })}
+      onRanking={() => setScreen({ name: 'ranking', mode: featuredRankingMode })}
     />
   )
 }
