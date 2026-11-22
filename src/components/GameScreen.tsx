@@ -1,13 +1,16 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { createQuestionGenerator, isCorrectAnswer } from '../lib/question-generator'
-import type { Level, QuestionMode } from '../lib/question-generator'
+import type { Level, Question, QuestionMode } from '../lib/question-generator'
 import { calculateScore } from '../lib/score'
 import type { SoundCue } from '../lib/soundEffects'
 import './GameScreen.css'
 
 const START_COUNTDOWN_SECONDS = 3
 const PASS_PENALTY_MS = 3_000
+const PASS_REVEAL_MS = 1_000
 const KEYPAD_ROWS = ['7', '8', '9', 'C', '4', '5', '6', 'pass', '1', '2', '3', 'Enter']
+
+type ReviewQuestion = Pick<Question, 'expression' | 'answer'>
 
 export type GameResult = {
   correctCount: number
@@ -15,6 +18,7 @@ export type GameResult = {
   accuracy: number
   score: number
   averageAnswerSeconds: number
+  reviewQuestions: ReviewQuestion[]
 }
 
 type GameScreenProps = {
@@ -32,6 +36,10 @@ export function GameScreen({ level, mode, duration, onSound, onFinish }: GameScr
   })
   const [question, setQuestion] = useState(firstQuestion)
   const [answer, setAnswer] = useState('')
+  const [showPassAnswer, setShowPassAnswer] = useState(false)
+  const passTimeout = useRef<number | undefined>(undefined)
+  const reviewQuestions = useRef<ReviewQuestion[]>([])
+  const currentQuestionRecorded = useRef(false)
   const [counts, setCounts] = useState({ correctCount: 0, incorrectCount: 0, passCount: 0 })
   const latestCounts = useRef(counts)
   const { correctCount, incorrectCount, passCount } = counts
@@ -54,6 +62,12 @@ export function GameScreen({ level, mode, duration, onSound, onFinish }: GameScr
     setCounts(next)
   }
 
+  function recordReviewQuestion() {
+    if (currentQuestionRecorded.current) return
+    currentQuestionRecorded.current = true
+    reviewQuestions.current.push({ expression: question.expression, answer: question.answer })
+  }
+
   function finish() {
     if (finished.current) return
     finished.current = true
@@ -63,6 +77,7 @@ export function GameScreen({ level, mode, duration, onSound, onFinish }: GameScr
     onFinish({
       correctCount,
       ...calculateScore(finalCounts),
+      reviewQuestions: reviewQuestions.current,
       averageAnswerSeconds: correctCount === 0 ? 0 : totalCorrectAnswerMs.current / correctCount / 1000,
     })
   }
@@ -78,11 +93,12 @@ export function GameScreen({ level, mode, duration, onSound, onFinish }: GameScr
 
   function nextQuestion(now: number) {
     questionStartedAt.current = now
+    currentQuestionRecorded.current = false
     setQuestion(generateQuestion(level, mode))
   }
 
   function handleKey(key: string, submittedAt?: number) {
-    if (finished.current) return
+    if (finished.current || passTimeout.current !== undefined) return
     const now = performance.now()
     const answerTime = submittedAt ?? now
     if (key === 'Enter' ? answerTime > deadline.current : now >= deadline.current) return
@@ -93,15 +109,21 @@ export function GameScreen({ level, mode, duration, onSound, onFinish }: GameScr
         return
       case 'pass': {
         recordAnswer('passCount')
+        recordReviewQuestion()
         deadline.current -= PASS_PENALTY_MS
-        const timeLeft = Math.max(0, deadline.current - now)
-        updateRemaining(timeLeft)
-        if (timeLeft === 0) {
-          finish()
-          return
-        }
+        updateRemaining(Math.max(0, deadline.current - now))
         setAnswer('')
-        nextQuestion(now)
+        setShowPassAnswer(true)
+        passTimeout.current = window.setTimeout(() => {
+          passTimeout.current = undefined
+          const nextQuestionTime = performance.now()
+          if (nextQuestionTime >= deadline.current) {
+            finish()
+            return
+          }
+          setShowPassAnswer(false)
+          nextQuestion(nextQuestionTime)
+        }, PASS_REVEAL_MS)
         return
       }
       case 'Enter':
@@ -115,6 +137,7 @@ export function GameScreen({ level, mode, duration, onSound, onFinish }: GameScr
         } else {
           onSound?.('incorrect')
           recordAnswer('incorrectCount')
+          recordReviewQuestion()
         }
         return
       default:
@@ -141,7 +164,7 @@ export function GameScreen({ level, mode, duration, onSound, onFinish }: GameScr
     const timeLeft = Math.max(0, deadline.current - performance.now())
     if (finished.current) return false
     updateRemaining(timeLeft)
-    return timeLeft === 0
+    return timeLeft === 0 && passTimeout.current === undefined
   })
 
   const finishOnTimeUp = useEffectEvent(() => finish())
@@ -178,6 +201,7 @@ export function GameScreen({ level, mode, duration, onSound, onFinish }: GameScr
       window.clearInterval(interval)
       window.clearTimeout(timeout)
       window.clearTimeout(finishTimeout)
+      window.clearTimeout(passTimeout.current)
       window.removeEventListener('keydown', onKeyDown)
     }
   }, [duration, playing])
@@ -213,13 +237,18 @@ export function GameScreen({ level, mode, duration, onSound, onFinish }: GameScr
       </header>
       <div className="game-problem">
         <span>{question.expression} =</span>
-        <span className="game-answer" aria-label="入力した答え">{answer.replace('-', '−')}</span>
+        {showPassAnswer ? (
+          <span className="game-answer" role="status">正解：{question.answer.replace('-', '−')}</span>
+        ) : (
+          <span className="game-answer" aria-label="入力した答え">{answer.replace('-', '−')}</span>
+        )}
       </div>
       <div className="game-keypad" role="group" aria-label="テンキー">
         {keypad.map((key) => (
           <button
             key={key}
             type="button"
+            disabled={showPassAnswer}
             className={`game-key game-key-${key === '.' ? 'decimal' : key === '−' ? 'minus' : key}`}
             onClick={(event) => handleKey(
               key === '−' ? '-' : key,
@@ -233,7 +262,7 @@ export function GameScreen({ level, mode, duration, onSound, onFinish }: GameScr
       <div className="game-shortcuts">
         <span>Enter：決定</span>
         <span>Backspace：クリア</span>
-        <button type="button" onClick={() => handleKey('pass')}>Tab：パス</button>
+        <button type="button" disabled={showPassAnswer} onClick={() => handleKey('pass')}>Tab：パス</button>
       </div>
     </main>
   )

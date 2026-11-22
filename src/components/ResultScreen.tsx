@@ -17,7 +17,7 @@ type ResultScreenProps = {
 }
 
 export function ResultScreen({ result, isNewRecord, mode, playedOnline, online, onViewRanking, onReplay, onBack }: ResultScreenProps) {
-  const { correctCount, missCount, accuracy, score, averageAnswerSeconds } = result
+  const { correctCount, missCount, accuracy, score, averageAnswerSeconds, reviewQuestions } = result
 
   return (
     <main className="result-screen">
@@ -48,6 +48,18 @@ export function ResultScreen({ result, isNewRecord, mode, playedOnline, online, 
           <dd>{averageAnswerSeconds.toFixed(1)} 秒/問</dd>
         </div>
       </dl>
+      <section className="result-review" aria-labelledby="result-review-heading">
+        <h2 id="result-review-heading">復習リスト</h2>
+        {reviewQuestions.length === 0 ? (
+          <p>復習する問題はありません。</p>
+        ) : (
+          <ul>
+            {reviewQuestions.map(({ expression, answer }, index) => (
+              <li key={index}>{expression} = <strong>{answer.replace('-', '−')}</strong></li>
+            ))}
+          </ul>
+        )}
+      </section>
       {!playedOnline && <p className="result-ranking-status">オフラインでのプレイは自己ベストのみ対象です。</p>}
       {playedOnline && rankingConfigured() && (
         <RankingRegistration
