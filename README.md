@@ -57,8 +57,7 @@ Service Worker は本番ビルドで登録されます。初回はオンライ�
 
 ## ランキング基盤（Supabase）
 
-Supabase の無料プロジェクトの SQL Editor で
-`supabase/migrations/20261121000000_ranking_foundation.sql` を適用します。
+ランキングのセットアップには `supabase/migrations/` のマイグレーションをファイル名順に使用します。
 クライアントを接続する際は、`.env.example` をもとに `.env.local` の
 `VITE_SUPABASE_URL` と `VITE_SUPABASE_ANON_KEY` にプロジェクト URL と公開用の
 `anon` キーを設定します。管理キーは Vite の環境変数に設定しません。
@@ -66,7 +65,7 @@ Supabase の無料プロジェクトの SQL Editor で
 
 | RPC | 引数 |
 | --- | --- |
-| `submit_ranking_score` | `p_nickname`、`p_operation`、`p_level`、`p_duration_seconds`、`p_correct_count`、`p_miss_count`、`p_device_id` |
+| `submit_ranking_score` | `p_nickname`、`p_operation`、`p_level`、`p_duration_seconds`、`p_correct_count`、`p_miss_count`、`p_max_combo`、`p_device_id` |
 | `get_rankings` | `p_operation`、`p_level`、`p_duration_seconds`、任意の `p_limit`（既定50、1〜100件） |
 
 演算は `add`（足し算）、`subtract`（引き算）、`multiply`（掛け算）、
@@ -81,7 +80,21 @@ Supabase の無料プロジェクトの SQL Editor で
 
 正解数は制限時間×5、正解数とミス数の合計は制限時間×10を上限とします。
 正確率係数は100%で1.2、90%以上100%未満で1.1、90%未満で1.0です。
+レベル1〜5の基本点は順に100・130・170・220・280点です。
+不正解とパスで連続正解が途切れます。セッションの最大連続正解数を使い、
+5連続ごとにコンボ係数が0.1増えます（1.0〜1.5）。
+正解数に基本点と両係数を掛けて小数点以下を四捨五入し、ミス1回につき20点を引きます。
 正解数とミス数がともに0の場合、スコアは0点です。
+ランキングには旧方式で登録したスコアと新方式で登録したスコアが混在します。
+
+| 称号 | スコア |
+| --- | ---: |
+| 電算見習い | 1,499点以下 |
+| 高速の計算士 | 1,500〜4,999点 |
+| 数字の達人 | 5,000〜9,999点 |
+| 閃光の計算将軍 | 10,000〜19,999点 |
+| 神速の計算無双 | 20,000点以上 |
+
 ニックネームは前後の空白を除いて1〜10文字とし、NGワード照合では NFKC 正規化と
 小文字化を行います。NGワードは DB の `ranking_blocked_words` で管理します。
 

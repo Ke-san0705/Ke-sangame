@@ -17,7 +17,10 @@ type ResultScreenProps = {
 }
 
 export function ResultScreen({ result, isNewRecord, mode, playedOnline, online, onViewRanking, onReplay, onBack }: ResultScreenProps) {
-  const { correctCount, missCount, accuracy, score, averageAnswerSeconds, reviewQuestions } = result
+  const {
+    correctCount, missCount, accuracy, score, averageAnswerSeconds, reviewQuestions,
+    basePoints, accuracyCoefficient, comboCoefficient, maxCombo,
+  } = result
 
   return (
     <main className="result-screen">
@@ -47,6 +50,22 @@ export function ResultScreen({ result, isNewRecord, mode, playedOnline, online, 
           <dt>平均回答</dt>
           <dd>{averageAnswerSeconds.toFixed(1)} 秒/問</dd>
         </div>
+        <div>
+          <dt>基本点</dt>
+          <dd>{basePoints} pt/問</dd>
+        </div>
+        <div>
+          <dt>正確率係数</dt>
+          <dd>×{accuracyCoefficient.toFixed(1)}</dd>
+        </div>
+        <div>
+          <dt>コンボ係数</dt>
+          <dd>×{comboCoefficient.toFixed(1)}</dd>
+        </div>
+        <div>
+          <dt>最大コンボ</dt>
+          <dd>{maxCombo} 連続</dd>
+        </div>
       </dl>
       <section className="result-review" aria-labelledby="result-review-heading">
         <h2 id="result-review-heading">復習リスト</h2>
@@ -66,6 +85,7 @@ export function ResultScreen({ result, isNewRecord, mode, playedOnline, online, 
           mode={mode}
           correctCount={correctCount}
           missCount={missCount}
+          maxCombo={maxCombo}
           online={online}
           onViewRanking={onViewRanking}
         />

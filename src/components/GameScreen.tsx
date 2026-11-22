@@ -12,11 +12,9 @@ const KEYPAD_ROWS = ['7', '8', '9', 'C', '4', '5', '6', 'pass', '1', '2', '3', '
 
 type ReviewQuestion = Pick<Question, 'expression' | 'answer'>
 
-export type GameResult = {
+export type GameResult = ReturnType<typeof calculateScore> & {
   correctCount: number
-  missCount: number
-  accuracy: number
-  score: number
+  maxCombo: number
   averageAnswerSeconds: number
   reviewQuestions: ReviewQuestion[]
 }
@@ -42,6 +40,7 @@ export function GameScreen({ level, mode, duration, onSound, onFinish }: GameScr
   const currentQuestionRecorded = useRef(false)
   const [counts, setCounts] = useState({ correctCount: 0, incorrectCount: 0, passCount: 0 })
   const latestCounts = useRef(counts)
+  const combo = useRef({ streak: 0, max: 0 })
   const { correctCount, incorrectCount, passCount } = counts
   const [countdown, setCountdown] = useState(START_COUNTDOWN_SECONDS)
   const playing = countdown === 0
@@ -56,6 +55,8 @@ export function GameScreen({ level, mode, duration, onSound, onFinish }: GameScr
   const acceptsNegative = level >= 3
 
   function recordAnswer(kind: keyof typeof counts) {
+    const streak = kind === 'correctCount' ? combo.current.streak + 1 : 0
+    combo.current = { streak, max: Math.max(combo.current.max, streak) }
     const current = latestCounts.current
     const next = { ...current, [kind]: current[kind] + 1 }
     latestCounts.current = next
@@ -76,7 +77,8 @@ export function GameScreen({ level, mode, duration, onSound, onFinish }: GameScr
     onSound?.('timeUp')
     onFinish({
       correctCount,
-      ...calculateScore(finalCounts),
+      maxCombo: combo.current.max,
+      ...calculateScore({ ...finalCounts, level, maxCombo: combo.current.max }),
       reviewQuestions: reviewQuestions.current,
       averageAnswerSeconds: correctCount === 0 ? 0 : totalCorrectAnswerMs.current / correctCount / 1000,
     })

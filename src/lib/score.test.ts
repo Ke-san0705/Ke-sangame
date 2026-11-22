@@ -2,35 +2,32 @@ import { expect, test } from 'vitest'
 import { calculateScore, getRankTitle } from './score'
 
 test.each([
-  { correctCount: 79, incorrectCount: 21, passCount: 0, accuracy: 0.79, score: 7480 },
-  { correctCount: 4, incorrectCount: 0, passCount: 1, accuracy: 0.8, score: 380 },
-  { correctCount: 89, incorrectCount: 11, passCount: 0, accuracy: 0.89, score: 8680 },
-  { correctCount: 18, incorrectCount: 1, passCount: 1, accuracy: 0.9, score: 1940 },
-  { correctCount: 99, incorrectCount: 0, passCount: 1, accuracy: 0.99, score: 10870 },
-  { correctCount: 9, incorrectCount: 0, passCount: 0, accuracy: 1, score: 1080 },
-  { correctCount: 0, incorrectCount: 2, passCount: 1, accuracy: 0, score: -60 },
-  { correctCount: 0, incorrectCount: 0, passCount: 0, accuracy: 0, score: 0 },
-])(
-  '正解 $correctCount・不正解 $incorrectCount・パス $passCount の集計',
-  ({ correctCount, incorrectCount, passCount, accuracy, score }) => {
-    expect(calculateScore({ correctCount, incorrectCount, passCount })).toEqual({
-      missCount: incorrectCount + passCount,
-      accuracy,
-      score,
-    })
-  },
-)
+  // These cases are also exercised through the RPC in supabase/tests/ranking.sql.
+  { level: 1, correctCount: 0, missCount: 0, maxCombo: 0, score: 0 },
+  { level: 1, correctCount: 0, missCount: 2, maxCombo: 0, score: -40 },
+  { level: 1, correctCount: 9, missCount: 1, maxCombo: 5, score: 1069 },
+  { level: 1, correctCount: 10, missCount: 2, maxCombo: 4, score: 960 },
+  { level: 2, correctCount: 15, missCount: 1, maxCombo: 9, score: 2340 },
+  { level: 2, correctCount: 19, missCount: 2, maxCombo: 9, score: 2949 },
+  { level: 3, correctCount: 8, missCount: 1, maxCombo: 5, score: 1476 },
+  { level: 4, correctCount: 24, missCount: 0, maxCombo: 24, score: 8870 },
+  { level: 5, correctCount: 25, missCount: 0, maxCombo: 25, score: 12600 },
+  { level: 5, correctCount: 30, missCount: 0, maxCombo: 30, score: 15120 },
+] as const)('Lv.$level 正解 $correctCount・ミス $missCount・最大コンボ $maxCombo のスコア', (entry) => {
+  const { level, correctCount, missCount, maxCombo, score } = entry
+  expect(calculateScore({ level, correctCount, incorrectCount: missCount, passCount: 0, maxCombo }).score).toBe(score)
+})
 
 test.each([
   [-60, '電算見習い'],
-  [1000, '電算見習い'],
-  [1001, '高速の計算士'],
-  [3000, '高速の計算士'],
-  [3001, '数字の達人'],
-  [6000, '数字の達人'],
-  [6001, '閃光の計算将軍'],
-  [9999, '閃光の計算将軍'],
-  [10000, '神速の計算無双'],
+  [1499, '電算見習い'],
+  [1500, '高速の計算士'],
+  [4999, '高速の計算士'],
+  [5000, '数字の達人'],
+  [9999, '数字の達人'],
+  [10000, '閃光の計算将軍'],
+  [19999, '閃光の計算将軍'],
+  [20000, '神速の計算無双'],
 ])('%i pt の称号は「%s」', (score, title) => {
   expect(getRankTitle(score)).toBe(title)
 })

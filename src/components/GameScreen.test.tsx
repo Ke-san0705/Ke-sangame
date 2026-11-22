@@ -104,6 +104,7 @@ test('タッチ用テンキーで負数・小数を入力し、Cでミスを増�
   act(() => vi.advanceTimersByTime(1_000))
   expect(onFinish).toHaveBeenCalledExactlyOnceWith({
     correctCount: 0, missCount: 1, accuracy: 0, score: -20, averageAnswerSeconds: 0,
+    maxCombo: 0, basePoints: 170, accuracyCoefficient: 1, comboCoefficient: 1,
     reviewQuestions: [expect.objectContaining({ expression: expect.any(String), answer: expect.any(String) })],
   })
 })
@@ -153,7 +154,44 @@ test.each([
     missCount: 0,
     accuracy: expected,
     score: expected * 120,
+    maxCombo: expected,
+    basePoints: 100,
+    accuracyCoefficient: expected ? 1.2 : 1,
+    comboCoefficient: 1,
     reviewQuestions: [],
     averageAnswerSeconds: expected ? (30_000 + (offset ?? 0)) / 1000 : 0,
   })
+})
+
+test.each(['不正解', 'パス'])('%sで連続正解が途切れ、セッションの最大コンボを使う', (miss) => {
+  vi.useFakeTimers()
+  vi.spyOn(Math, 'random').mockReturnValue(0.25)
+  const generate = createQuestionGenerator()
+  let question = generate(1, 'addition')
+  const onFinish = vi.fn()
+  render(<GameScreen level={1} mode="addition" duration={30} onFinish={onFinish} />)
+  act(() => vi.advanceTimersByTime(3_000))
+
+  const enter = (answer: string) => {
+    for (const key of answer) fireEvent.keyDown(window, { key })
+    fireEvent.keyDown(window, { key: 'Enter' })
+  }
+  const correct = () => {
+    enter(question.answer)
+    question = generate(1, 'addition')
+  }
+  for (let i = 0; i < 6; i++) correct()
+  if (miss === 'パス') {
+    fireEvent.keyDown(window, { key: 'Tab' })
+    act(() => vi.advanceTimersByTime(1_000))
+    question = generate(1, 'addition')
+  } else {
+    enter('0')
+  }
+  for (let i = 0; i < 5; i++) correct()
+  act(() => vi.advanceTimersByTime(30_002))
+
+  expect(onFinish).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+    correctCount: 11, missCount: 1, maxCombo: 6, comboCoefficient: 1.1, score: 1311,
+  }))
 })
