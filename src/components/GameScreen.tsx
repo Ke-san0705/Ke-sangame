@@ -2,6 +2,7 @@ import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { createQuestionGenerator, isCorrectAnswer } from '../lib/question-generator'
 import type { Level, QuestionMode } from '../lib/question-generator'
 import { calculateScore } from '../lib/score'
+import type { SoundCue } from '../lib/soundEffects'
 import './GameScreen.css'
 
 const PASS_PENALTY_MS = 3_000
@@ -19,10 +20,11 @@ type GameScreenProps = {
   level: Level
   mode: QuestionMode
   duration: number
+  onSound?: (cue: SoundCue) => void
   onFinish: (result: GameResult) => void
 }
 
-export function GameScreen({ level, mode, duration, onFinish }: GameScreenProps) {
+export function GameScreen({ level, mode, duration, onSound, onFinish }: GameScreenProps) {
   const [{ generateQuestion, firstQuestion }] = useState(() => {
     const generateQuestion = createQuestionGenerator()
     return { generateQuestion, firstQuestion: generateQuestion(level, mode) }
@@ -36,6 +38,7 @@ export function GameScreen({ level, mode, duration, onFinish }: GameScreenProps)
   const deadline = useRef(0)
   const questionStartedAt = useRef(0)
   const totalCorrectAnswerMs = useRef(0)
+  const lastCountdownSecond = useRef(0)
   const finished = useRef(false)
 
   const acceptsDecimal = level >= 2
@@ -44,11 +47,21 @@ export function GameScreen({ level, mode, duration, onFinish }: GameScreenProps)
   function finish(finalPassCount = passCount) {
     if (finished.current) return
     finished.current = true
+    onSound?.('timeUp')
     onFinish({
       correctCount,
       ...calculateScore({ correctCount, incorrectCount, passCount: finalPassCount }),
       averageAnswerSeconds: correctCount === 0 ? 0 : totalCorrectAnswerMs.current / correctCount / 1000,
     })
+  }
+
+  function updateRemaining(timeLeft: number) {
+    setRemaining(timeLeft)
+    const seconds = Math.ceil(timeLeft / 1000)
+    if (seconds >= 1 && seconds <= 3 && seconds !== lastCountdownSecond.current) {
+      lastCountdownSecond.current = seconds
+      onSound?.('countdown')
+    }
   }
 
   function nextQuestion(now: number) {
@@ -72,7 +85,7 @@ export function GameScreen({ level, mode, duration, onFinish }: GameScreenProps)
         const nextPassCount = passCount + 1
         deadline.current -= PASS_PENALTY_MS
         const timeLeft = Math.max(0, deadline.current - now)
-        setRemaining(timeLeft)
+        updateRemaining(timeLeft)
         if (timeLeft === 0) {
           finish(nextPassCount)
           return
@@ -86,10 +99,12 @@ export function GameScreen({ level, mode, duration, onFinish }: GameScreenProps)
         if (answer === '') return
         setAnswer('')
         if (isCorrectAnswer(question, answer)) {
+          onSound?.('correct')
           totalCorrectAnswerMs.current += now - questionStartedAt.current
           setCorrectCount(correctCount + 1)
           nextQuestion(now)
         } else {
+          onSound?.('incorrect')
           setIncorrectCount(incorrectCount + 1)
         }
         return
@@ -115,13 +130,15 @@ export function GameScreen({ level, mode, duration, onFinish }: GameScreenProps)
 
   const updateTimer = useEffectEvent(() => {
     const timeLeft = Math.max(0, deadline.current - performance.now())
-    setRemaining(timeLeft)
+    if (finished.current) return
+    updateRemaining(timeLeft)
     if (timeLeft === 0) finish()
   })
 
   useEffect(() => {
     const now = performance.now()
     questionStartedAt.current = now
+    lastCountdownSecond.current = 0
     deadline.current = now + duration * 1000
     const interval = window.setInterval(updateTimer, 50)
     const timeout = window.setTimeout(updateTimer, duration * 1000)

@@ -5,6 +5,7 @@ import { ResultScreen } from './components/ResultScreen'
 import { savePersonalBest } from './lib/personalBest'
 import { TopScreen } from './components/TopScreen'
 import { defaultMode, type GameMode } from './lib/gameMode'
+import { createSoundEffects, readMuted, saveMuted } from './lib/soundEffects'
 import type { QuestionMode } from './lib/question-generator'
 
 const questionModes = {
@@ -33,6 +34,10 @@ function subscribeOnline(onChange: () => void) {
 const isOnline = () => navigator.onLine
 
 export function App() {
+  const [muted, setMuted] = useState(readMuted)
+  const [sound] = useState(createSoundEffects)
+  useEffect(() => sound.dispose, [sound])
+
   const [mode, setMode] = useState(defaultMode)
   const [screen, setScreen] = useState<Screen>({ name: 'top' })
   const online = useSyncExternalStore(subscribeOnline, isOnline)
@@ -44,6 +49,7 @@ export function App() {
   }, [])
 
   const startGame = (gameMode: GameMode) => {
+    if (!muted) sound.unlock()
     playedOnline.current = isOnline()
     setScreen({ name: 'game', mode: gameMode })
   }
@@ -56,6 +62,7 @@ export function App() {
         level={gameMode.level}
         mode={questionModes[gameMode.operation]}
         duration={gameMode.duration}
+        onSound={muted ? undefined : sound.play}
         onFinish={(result) => {
           const isNewRecord = savePersonalBest(gameMode, result.score)
           setScreen({
@@ -89,6 +96,11 @@ export function App() {
   return (
     <TopScreen
       mode={mode}
+      muted={muted}
+      onToggleMute={() => {
+        setMuted(!muted)
+        saveMuted(!muted)
+      }}
       onModeChange={setMode}
       onStart={() => startGame(mode)}
       onRanking={() => setScreen({ name: 'ranking', mode })}

@@ -2,6 +2,8 @@ import { durations, levels, operations, type GameMode } from '../lib/gameMode'
 
 type TopScreenProps = {
   mode: GameMode
+  muted: boolean
+  onToggleMute: () => void
   onModeChange: (mode: GameMode) => void
   onStart: () => void
   onRanking: () => void
@@ -10,11 +12,16 @@ type TopScreenProps = {
 const operationKeys = Object.keys(operations) as GameMode['operation'][]
 const levelKeys = Object.keys(levels).map(Number) as GameMode['level'][]
 
-export function TopScreen({ mode, onModeChange, onStart, onRanking }: TopScreenProps) {
+export function TopScreen({ mode, muted, onToggleMute, onModeChange, onStart, onRanking }: TopScreenProps) {
   return (
     <main className="top-screen">
       <header className="top-header">
-        <button type="button" className="ranking-button" onClick={onRanking}>ランキング</button>
+        <div className="top-controls">
+          <button type="button" className="mute-button" aria-pressed={muted} onClick={onToggleMute}>
+            ミュート
+          </button>
+          <button type="button" className="ranking-button" onClick={onRanking}>ランキング</button>
+        </div>
         <h1>計算無双</h1>
       </header>
 
