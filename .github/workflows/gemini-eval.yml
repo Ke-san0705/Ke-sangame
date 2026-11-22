@@ -1,7 +1,9 @@
 name: Gemini評価
 
-# Issue #10: 手動トリガーで対象ファイルを Gemini API で評価し、
+# Issue #10: 手動トリガー（workflow_dispatch）で対象ファイルを Gemini API で評価し、
 # 結果を Issue コメントに投稿して、使用量を docs/usage-log.md に記録する。
+# 2026-11-22 追加（開発形態v2 §6.1）: pull_request（opened / synchronize）をトリガーに
+# PR 差分を自動評価し、結果を該当 PR へコメント投稿する。台帳記録も同様に行う。
 on:
   workflow_dispatch:
     inputs:
@@ -18,10 +20,13 @@ on:
         description: 評価観点・追加の指示（任意）
         required: false
         type: string
+  pull_request:
+    types: [opened, synchronize]
 
 permissions:
   contents: write # 台帳（docs/usage-log.md）の更新コミット用
   issues: write # 評価結果のコメント投稿用
+  pull-requests: write # PR へのコメント投稿用
 
 # 台帳への push が競合しないよう、評価実行は直列化する
 concurrency:
@@ -29,7 +34,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  evaluate:
+  evaluate-file:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -67,5 +73,50 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add docs/usage-log.md
           git commit -m "docs: Gemini評価の使用量を台帳に記録 (Issue #${ISSUE_NUMBER})"
+          git pull --rebase origin main
+          git push origin main
+
+  evaluate-pr:
+    # フォークからの PR では Secrets が使えず権限も読み取り専用になるため、
+    # 同一リポジトリ内のブランチからの PR のみを対象にする
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # 台帳コミットの pull --rebase を確実にするため全履歴を取得
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Gemini で PR 差分を評価する
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: python3 scripts/gemini_eval.py --pr "$PR_NUMBER"
+
+      - name: 結果を PR に投稿する
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: gh pr comment "$PR_NUMBER" --body-file gemini-eval-output/comment.md
+
+      - name: 使用量を台帳に記録する
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          log = Path('docs/usage-log.md')
+          row = Path('gemini-eval-output/usage-row.md').read_text(encoding='utf-8').strip()
+          log.write_text(log.read_text(encoding='utf-8').rstrip() + '\n' + row + '\n', encoding='utf-8')
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/usage-log.md
+          git commit -m "docs: Gemini評価の使用量を台帳に記録 (PR #${PR_NUMBER})"
           git pull --rebase origin main
           git push origin main
