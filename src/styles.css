@@ -52,8 +52,20 @@ button[aria-pressed="true"],
   text-align: center;
 }
 
+.top-controls {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mute-button {
+  min-block-size: 36px;
+  padding-inline: 12px;
+  border-radius: 18px;
+  font-size: 12px;
+}
+
 .ranking-button {
-  justify-self: end;
   inline-size: 108px;
   min-block-size: 36px;
   border-radius: 18px;

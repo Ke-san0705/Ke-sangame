@@ -14,6 +14,7 @@ afterEach(() => {
   localStorage.clear()
   vi.useRealTimers()
   vi.restoreAllMocks()
+  vi.unstubAllGlobals()
 })
 
 const click = (name: string) => fireEvent.click(screen.getByRole('button', { name }))
@@ -96,4 +97,71 @@ test('再読み込み後も条件別の自己ベストを保持し、初回と�
   advance(3_000)
   advance(60_000)
   expect(screen.getByText('NEW RECORD!')).toBeTruthy()
+})
+
+function stubAudio() {
+  const createOscillator = vi.fn(() => ({
+    frequency: { value: 0 },
+    connect: vi.fn(),
+    start: vi.fn(),
+    stop: vi.fn(),
+  }))
+  vi.stubGlobal('AudioContext', class {
+    state = 'running'
+    currentTime = 0
+    destination = {}
+    close = vi.fn().mockResolvedValue(undefined)
+    createOscillator = createOscillator
+    createGain() {
+      return {
+        gain: { setValueAtTime: vi.fn(), exponentialRampToValueAtTime: vi.fn() },
+        connect: vi.fn(),
+      }
+    }
+  })
+  return createOscillator
+}
+
+test('正解・不正解・残り3秒からのカウントダウン・時間切れで効果音を鳴らす', () => {
+  const play = stubAudio()
+  render(<App />)
+  click('掛け算')
+  click('30秒')
+  click('START')
+
+  enter('0')
+  expect(play).toHaveBeenCalledTimes(1)
+  enter(first().answer)
+  expect(play).toHaveBeenCalledTimes(3)
+
+  advance(26_999)
+  expect(play).toHaveBeenCalledTimes(3)
+  for (const expected of [4, 5, 6]) {
+    advance(expected === 4 ? 1 : 1_000)
+    expect(play).toHaveBeenCalledTimes(expected)
+  }
+  advance(1_000)
+  expect(screen.getByRole('heading', { name: 'TIME UP!' })).toBeTruthy()
+  expect(play).toHaveBeenCalledTimes(9)
+})
+
+test('ミュートを再戦と再読み込み後も保持し、解除できる', () => {
+  const play = stubAudio()
+  const { unmount } = render(<App />)
+  click('ミュート')
+  click('30秒')
+  click('START')
+  enter('0')
+  advance(30_000)
+  click('もう一度遊ぶ')
+  advance(30_000)
+  expect(play).not.toHaveBeenCalled()
+
+  unmount()
+  render(<App />)
+  expect(screen.getByRole('button', { name: 'ミュート', pressed: true })).toBeTruthy()
+  click('ミュート')
+  click('START')
+  enter('0')
+  expect(play).toHaveBeenCalledTimes(1)
 })
