@@ -56,6 +56,8 @@ export type BattleState = {
   bossHp: number
   defeatedCount: number
   critical?: boolean
+  damage: number
+  comboMilestone?: number
   action: number
   feedback?: BattleFeedback
   departing?: ReturnType<typeof encounter>
@@ -63,7 +65,7 @@ export type BattleState = {
 
 export function createBattle(level: Level): BattleState {
   return {
-    level, slot: 0, gold: false, goldPending: false, bossHp: bossRules[level].maxHp, defeatedCount: 0, action: 0,
+    level, slot: 0, gold: false, goldPending: false, bossHp: bossRules[level].maxHp, defeatedCount: 0, damage: 0, action: 0,
   }
 }
 
@@ -78,7 +80,10 @@ export function resolveBattle(
   const feedback: BattleFeedback = correct
     ? (critical ? 'critical' : 'hit')
     : outcome === 'pass' ? 'pass' : current.boss ? 'block' : 'counter'
-  const next = { ...battle, critical, action: battle.action + 1, departing: undefined, feedback }
+  const comboMilestone = correct && combo > 0 && combo % 5 === 0 ? combo : undefined
+  const next = {
+    ...battle, damage, comboMilestone, critical, action: battle.action + 1, departing: undefined, feedback,
+  }
 
   if (current.boss && bossHp > 0) return { ...next, bossHp, goldPending }
 
@@ -109,11 +114,12 @@ export function MonsterBattle({ battle, combo }: {
   battle: BattleState
   combo: number
 }) {
-  const { level, slot, gold, action, bossHp, defeatedCount, departing, feedback, critical } = battle
+  const { level, slot, gold, action, bossHp, defeatedCount, departing, feedback, critical, damage, comboMilestone } = battle
   const { maxHp } = bossRules[level]
   const current = encounter(level, slot, gold)
   const bossDefeated = departing?.boss === true
   const counter = feedback === 'counter' || feedback === 'block'
+  const heroMotion = counter ? ' monster-countered' : damage > 0 ? ' monster-attacking' : ''
   const effect = feedback === 'block' ? 'BLOCK!'
     : feedback === 'gold' ? '金のスライム討伐 +3'
     : feedback === 'overkill' ? 'オーバーキル！'
@@ -122,8 +128,8 @@ export function MonsterBattle({ battle, combo }: {
   return (
     <div className="monster-battle">
       <img
-        key={counter ? action : 'hero'}
-        className={counter ? 'monster-sprite monster-countered' : 'monster-sprite'}
+        key={heroMotion ? action : 'hero'}
+        className={`monster-sprite${heroMotion}`}
         src={heroUrl}
         alt="勇者"
         decoding="async"
@@ -168,6 +174,17 @@ export function MonsterBattle({ battle, combo }: {
             aria-hidden="true"
             decoding="async"
           />
+        )}
+        {damage > 0 && (
+          <div key={`attack-${action}`} className="monster-impact" aria-hidden="true">
+            <span className="monster-slash" />
+            <strong className="monster-damage">−{damage}</strong>
+          </div>
+        )}
+      </div>
+      <div className="monster-combo-announcement" role="status">
+        {comboMilestone !== undefined && (
+          <strong key={action} className="monster-combo">{comboMilestone}コンボ！</strong>
         )}
       </div>
       <div className="monster-boss-announcement" role="status">
