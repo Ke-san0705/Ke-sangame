@@ -17,8 +17,15 @@
   font-variant-numeric: tabular-nums;
 }
 
+.game-hud {
+  position: sticky;
+  z-index: 1;
+  inset-block-start: 0;
+  background: var(--color-background);
+}
+
 .game-timer-bar {
-  block-size: 10px;
+  block-size: 16px;
   background: var(--color-card);
 }
 
@@ -27,32 +34,37 @@
   background: var(--game-success);
 }
 
-.game-timer-fill[data-time="medium"] {
-  background: var(--color-accent);
-}
-
 .game-timer-fill[data-time="low"] {
   background: var(--game-warning);
 }
 
 .game-status {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   align-items: center;
-  gap: 12px;
-  margin: 10px 24px 12px;
+  gap: 6px 12px;
+  margin: 8px 24px 10px;
   font-size: 15px;
+  text-align: center;
 }
 
-.game-countdown {
-  grid-column: 1 / -1;
-  text-align: center;
-  font-size: 34px;
+.game-stat-label,
+.game-stat-value {
+  display: block;
+}
+
+.game-stat-label {
+  color: var(--game-muted);
+  font-size: 0.8125rem;
+}
+
+.game-stat-value {
+  font-size: clamp(2rem, 7vw, 3rem);
+  line-height: 1.1;
   font-variant-numeric: tabular-nums;
 }
 
 .game-misses {
-  justify-self: end;
   color: var(--game-warning);
 }
 
@@ -144,22 +156,9 @@
 }
 
 @media (min-width: 768px) and (pointer: fine) {
-  .game-timer-bar {
-    block-size: 8px;
-  }
-
   .game-status {
-    grid-template-columns: 1fr auto 1fr;
-    margin: 14px 32px 0;
-  }
-
-  .game-correct {
-    grid-area: 1 / 1;
-  }
-
-  .game-countdown {
-    grid-area: 1 / 2;
-    font-size: 30px;
+    max-inline-size: 28rem;
+    margin-inline: auto;
   }
 
   .game-problem {

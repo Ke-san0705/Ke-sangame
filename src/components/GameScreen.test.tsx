@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, expect, test, vi } from 'vitest'
 import { createQuestionGenerator } from '../lib/question-generator'
 import { durations, levels, type GameMode } from '../lib/gameMode'
@@ -34,6 +34,7 @@ test.each(countdownModes)('Lv.$level・$duration 秒の開始前に 3、2、1 �
   expect(screen.getByText(first.expression + ' =')).toBeTruthy()
   expect(screen.getByRole('timer').textContent).toBe(String(duration))
   expect(screen.getByText('ミス 0')).toBeTruthy()
+  expect(within(screen.getByRole('group', { name: '暫定スコア' })).getByText('0')).toBeTruthy()
   act(() => vi.advanceTimersByTime((duration - 1) * 1_000))
   expect(screen.getByRole('timer').textContent).toBe('1')
   expect(onFinish).not.toHaveBeenCalled()
@@ -183,6 +184,7 @@ test.each(['不正解', 'パス'])('%sで連続正解が途切れ、セッショ
     question = generate(1, 'addition')
   }
   for (let i = 0; i < 6; i++) correct()
+  expect(within(screen.getByRole('group', { name: '暫定スコア' })).getByText('792')).toBeTruthy()
   if (miss === 'パス') {
     fireEvent.keyDown(window, { key: 'Tab' })
     act(() => vi.advanceTimersByTime(1_000))
@@ -190,10 +192,44 @@ test.each(['不正解', 'パス'])('%sで連続正解が途切れ、セッショ
   } else {
     enter('0')
   }
+  expect(within(screen.getByRole('group', { name: '暫定スコア' })).getByText('640')).toBeTruthy()
   for (let i = 0; i < 5; i++) correct()
+  expect(within(screen.getByRole('group', { name: '暫定スコア' })).getByText('1,311')).toBeTruthy()
   act(() => vi.advanceTimersByTime(30_002))
 
   expect(onFinish).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
     correctCount: 11, missCount: 1, maxCombo: 6, comboCoefficient: 1.1, score: 1311,
   }))
+})
+
+test.each([30, 60, 'survival'] as const)('残り10秒で警告色になり、5秒から毎秒鳴る（%s）', (duration) => {
+  vi.useFakeTimers()
+  const onSound = vi.fn()
+  const { container } = render(
+    <GameScreen level={1} mode="addition" duration={duration} skipCountdown onSound={onSound} onFinish={vi.fn()} />,
+  )
+  const timer = screen.getByRole('timer', { name: '残り時間' })
+  const fill = container.querySelector<HTMLElement>('.game-timer-fill')
+  const initialSeconds = duration === 'survival' ? 20 : duration
+  expect(fill?.style.width).toBe('100%')
+  act(() => vi.advanceTimersByTime((initialSeconds - 11) * 1_000))
+  expect(timer.textContent).toBe('11')
+  expect(fill?.dataset.time).not.toBe('low')
+  act(() => vi.advanceTimersByTime(1_000))
+  expect(timer.textContent).toBe('10')
+  expect(fill?.dataset.time).toBe('low')
+  expect(Number.parseFloat(fill?.style.width ?? '')).toBeCloseTo(1000 / initialSeconds)
+
+  act(() => vi.advanceTimersByTime(4_000))
+  expect(timer.textContent).toBe('6')
+  expect(onSound).not.toHaveBeenCalled()
+  for (let second = 5; second >= 1; second--) {
+    act(() => vi.advanceTimersByTime(1_000))
+    expect(timer.textContent).toBe(String(second))
+    expect(onSound).toHaveBeenCalledTimes(6 - second)
+    expect(onSound).toHaveBeenLastCalledWith('countdown')
+  }
+  act(() => vi.advanceTimersByTime(1_001))
+  expect(onSound).toHaveBeenCalledTimes(6)
+  expect(onSound).toHaveBeenLastCalledWith('timeUp')
 })
