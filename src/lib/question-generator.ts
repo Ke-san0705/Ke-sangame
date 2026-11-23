@@ -19,6 +19,15 @@ function samplePair(random: Random, [left, right]: Ranges): Operands {
 }
 
 function sampleDivision(random: Random, [[min, max], divisorRange]: Ranges, level: Level): Operands {
+  if (level === 5) {
+    // Pick the quotient's digit count before choosing a compatible divisor.
+    const quotient = draw(random, random() < 0.5 ? [10, 99] : [100, 999])
+    const minDivisor = Math.max(divisorRange[0], Math.ceil(min / quotient))
+    const maxDivisor = Math.min(divisorRange[1], Math.floor(max / quotient))
+    const divisor = draw(random, [minDivisor, maxDivisor])
+    return [BigInt(divisor * quotient) * SCALE, BigInt(divisor) * SCALE]
+  }
+
   const divisor = draw(random, divisorRange)
   const quotientLimit = level === 1 ? 9 : level === 3 ? 999 : max
   const minQuotient = level === 3 ? 10 : Math.ceil(min / divisor)
@@ -98,7 +107,7 @@ const definitions = {
       2: [[10, 999], [1, 9]],
       3: [[1, 9999], [1, 99]],
       4: [[1, 9999], [1, 99]],
-      5: [[1, 9999], [1, 999]],
+      5: [[1000, 9999], [10, 999]],
     },
     sample: sampleDivision,
     calculate: (left, right) => (left * SCALE) / right,
