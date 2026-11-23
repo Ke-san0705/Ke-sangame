@@ -158,6 +158,35 @@ it('generates both two-digit and three-digit quotients in Lv.3 division', () => 
   expect(quotients.filter((value) => value >= 100).length).toBeGreaterThan(20)
 })
 
+it('uses only two- or three-digit quotients in a 20-question Lv.5 mix', () => {
+  const quotients = nextMany(5, 'mix', 20)
+    .filter(({ operation }) => operation === 'division')
+    .map(({ answer }) => Math.abs(Number(answer)))
+
+  expect(quotients).toHaveLength(5)
+  expect(quotients.every((value) => value >= 10 && value <= 999)).toBe(true)
+  expect(quotients.some((value) => value < 100)).toBe(true)
+  expect(quotients.some((value) => value >= 100)).toBe(true)
+})
+
+it('keeps Lv.5 division in range even when the random source repeats', () => {
+  const next = createQuestionGenerator(() => 0)
+  const questions = Array.from({ length: 16 }, () => next(5, 'division'))
+
+  for (const [index, { expression, answer }] of questions.entries()) {
+    const [dividend, divisor] = expression.match(/\d+/g)!.map(Number)
+    expect(dividend).toBeGreaterThanOrEqual(1000)
+    expect(dividend).toBeLessThanOrEqual(9999)
+    expect(divisor).toBeGreaterThanOrEqual(10)
+    expect(divisor).toBeLessThanOrEqual(999)
+    expect(Math.abs(Number(answer))).toBeGreaterThanOrEqual(10)
+    expect(Math.abs(Number(answer))).toBeLessThanOrEqual(999)
+    expect(Number(answer)).toBe(evaluate(expression))
+    expect(questions.slice(Math.max(0, index - 5), index).map((question) => question.expression))
+      .not.toContain(expression)
+  }
+})
+
 it.each([
   { level: 3, operation: 'division', draws: [0, 0, 0, 0], expression: '(−10) ÷ (−1)' },
   { level: 4, operation: 'subtraction', draws: [0.5, 0.82175, 0.9338, 0.5, 0, 0.5], expression: '8395 − (−9404)' },
