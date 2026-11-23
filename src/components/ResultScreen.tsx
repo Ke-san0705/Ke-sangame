@@ -76,23 +76,27 @@ export function ResultScreen({ result, personalBest, mode, playedOnline, online,
       </dl>
       <section className="result-review" aria-labelledby="result-review-heading">
         <h2 id="result-review-heading">復習リスト</h2>
-        <ul>
-          {reviewQuestions.map(({ expression, answer, outcome, wrongAnswers }, index) => (
-            <li key={index}>
-              <div className="result-review-labels">
-                {wrongAnswers.length > 0 && <span>ミス</span>}
-                {outcome === 'pass' && <span>パス</span>}
-                {outcome === 'timeout' && <span>時間切れ</span>}
-              </div>
-              <div>{expression} = <strong>{answer.replace('-', '−')}</strong></div>
-              {wrongAnswers.length > 0 && (
-                <div className="result-review-answers">
-                  自分の誤答：{wrongAnswers.map((value) => value.replace('-', '−')).join('、')}
+        {reviewQuestions.length === 0 ? (
+          <p>復習する問題はありません。</p>
+        ) : (
+          <ul>
+            {reviewQuestions.map(({ expression, answer, outcome, wrongAnswers }, index) => (
+              <li key={index}>
+                <div className="result-review-labels">
+                  {wrongAnswers.length > 0 && <span>ミス</span>}
+                  {outcome === 'pass' && <span>パス</span>}
+                  {outcome === 'timeout' && <span>時間切れ</span>}
                 </div>
-              )}
-            </li>
-          ))}
-        </ul>
+                <div>{expression} = <strong>{answer.replace('-', '−')}</strong></div>
+                {wrongAnswers.length > 0 && (
+                  <div className="result-review-answers">
+                    自分の誤答：{wrongAnswers.map((value) => value.replace('-', '−')).join('、')}
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
       {mode.duration === 'survival' && <p className="result-ranking-status">サバイバルは自己ベストのみ対象です。</p>}
       {mode.duration !== 'survival' && !playedOnline && <p className="result-ranking-status">オフラインでのプレイは自己ベストのみ対象です。</p>}

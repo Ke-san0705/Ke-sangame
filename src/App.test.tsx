@@ -193,3 +193,18 @@ test('ミュートを再戦と再読み込み後も保持し、解除できる',
   enter('0')
   expect(play).toHaveBeenCalledTimes(1)
 })
+
+test('締切と同時に正解して復習リストが空の場合は案内を表示する', () => {
+  render(<App />)
+  click('掛け算')
+  click('30秒')
+  click('START')
+  advance(3_000)
+  for (const key of first().answer) fireEvent.keyDown(window, { key })
+  window.setTimeout(() => fireEvent.keyDown(window, { key: 'Enter' }), 30_000)
+  advance(30_001)
+
+  const review = within(screen.getByRole('region', { name: '復習リスト' }))
+  expect(review.getByText('復習する問題はありません。')).toBeTruthy()
+  expect(review.queryByRole('list')).toBeNull()
+})
