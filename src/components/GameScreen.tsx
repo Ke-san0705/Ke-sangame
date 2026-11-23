@@ -7,6 +7,8 @@ import './GameScreen.css'
 
 const START_COUNTDOWN_SECONDS = 3
 const SURVIVAL_INITIAL_SECONDS = 20
+const TIMER_WARNING_SECONDS = 10
+const TIMER_SOUND_SECONDS = 5
 
 function survivalBonusMs(correctCount: number) {
   if (correctCount >= 60) return 0
@@ -54,9 +56,9 @@ export function GameScreen({ level, mode, duration, skipCountdown = false, onSou
   const currentQuestion = useRef(firstQuestion)
   const wrongAnswers = useRef<string[]>([])
   const currentQuestionResolved = useRef(false)
-  const [counts, setCounts] = useState({ correctCount: 0, incorrectCount: 0, passCount: 0 })
+  const [counts, setCounts] = useState({ correctCount: 0, incorrectCount: 0, passCount: 0, maxCombo: 0 })
   const latestCounts = useRef(counts)
-  const combo = useRef({ streak: 0, max: 0 })
+  const streak = useRef(0)
   const { correctCount, incorrectCount, passCount } = counts
   const [countdown, setCountdown] = useState(skipCountdown ? 0 : START_COUNTDOWN_SECONDS)
   const playing = countdown === 0
@@ -70,11 +72,14 @@ export function GameScreen({ level, mode, duration, skipCountdown = false, onSou
   const acceptsDecimal = level >= 2
   const acceptsNegative = level >= 3
 
-  function recordAnswer(kind: keyof typeof counts) {
-    const streak = kind === 'correctCount' ? combo.current.streak + 1 : 0
-    combo.current = { streak, max: Math.max(combo.current.max, streak) }
+  function recordAnswer(kind: 'correctCount' | 'incorrectCount' | 'passCount') {
+    streak.current = kind === 'correctCount' ? streak.current + 1 : 0
     const current = latestCounts.current
-    const next = { ...current, [kind]: current[kind] + 1 }
+    const next = {
+      ...current,
+      [kind]: current[kind] + 1,
+      maxCombo: Math.max(current.maxCombo, streak.current),
+    }
     latestCounts.current = next
     setCounts(next)
   }
@@ -89,12 +94,12 @@ export function GameScreen({ level, mode, duration, skipCountdown = false, onSou
     finished.current = true
     if (!currentQuestionResolved.current) recordReviewQuestion('timeout')
     const finalCounts = latestCounts.current
-    const { correctCount } = finalCounts
+    const { correctCount, maxCombo } = finalCounts
     onSound?.('timeUp')
     onFinish({
       correctCount,
-      maxCombo: combo.current.max,
-      ...calculateScore({ ...finalCounts, level, maxCombo: combo.current.max }),
+      maxCombo,
+      ...calculateScore({ ...finalCounts, level }),
       reviewQuestions: reviewQuestions.current,
       averageAnswerSeconds: correctCount === 0 ? 0 : totalCorrectAnswerMs.current / correctCount / 1000,
     })
@@ -103,7 +108,7 @@ export function GameScreen({ level, mode, duration, skipCountdown = false, onSou
   function updateRemaining(timeLeft: number) {
     setRemaining(timeLeft)
     const seconds = Math.ceil(timeLeft / 1000)
-    if (seconds >= 1 && seconds <= 3 && seconds !== lastCountdownSecond.current) {
+    if (seconds >= 1 && seconds <= TIMER_SOUND_SECONDS && seconds < lastCountdownSecond.current) {
       onSound?.('countdown')
     }
     lastCountdownSecond.current = seconds
@@ -217,7 +222,7 @@ export function GameScreen({ level, mode, duration, skipCountdown = false, onSou
     if (!playing) return
     const now = performance.now()
     questionStartedAt.current = now
-    lastCountdownSecond.current = 0
+    lastCountdownSecond.current = Math.ceil(initialTimeMs / 1000) + 1
     deadline.current = now + initialTimeMs
     let finishTimeout: number | undefined
     const tick = () => {
@@ -249,6 +254,8 @@ export function GameScreen({ level, mode, duration, skipCountdown = false, onSou
     )
   }
 
+  const remainingSeconds = Math.ceil(remaining / 1000)
+  const { score } = calculateScore({ ...counts, level })
   const percentage = Math.min(100, remaining / initialTimeMs * 100)
   const keypad = [...KEYPAD_ROWS, '0']
   if (acceptsNegative) keypad.push('−')
@@ -256,19 +263,25 @@ export function GameScreen({ level, mode, duration, skipCountdown = false, onSou
 
   return (
     <main className="game-screen" aria-label="ゲーム">
-      <div className="game-timer-bar" aria-hidden="true">
-        <div
-          className="game-timer-fill"
-          data-time={percentage <= 20 ? 'low' : percentage <= 50 ? 'medium' : 'high'}
-          style={{ width: `${percentage}%` }}
-        />
-      </div>
-      <header className="game-status">
-        <div className="game-countdown" role="timer" aria-label="残り時間">
-          {Math.ceil(remaining / 1000)}
+      <header className="game-hud">
+        <div className="game-timer-bar" aria-hidden="true">
+          <div
+            className="game-timer-fill"
+            data-time={remainingSeconds <= TIMER_WARNING_SECONDS ? 'low' : 'normal'}
+            style={{ width: `${percentage}%` }}
+          />
         </div>
-        <span className="game-correct">正解 {correctCount}</span>
-        <span className="game-misses">ミス {incorrectCount + passCount}</span>
+        <div className="game-status">
+          <strong className="game-stat-value" role="timer" aria-label="残り時間">
+            {remainingSeconds}
+          </strong>
+          <div className="game-score" role="group" aria-label="暫定スコア">
+            <span className="game-stat-label" aria-hidden="true">スコア（暫定）</span>
+            <strong className="game-stat-value">{score.toLocaleString('ja-JP')}</strong>
+          </div>
+          <span className="game-correct">正解 {correctCount}</span>
+          <span className="game-misses">ミス {incorrectCount + passCount}</span>
+        </div>
       </header>
       <div className="game-problem">
         <span>{question.expression} =</span>

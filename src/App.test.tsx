@@ -147,7 +147,7 @@ function stubAudio() {
   return createOscillator
 }
 
-test('正解・不正解・残り3秒からのカウントダウン・時間切れで効果音を鳴らす', () => {
+test('正解・不正解・残り5秒からのカウントダウン・時間切れで効果音を鳴らす', () => {
   const play = stubAudio()
   render(<App />)
   click('掛け算')
@@ -160,15 +160,15 @@ test('正解・不正解・残り3秒からのカウントダウン・時間切�
   enter(first().answer)
   expect(play).toHaveBeenCalledTimes(3)
 
-  advance(26_999)
+  advance(24_999)
   expect(play).toHaveBeenCalledTimes(3)
-  for (const expected of [4, 5, 6]) {
+  for (const expected of [4, 5, 6, 7, 8]) {
     advance(expected === 4 ? 1 : 1_000)
     expect(play).toHaveBeenCalledTimes(expected)
   }
   advance(1_001)
   expect(screen.getByRole('heading', { name: 'TIME UP!' })).toBeTruthy()
-  expect(play).toHaveBeenCalledTimes(9)
+  expect(play).toHaveBeenCalledTimes(11)
 })
 
 test('ミュートを再戦と再読み込み後も保持し、解除できる', () => {
