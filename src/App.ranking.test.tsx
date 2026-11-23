@@ -48,11 +48,12 @@ test('トップから看板種目を表示し、ドロップダウンで条件�
 })
 
 test.each(['計算モード', 'モンスター討伐モード'])('%sで任意の登録をRPCで行い、同じ条件のランキングを取得する', async (presentation) => {
+  vi.spyOn(Math, 'random').mockReturnValue(0.25)
   const entries: { id: number; nickname: string; score: number }[] = []
   const fetchRanking = vi.fn(async (url: string, options: RequestInit) => {
     if (url.endsWith('/submit_ranking_score')) {
       const submission = JSON.parse(String(options.body))
-      entries.push({ id: 42, nickname: submission.p_nickname, score: 0 })
+      entries.push({ id: 42, nickname: submission.p_nickname, score: 1584 })
     }
     return Response.json(entries)
   })
@@ -63,7 +64,18 @@ test.each(['計算モード', 'モンスター討伐モード'])('%sで任意の
   click('30秒')
   click('START')
   advance(3_000)
+  const generate = createQuestionGenerator()
+  for (let count = 0; count < 11; count++) {
+    const { answer } = generate(1, 'multiplication')
+    for (const key of answer) fireEvent.keyDown(window, { key })
+    fireEvent.keyDown(window, { key: 'Enter' })
+  }
+  if (presentation === 'モンスター討伐モード') {
+    expect(screen.getByText('ボス撃破！')).toBeTruthy()
+    expect(screen.getByText('10体討伐')).toBeTruthy()
+  }
   finish()
+  expect(screen.getByText('1,584 pt')).toBeTruthy()
 
   const nickname = screen.getByRole('textbox', { name: 'ニックネーム' })
   fireEvent.change(nickname, { target: { value: 'ＳＨＩＴ' } })
@@ -77,7 +89,7 @@ test.each(['計算モード', 'モンスター討伐モード'])('%sで任意の
     method: 'POST',
     body: JSON.stringify({
       p_operation: 'multiply', p_level: 1, p_duration_seconds: 30,
-      p_nickname: '計算好き', p_correct_count: 0, p_miss_count: 0, p_max_combo: 0,
+      p_nickname: '計算好き', p_correct_count: 11, p_miss_count: 0, p_max_combo: 11,
       p_device_id: localStorage.getItem('ke-sangame:ranking-device'),
     }),
   }))
@@ -87,7 +99,7 @@ test.each(['計算モード', 'モンスター討伐モード'])('%sで任意の
   expect(fetchRanking).toHaveBeenNthCalledWith(2, 'https://ranking.example/rest/v1/rpc/get_rankings', expect.objectContaining({
     body: JSON.stringify({ p_operation: 'multiply', p_level: 1, p_duration_seconds: 30 }),
   }))
-  const row = screen.getByRole('row', { name: /1 計算好き 0 pt/ })
+  const row = screen.getByRole('row', { name: /1 計算好き 1,584 pt/ })
   expect(row.textContent).toContain('掛け算')
   expect(row.textContent).toContain('30秒')
 })

@@ -3,7 +3,7 @@ import { createQuestionGenerator, isCorrectAnswer } from '../lib/question-genera
 import type { Level, Question, QuestionMode } from '../lib/question-generator'
 import { calculateScore } from '../lib/score'
 import type { SoundCue } from '../lib/soundEffects'
-import { initialBattle, MonsterBattle, preloadBattleSprites, resolveBattle } from './MonsterBattle'
+import { createBattle, MonsterBattle, preloadBattleSprites, resolveBattle } from './MonsterBattle'
 import './GameScreen.css'
 
 const START_COUNTDOWN_SECONDS = 3
@@ -66,8 +66,8 @@ export function GameScreen({
   const currentQuestionResolved = useRef(false)
   const [counts, setCounts] = useState({ correctCount: 0, incorrectCount: 0, passCount: 0, combo: 0, maxCombo: 0 })
   const latestCounts = useRef(counts)
-  const [battle, setBattle] = useState(initialBattle)
-  const latestBattle = useRef(initialBattle)
+  const [battle, setBattle] = useState(() => createBattle(level))
+  const latestBattle = useRef(battle)
   const gameScreen = useRef<HTMLElement>(null)
   const { correctCount, incorrectCount, passCount } = counts
   const [countdown, setCountdown] = useState(skipCountdown ? 0 : START_COUNTDOWN_SECONDS)
@@ -297,8 +297,8 @@ export function GameScreen({
   }, [duration, initialTimeMs, playing])
 
   useEffect(() => {
-    if (showMonsterBattle) preloadBattleSprites(battle.slot)
-  }, [battle.slot, showMonsterBattle])
+    if (showMonsterBattle) preloadBattleSprites(level, battle.slot)
+  }, [level, battle.slot, showMonsterBattle])
 
   useEffect(() => {
     if (battle.feedback !== 'counter' && battle.feedback !== 'block') return

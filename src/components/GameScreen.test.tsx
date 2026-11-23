@@ -351,3 +351,45 @@ test('ボス戦中に10コンボを達成したら、撃破直後に金のスラ
   expect(screen.getByRole('img', { name: 'モンスター：金のスライム' })).toBeTruthy()
   expect(screen.getByText('10体討伐')).toBeTruthy()
 })
+
+test.each([
+  { level: 1, interval: 10, hp: 3, answerMs: 5_000 },
+  { level: 2, interval: 10, hp: 3, answerMs: 5_000 },
+  { level: 3, interval: 8, hp: 4, answerMs: 6_000 },
+  { level: 4, interval: 5, hp: 5, answerMs: 9_000 },
+  { level: 5, interval: 5, hp: 5, answerMs: 12_000 },
+] as const)('Lv.$level の60秒プレイで $interval 枠目に HP $hp のボスが登場する', ({ level, interval, hp, answerMs }) => {
+  vi.useFakeTimers()
+  vi.spyOn(Math, 'random').mockReturnValue(0.25)
+  const generate = createQuestionGenerator()
+  render(<GameScreen level={level} mode="addition" duration={60} skipCountdown showMonsterBattle onFinish={vi.fn()} />)
+
+  const correctAfter = (ms: number) => {
+    act(() => vi.advanceTimersByTime(ms))
+    const { answer } = generate(level, 'addition')
+    for (const key of answer) fireEvent.keyDown(window, { key })
+    fireEvent.keyDown(window, { key: 'Enter' })
+  }
+  const hpBar = () => screen.queryByRole('progressbar', { name: 'ボスのHP' })
+  for (let slot = 1; slot < interval; slot++) {
+    expect(hpBar()).toBeNull()
+    correctAfter(answerMs)
+  }
+
+  expect(Number(screen.getByRole('timer').textContent)).toBeGreaterThan(0)
+  expect(screen.getByText('ボス戦！')).toBeTruthy()
+  expect(hpBar()?.getAttribute('aria-valuemax')).toBe(String(hp))
+  expect(hpBar()?.getAttribute('aria-valuenow')).toBe(String(hp))
+
+  for (let hit = 0; hit < Math.ceil(hp / 2); hit++) {
+    correctAfter(level === 1 && hit === 1 ? answerMs : 1_000)
+    if (hp - 2 * (hit + 1) > 0) {
+      expect(hpBar()?.getAttribute('aria-valuenow')).toBe(String(hp - 2 * (hit + 1)))
+    }
+  }
+
+  expect(hpBar()).toBeNull()
+  expect(screen.getByText('ボス撃破！')).toBeTruthy()
+  if (level === 1) expect(screen.queryByText('オーバーキル！')).toBeNull()
+  expect(screen.getByText(`累計 ${interval}体討伐`)).toBeTruthy()
+})
