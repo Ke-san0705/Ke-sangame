@@ -20,26 +20,28 @@ function samplePair(random: Random, [left, right]: Ranges): Operands {
 
 function sampleDivision(random: Random, [[min, max], divisorRange]: Ranges, level: Level): Operands {
   const divisor = draw(random, divisorRange)
-  const maxQuotient = level === 1 ? 9 : Math.floor(max / divisor)
-  const quotient = draw(random, [Math.ceil(min / divisor), maxQuotient])
+  const quotientLimit = level === 1 ? 9 : level === 3 ? 999 : max
+  const minQuotient = level === 3 ? 10 : Math.ceil(min / divisor)
+  const maxQuotient = Math.min(quotientLimit, Math.floor(max / divisor))
+  const quotient = draw(random, [minQuotient, maxQuotient])
   return [BigInt(divisor * quotient) * SCALE, BigInt(divisor) * SCALE]
 }
 
 type OperationDefinition = {
   symbol: string
   commutative: boolean
-  additive?: boolean
   decimalsFrom?: Level
   ranges: Record<Level, Ranges>
   sample: (random: Random, ranges: Ranges, level: Level) => Operands
   calculate: (left: bigint, right: bigint) => bigint
 }
 
+const easyFactors = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 20, 30, 40, 50, 60, 70, 80, 90]
+
 const definitions = {
   addition: {
     symbol: '+',
     commutative: true,
-    additive: true,
     decimalsFrom: 2,
     ranges: {
       1: [[1, 99], [1, 9]],
@@ -54,7 +56,6 @@ const definitions = {
   subtraction: {
     symbol: '−',
     commutative: false,
-    additive: true,
     decimalsFrom: 2,
     ranges: {
       1: [[10, 99], [1, 9]],
@@ -77,11 +78,16 @@ const definitions = {
     ranges: {
       1: [[1, 9], [1, 9]],
       2: [[10, 99], [1, 99]],
-      3: [[1, 999], [1, 99]],
-      4: [[1, 999], [1, 999]],
-      5: [[1, 9999], [1, 999]],
+      3: [[1, 99], [1, 99]],
+      4: [[1, 99], [1, 999]],
+      5: [[1, 999], [1, 999]],
     },
-    sample: samplePair,
+    sample: (random, ranges, level) => {
+      if (level !== 2) return samplePair(random, ranges)
+      const left = draw(random, ranges[0])
+      const right = easyFactors[draw(random, [0, easyFactors.length - 1])]
+      return [BigInt(left) * SCALE, BigInt(right) * SCALE]
+    },
     calculate: (left, right) => (left * right) / SCALE,
   },
   division: {
@@ -90,7 +96,7 @@ const definitions = {
     ranges: {
       1: [[1, 81], [1, 9]],
       2: [[10, 999], [1, 9]],
-      3: [[1, 999], [1, 99]],
+      3: [[1, 9999], [1, 99]],
       4: [[1, 9999], [1, 99]],
       5: [[1, 9999], [1, 999]],
     },
@@ -128,13 +134,12 @@ function combine(
   operation: Operation,
   left: Expression,
   right: Expression,
-  groupRight = false,
 ): Expression {
   const { calculate, commutative, symbol } = definitions[operation]
   const keys = [left.key, right.key]
   if (commutative) keys.sort()
   return {
-    text: `${left.text} ${symbol} ${groupRight ? `(${right.text})` : right.text}`,
+    text: `${left.text} ${symbol} ${right.text}`,
     value: calculate(left.value, right.value),
     key: `${symbol}(${keys.join(',')})`,
   }
@@ -171,26 +176,26 @@ function sampleExpression(operation: Operation, level: Level, random: Random, pl
     right = signed(random, right)
   }
 
-  const first = literal(left)
-  const second = literal(right)
-  if (!plain && definition.additive && level >= 4 && random() < (level === 4 ? 0.25 : 0.65)) {
-    const extra = decimal ? decimalOperand(ranges[1]) : BigInt(draw(random, ranges[1])) * SCALE
-    const third = literal(signed(random, extra))
-    if (level === 4 || random() < 0.5) {
-      return combine(operation, first, combine('subtraction', second, third), true)
-    }
-    return combine(operation, combine(operation, first, second), third)
-  }
-
-  return combine(operation, first, second)
+  return combine(operation, literal(left), literal(right))
 }
 
 /** Create a generator for one play session. The random source returns values in [0, 1). */
 export function createQuestionGenerator(random: Random = Math.random) {
   const recent: string[] = []
+  const recentMixOperations = new Set<Operation>()
 
   return (level: Level, mode: QuestionMode): Question => {
-    const operation = mode === 'mix' ? operations[draw(random, [0, operations.length - 1])] : mode
+    let operation: Operation
+    if (mode === 'mix') {
+      // Give unused operations priority until each has appeared once in this round.
+      const available = operations.filter((candidate) => !recentMixOperations.has(candidate))
+      operation = available[draw(random, [0, available.length - 1])]
+      recentMixOperations.add(operation)
+      if (recentMixOperations.size === operations.length) recentMixOperations.clear()
+    } else {
+      operation = mode
+    }
+
     let expression = sampleExpression(operation, level, random)
     for (let attempt = 0; recent.includes(expression.key); attempt++) {
       // After random retries, sample distinct points across the base ranges.

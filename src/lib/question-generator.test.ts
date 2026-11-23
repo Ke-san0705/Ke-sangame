@@ -16,9 +16,9 @@ const symbols = { addition: '+', subtraction: '−', multiplication: '×', divis
 const maxima = [
   [[99, 9], [99, 9], [9, 9], [81, 9]],
   [[999, 99], [999, 99], [99, 99], [999, 9]],
-  [[9999, 999], [9999, 999], [999, 99], [999, 99]],
-  [[9999, 9999], [9999, 9999], [999, 999], [9999, 99]],
-  [[9999, 9999], [9999, 9999], [9999, 999], [9999, 999]],
+  [[9999, 999], [9999, 999], [99, 99], [9999, 99]],
+  [[9999, 9999], [9999, 9999], [99, 999], [9999, 99]],
+  [[9999, 9999], [9999, 9999], [999, 999], [9999, 999]],
 ]
 
 function nextMany(level: Level, operation: Operation | 'mix', count = 200) {
@@ -77,12 +77,12 @@ describe.each(levels)('Lv.%i', (level) => {
       expect(question.expression).toContain(symbols[operation])
       expect(question.expression.replaceAll(' ', '')).not.toMatch(/[+−-][−-]/)
       const values = question.expression.match(/\d+(?:\.\d+)?/g)!.map(Number)
-      const [left, right, third] = values
+      expect(values).toHaveLength(2)
+      const [left, right] = values
       expect(left).toBeGreaterThan(0)
       expect(left).toBeLessThanOrEqual(leftMax)
       expect(right).toBeGreaterThan(0)
       expect(right).toBeLessThanOrEqual(rightMax)
-      if (third !== undefined) expect(third).toBeLessThanOrEqual(rightMax)
 
       const answer = Number(question.answer)
       expect(answer).toBeCloseTo(evaluate(question.expression), 7)
@@ -97,7 +97,11 @@ describe.each(levels)('Lv.%i', (level) => {
         expect(left).toBeGreaterThanOrEqual(10)
         expect(answer).toBeGreaterThanOrEqual(0)
       }
-      if (level === 2 && operation === 'multiplication') expect(left).toBeGreaterThanOrEqual(10)
+      if (level === 2 && operation === 'multiplication') {
+        expect(left).toBeGreaterThanOrEqual(10)
+        expect(right < 10 || right === 11 || right % 10 === 0).toBe(true)
+      }
+      expect(question.answer.replace(/[^0-9]/g, '').length).toBeLessThanOrEqual(6)
       if (level >= 4 && (operation === 'addition' || operation === 'subtraction') && !question.expression.includes('.')) {
         expect(values.every((value) => value >= 1000)).toBe(true)
       }
@@ -106,11 +110,17 @@ describe.each(levels)('Lv.%i', (level) => {
 
   it('mix uses all four operations within the same level', () => {
     const questions = nextMany(level, 'mix')
-    expect(new Set(questions.map(({ operation }) => operation))).toEqual(new Set(operations))
+    for (const operation of operations) {
+      expect(questions.filter((question) => question.operation === operation)).toHaveLength(50)
+      for (let start = 0; start <= questions.length - 12; start++) {
+        expect(questions.slice(start, start + 12).some((question) => question.operation === operation)).toBe(true)
+      }
+    }
     for (const { operation, expression, answer } of questions) {
       const [leftMax, rightMax] = maxima[level - 1][operations.indexOf(operation)]
       const [left, ...rest] = expression.match(/\d+(?:\.\d+)?/g)!.map(Number)
       expect(left).toBeLessThanOrEqual(leftMax)
+      expect(rest).toHaveLength(1)
       expect(rest.every((value) => value <= rightMax)).toBe(true)
       expect(Number(answer)).toBeCloseTo(evaluate(expression), 7)
       if (operation === 'division') expect(Number.isInteger(Number(answer))).toBe(true)
@@ -118,26 +128,41 @@ describe.each(levels)('Lv.%i', (level) => {
   })
 })
 
-it('introduces decimals, signed operands, grouping and chains at the specified levels', () => {
+it('preserves decimals and signed operands at their respective levels', () => {
   expect(nextMany(1, 'mix').every(({ expression }) => !/[.()-]/.test(expression))).toBe(true)
-  const groupedExpression = /\((?!−\d+(?:\.\d+)?\))/
   for (const operation of ['addition', 'subtraction'] as const) {
     const level2 = nextMany(2, operation)
     expect(level2.some(({ expression }) => expression.includes('.'))).toBe(true)
     expect(level2.every(({ expression }) => !/[()-]/.test(expression))).toBe(true)
-    expect(nextMany(3, operation).some(({ expression }) => expression.includes('(−'))).toBe(true)
-    expect(nextMany(4, operation).some(({ expression }) => groupedExpression.test(expression))).toBe(true)
-    const level5 = nextMany(5, operation)
-    expect(level5.some(({ expression }) => groupedExpression.test(expression) && (expression.includes('.') || expression.includes('(−')))).toBe(true)
-    expect(level5.some(({ expression }) => expression.split(' ').length === 5 && !groupedExpression.test(expression))).toBe(true)
+    for (const level of [3, 4, 5] as const) {
+      expect(nextMany(level, operation).some(({ expression }) => expression.includes('(−'))).toBe(true)
+    }
   }
 })
 
+it('generates both easy multiplication forms in Lv.2 and unrestricted two-digit pairs in Lv.3', () => {
+  const factors = (level: Level) => nextMany(level, 'multiplication')
+    .map(({ expression }) => expression.match(/\d+(?:\.\d+)?/g)!.map(Number))
+  const level2 = factors(2)
+  expect(level2.some(([, right]) => right < 10)).toBe(true)
+  expect(level2.some(([, right]) => right >= 10)).toBe(true)
+  expect(factors(3).some((pair) => pair.every((value) =>
+    Number.isInteger(value) && value > 11 && value % 10 !== 0,
+  ))).toBe(true)
+})
+
+it('generates both two-digit and three-digit quotients in Lv.3 division', () => {
+  const quotients = nextMany(3, 'division').map(({ answer }) => Math.abs(Number(answer)))
+  expect(quotients.every((value) => value >= 10 && value <= 999)).toBe(true)
+  expect(quotients.filter((value) => value < 100).length).toBeGreaterThan(20)
+  expect(quotients.filter((value) => value >= 100).length).toBeGreaterThan(20)
+})
+
 it.each([
-  { level: 3, operation: 'division', draws: [0, 0, 0, 0], expression: '(−1) ÷ (−1)' },
+  { level: 3, operation: 'division', draws: [0, 0, 0, 0], expression: '(−10) ÷ (−1)' },
   { level: 4, operation: 'subtraction', draws: [0.5, 0.82175, 0.9338, 0.5, 0, 0.5], expression: '8395 − (−9404)' },
-  { level: 4, operation: 'addition', draws: [0.5, 0, 0, 0, 0, 0, 0, 0], expression: '(−1000) + ((−1000) − (−1000))' },
-  { level: 5, operation: 'addition', draws: [0.5, 0.809, 0.6967, 0.5, 0, 0, 0.1975, 0.5, 0.5], expression: '8281 + (−7270) + 2777' },
+  { level: 4, operation: 'addition', draws: [0.5, 0, 0, 0, 0, 0, 0, 0], expression: '(−1000) + (−1000)' },
+  { level: 5, operation: 'addition', draws: [0.5, 0.809, 0.6967, 0.5, 0, 0, 0.1975, 0.5, 0.5], expression: '8281 + (−7270)' },
 ] as const)('formats Lv.$level $operation as $expression', ({ level, operation, draws, expression }) => {
   const samples = [...draws]
   const next = createQuestionGenerator(() => samples.shift()!)
