@@ -301,14 +301,21 @@ export function GameScreen({
   }, [level, battle.slot, showMonsterBattle])
 
   useEffect(() => {
-    if (battle.feedback !== 'counter' && battle.feedback !== 'block') return
-    if (!window.matchMedia('(prefers-reduced-motion: no-preference)').matches) return
+    if (!showMonsterBattle) return
+    if (battle.comboMilestone === undefined && battle.feedback !== 'counter' && battle.feedback !== 'block') return
+    const motion = window.matchMedia('(prefers-reduced-motion: no-preference)')
+    if (!motion.matches) return
     const shake = gameScreen.current?.animate?.(
       [0, -3, 3, -2, 0].map((x) => ({ transform: `translateX(${x}px)` })),
       { duration: 180 },
     )
-    return () => shake?.finish()
-  }, [battle.action, battle.feedback])
+    const finishShake = () => shake?.finish()
+    motion.addEventListener('change', finishShake)
+    return () => {
+      motion.removeEventListener('change', finishShake)
+      finishShake()
+    }
+  }, [battle.action, battle.comboMilestone, battle.feedback, showMonsterBattle])
 
   if (!playing) {
     return (

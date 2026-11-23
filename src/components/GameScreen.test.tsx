@@ -393,3 +393,35 @@ test.each([
   if (level === 1) expect(screen.queryByText('オーバーキル！')).toBeNull()
   expect(screen.getByText(`累計 ${interval}体討伐`)).toBeTruthy()
 })
+
+test('討伐の攻撃演出とコンボ表示は次の問題を待たせない', () => {
+  vi.useFakeTimers()
+  vi.spyOn(Math, 'random').mockReturnValue(0.25)
+  const generate = createQuestionGenerator()
+  let question = generate(1, 'addition')
+  const { container } = render(
+    <GameScreen level={1} mode="addition" duration={30} skipCountdown showMonsterBattle onFinish={vi.fn()} />,
+  )
+
+  for (let combo = 1; combo <= 15; combo++) {
+    if (combo === 1) act(() => vi.advanceTimersByTime(3_001))
+    const previousDamage = container.querySelector('.monster-damage')
+    for (const key of question.answer) fireEvent.keyDown(window, { key })
+    fireEvent.keyDown(window, { key: 'Enter' })
+    question = generate(1, 'addition')
+
+    expect(screen.getByText(question.expression + ' =')).toBeTruthy()
+    const damage = screen.getByText(combo === 1 ? '−1' : '−2')
+    expect(damage).not.toBe(previousDamage)
+    expect(screen.getByRole('img', { name: '勇者' }).classList.contains('monster-attacking')).toBe(true)
+    expect(container.querySelector('.monster-slash')).not.toBeNull()
+    expect(container.querySelector('.monster-defeated') !== null).toBe(combo !== 10)
+    expect((screen.queryByText(/^\d+コンボ！$/)?.textContent ?? '')).toBe(combo % 5 === 0 ? combo + 'コンボ！' : '')
+  }
+
+  fireEvent.keyDown(window, { key: '0' })
+  fireEvent.keyDown(window, { key: 'Enter' })
+  expect(container.querySelector('.monster-damage')).toBeNull()
+  expect(container.querySelector('.monster-slash')).toBeNull()
+  expect(screen.queryByText(/^\d+コンボ！$/)).toBeNull()
+})
