@@ -259,48 +259,95 @@ test('ベスト比の表示中も幅に合わせて問題文と入力を縮小�
   expect(screen.getByText('ベスト比 0問')).toBeTruthy()
 })
 
-test.each([30, 'survival'] as const)('正解ごとに討伐し、10体目のボスを挟んで通常の順番に戻る（%s）', (duration) => {
+test.each([30, 'survival'] as const)('討伐モードの進行、会心、金のスライム、復習を確認する（%s）', (duration) => {
   vi.useFakeTimers()
   vi.spyOn(Math, 'random').mockReturnValue(0.25)
   const generate = createQuestionGenerator()
-  const next = () => generate(1, 'addition')
+  let question = generate(1, 'addition')
+  const next = () => { question = generate(1, 'addition') }
   const enter = (answer: string) => {
     for (const key of answer) fireEvent.keyDown(window, { key })
     fireEvent.keyDown(window, { key: 'Enter' })
   }
+  const correct = () => {
+    enter(question.answer)
+    next()
+  }
   const target = () => screen.getByRole('img', { name: /^(モンスター|ボス)：/ })
-  render(<GameScreen level={1} mode="addition" duration={duration} skipCountdown showMonsterBattle onFinish={vi.fn()} />)
+  const onFinish = vi.fn()
+  render(<GameScreen level={1} mode="addition" duration={duration} skipCountdown showMonsterBattle onFinish={onFinish} />)
 
-  expect(screen.getByRole('img', { name: '勇者' }).getAttribute('src')).toMatch(/\/monsters\/hero\.png$/)
-  expect(screen.getByText('0体討伐')).toBeTruthy()
-  expect(target().getAttribute('src')).toMatch(/\/slime\.png$/)
+  expect(target().getAttribute('alt')).toBe('モンスター：スライム')
+  const missed = question
   enter('0')
+  next()
+  expect(screen.getByText(question.expression + ' =')).toBeTruthy()
+  expect(target().getAttribute('alt')).toBe('モンスター：キノコ')
   expect(screen.getByText('0体討伐')).toBeTruthy()
-  expect(target().getAttribute('src')).toMatch(/\/slime\.png$/)
+
+  fireEvent.keyDown(window, { key: 'Tab' })
+  expect(screen.getByText('正解：' + question.answer)).toBeTruthy()
+  act(() => vi.advanceTimersByTime(1_000))
+  next()
+  expect(target().getAttribute('alt')).toBe('モンスター：子トラ')
+  for (let i = 0; i < 7; i++) correct()
+  expect(target().getAttribute('alt')).toBe('ボス：ベビードラゴン')
+  expect(screen.getByText('ボス戦 · HP 3 / 3')).toBeTruthy()
+
+  enter('0')
+  next()
+  expect(screen.getByText('BLOCK!')).toBeTruthy()
+  expect(screen.getByText('ボス戦 · HP 3 / 3')).toBeTruthy()
   fireEvent.keyDown(window, { key: 'Tab' })
   act(() => vi.advanceTimersByTime(1_000))
   next()
-  expect(screen.getByText('0体討伐')).toBeTruthy()
-  expect(target().getAttribute('src')).toMatch(/\/slime\.png$/)
+  expect(screen.getByText('ボス戦 · HP 3 / 3')).toBeTruthy()
 
-  const following = [
-    'mushroom', 'tiger-cub', 'goblin', 'wolf', 'treant', 'skeleton', 'dark-mage', 'gargoyle',
-    'baby-dragon', 'hellhound', 'reaper', 'dragon', 'slime',
-  ]
-  for (const [index, sprite] of following.entries()) {
-    enter(next().answer)
-    expect(screen.getByText(`${index + 1}体討伐`)).toBeTruthy()
-    expect(target().getAttribute('src')).toBe(`${import.meta.env.BASE_URL}monsters/${sprite}.png`)
-    if (sprite === 'baby-dragon') expect(screen.getByRole('img', { name: /^ボス：/ })).toBe(target())
-  }
+  act(() => vi.advanceTimersByTime(3_001))
+  correct()
+  expect(screen.getByText('ボス戦 · HP 2 / 3')).toBeTruthy()
+  expect(screen.queryByText('かいしん！')).toBeNull()
+  act(() => vi.advanceTimersByTime(3_000))
+  correct()
+  expect(screen.getByText('かいしん！')).toBeTruthy()
+  expect(screen.getByText('オーバーキル！')).toBeTruthy()
+  expect(screen.getByText('8体討伐')).toBeTruthy()
 
-  let count = following.length
-  for (const [defeated, boss] of [[19, 'wood-golem'], [29, 'death-knight'], [39, 'demon-king'], [49, 'baby-dragon']] as const) {
-    for (; count < defeated; count++) {
-      enter(next().answer)
-    }
-    expect(screen.getByRole('img', { name: /^ボス：/ }).getAttribute('src')).toBe(
-      `${import.meta.env.BASE_URL}monsters/${boss}.png`,
-    )
+  for (let i = 0; i < 7; i++) correct()
+  expect(target().getAttribute('alt')).not.toBe('モンスター：金のスライム')
+  correct()
+  expect(target().getAttribute('alt')).toBe('モンスター：金のスライム')
+  correct()
+  expect(screen.getByText('金のスライム討伐 +3')).toBeTruthy()
+  expect(screen.getByText('19体討伐')).toBeTruthy()
+
+  act(() => vi.advanceTimersByTime(90_000))
+  expect(onFinish).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+    correctCount: 18, defeatedCount: 19, maxCombo: 11, missCount: 4,
+    reviewQuestions: expect.arrayContaining([
+      { expression: missed.expression, answer: missed.answer, outcome: 'miss', wrongAnswers: ['0'] },
+    ]),
+  }))
+})
+
+test('ボス戦中に10コンボを達成したら、撃破直後に金のスライムが出る', () => {
+  vi.useFakeTimers()
+  vi.spyOn(Math, 'random').mockReturnValue(0.25)
+  const generate = createQuestionGenerator()
+  let question = generate(1, 'addition')
+  const submit = (answer: string) => {
+    for (const key of answer) fireEvent.keyDown(window, { key })
+    fireEvent.keyDown(window, { key: 'Enter' })
+    question = generate(1, 'addition')
   }
+  render(<GameScreen level={1} mode="addition" duration={30} skipCountdown showMonsterBattle onFinish={vi.fn()} />)
+
+  for (let i = 0; i < 10; i++) submit(question.answer)
+  expect(screen.getByText('ボス戦 · HP 1 / 3')).toBeTruthy()
+  expect(screen.queryByRole('img', { name: 'モンスター：金のスライム' })).toBeNull()
+  submit('0')
+  expect(screen.getByText('ボス戦 · HP 1 / 3')).toBeTruthy()
+  submit(question.answer)
+  expect(screen.getByRole('img', { name: 'モンスター：金のスライム' })).toBeTruthy()
+  expect(screen.getByText('10体討伐')).toBeTruthy()
 })

@@ -85,3 +85,81 @@
     --monster-size: 48px;
   }
 }
+
+.monster-battle {
+  position: relative;
+}
+
+.monster-sprite[data-gold="true"] {
+  filter: grayscale(1) sepia(1) saturate(5) brightness(1.2) drop-shadow(0 0 5px #fbbf24);
+}
+
+.monster-battle-feedback {
+  position: absolute;
+  z-index: 1;
+  inset-inline: 0;
+  inset-block-end: 0;
+  text-align: center;
+  pointer-events: none;
+}
+
+.monster-feedback-message {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 0.5em;
+  color: #fde047;
+  font-size: clamp(0.75rem, 3.5vw, 1.15rem);
+  font-weight: 900;
+  text-shadow: 0 0 4px #111827, 0 1px 3px #000, 0 1px 3px #000;
+  animation: monster-message 900ms linear both;
+}
+
+.monster-feedback-message[data-effect="block"] {
+  color: #bae6fd;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .monster-countered {
+    animation: monster-counter 240ms steps(1, end);
+  }
+
+  .monster-defeated[data-effect="counter"],
+  .monster-defeated[data-effect="pass"] {
+    animation: monster-retreat 250ms ease-in;
+  }
+
+  .monster-defeated[data-effect="gold"],
+  .monster-defeated[data-effect="overkill"] {
+    animation: monster-burst 430ms ease-out;
+  }
+
+  .monster-defeated[data-effect="overkill"] {
+    --monster-knockback: 50px;
+  }
+}
+
+@keyframes monster-counter {
+  0%, 50% { opacity: 0.3; }
+  25%, 75% { opacity: 1; }
+}
+
+@keyframes monster-message {
+  0%, 70% { opacity: 1; }
+  100% { opacity: 0; visibility: hidden; }
+}
+
+@keyframes monster-retreat {
+  from { opacity: 1; }
+  to { opacity: 0; transform: translateX(25px) scale(0.72); }
+}
+
+@keyframes monster-burst {
+  0% { opacity: 1; }
+  22% { opacity: 1; filter: brightness(2.4) drop-shadow(0 0 12px #fde047); transform: scale(1.2); }
+  100% {
+    opacity: 0;
+    filter: brightness(2) drop-shadow(0 0 24px #fbbf24);
+    transform: translate(var(--monster-knockback), -32px) rotate(28deg) scale(1.6);
+  }
+}

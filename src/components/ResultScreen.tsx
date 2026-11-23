@@ -23,7 +23,7 @@ export function ResultScreen({
 }: ResultScreenProps) {
   const {
     correctCount, missCount, accuracy, score, averageAnswerSeconds, reviewQuestions,
-    maxCombo,
+    maxCombo, defeatedCount,
   } = result
 
   const { best, isNewRecord, pointsToBest } = personalBest
@@ -60,7 +60,7 @@ export function ResultScreen({
           <dt>正解数</dt>
           <dd>
             {correctCount} 問
-            {showMonsterBattle && <span className="result-defeated">{correctCount}体討伐</span>}
+            {showMonsterBattle && <span className="result-defeated">{defeatedCount ?? correctCount}体討伐</span>}
           </dd>
         </div>
         <div>
