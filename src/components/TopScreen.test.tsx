@@ -9,16 +9,17 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-test('既定の足し算・初級・60秒で1タップで開始できる', () => {
+test('既定のミックス・初級・60秒で1タップで開始できる', () => {
   vi.useFakeTimers()
   vi.spyOn(Math, 'random').mockReturnValue(0.5)
   render(<App />)
 
   expect(screen.getByRole('heading', { level: 1, name: '計算無双' })).toBeTruthy()
+  expect(screen.getByRole('button', { name: 'ミックス', pressed: true })).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: 'START' }))
   act(() => vi.advanceTimersByTime(3_000))
 
-  const { expression } = createQuestionGenerator(() => 0.5)(1, 'addition')
+  const { expression } = createQuestionGenerator(() => 0.5)(1, 'mix')
   expect(screen.getByText(expression + ' =')).toBeTruthy()
   expect(screen.getByLabelText('残り時間').textContent).toBe('60')
 })

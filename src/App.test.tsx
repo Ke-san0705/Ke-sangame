@@ -174,7 +174,8 @@ test('正解・不正解・残り5秒からのカウントダウン・時間切�
 test('ミュートを再戦と再読み込み後も保持し、解除できる', () => {
   const play = stubAudio()
   const { unmount } = render(<App />)
-  click('ミュート')
+  click('効果音オン')
+  expect(screen.getByRole('button', { name: 'ミュート中', pressed: true })).toBeTruthy()
   click('30秒')
   click('START')
   advance(3_000)
@@ -186,8 +187,9 @@ test('ミュートを再戦と再読み込み後も保持し、解除できる',
 
   unmount()
   render(<App />)
-  expect(screen.getByRole('button', { name: 'ミュート', pressed: true })).toBeTruthy()
-  click('ミュート')
+  expect(screen.getByRole('button', { name: 'ミュート中', pressed: true })).toBeTruthy()
+  click('ミュート中')
+  expect(screen.getByRole('button', { name: '効果音オン', pressed: false })).toBeTruthy()
   click('START')
   advance(3_000)
   enter('0')
