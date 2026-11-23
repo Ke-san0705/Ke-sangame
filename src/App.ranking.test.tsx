@@ -71,8 +71,7 @@ test.each(['計算モード', 'モンスター討伐モード'])('%sで任意の
     fireEvent.keyDown(window, { key: 'Enter' })
   }
   if (presentation === 'モンスター討伐モード') {
-    expect(screen.getByText('STAGE 3')).toBeTruthy()
-    expect(screen.getByText('11体討伐')).toBeTruthy()
+    expect(screen.getByText('正解 11')).toBeTruthy()
   }
   finish()
   expect(screen.getByText('1,584 pt')).toBeTruthy()

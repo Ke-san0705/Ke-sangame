@@ -332,78 +332,7 @@ test('ベスト比の表示中も幅に合わせて問題文と入力を縮小�
   expect(screen.getByText('ベスト比 0問')).toBeTruthy()
 })
 
-test.each([30, 'survival'] as const)('討伐モードの進行、会心、金のスライム、復習を確認する（%s）', (duration) => {
-  vi.useFakeTimers()
-  vi.spyOn(Math, 'random').mockReturnValue(0.25)
-  const generate = createQuestionGenerator()
-  let question = generate(1, 'addition')
-  const next = () => { question = generate(1, 'addition') }
-  const enter = (answer: string) => {
-    for (const key of answer) fireEvent.keyDown(window, { key })
-    fireEvent.keyDown(window, { key: 'Enter' })
-  }
-  const correct = () => {
-    enter(question.answer)
-    next()
-  }
-  const target = () => screen.getByRole('img', { name: /^(モンスター|ボス)：/ })
-  const onFinish = vi.fn()
-  render(<GameScreen level={1} mode="addition" duration={duration} skipCountdown showMonsterBattle onFinish={onFinish} />)
-
-  expect(target().getAttribute('alt')).toBe('モンスター：まるスライム')
-  const missed = question
-  enter('0')
-  next()
-  expect(screen.getByText(question.expression + ' =')).toBeTruthy()
-  expect(target().getAttribute('alt')).toBe('モンスター：きのこ')
-  expect(screen.getByText('0体討伐')).toBeTruthy()
-
-  fireEvent.keyDown(window, { key: 'Tab' })
-  expect(screen.getByText('正解：' + question.answer)).toBeTruthy()
-  act(() => vi.advanceTimersByTime(1_000))
-  next()
-  expect(target().getAttribute('alt')).toBe('モンスター：トラの子供')
-  correct()
-  expect(target().getAttribute('alt')).toBe('ボス：ベビードラゴン')
-  expect(screen.getByText('ボス戦 · HP 3 / 3')).toBeTruthy()
-
-  enter('0')
-  next()
-  expect(screen.getByText('BLOCK!')).toBeTruthy()
-  expect(screen.getByText('ボス戦 · HP 3 / 3')).toBeTruthy()
-  fireEvent.keyDown(window, { key: 'Tab' })
-  act(() => vi.advanceTimersByTime(1_000))
-  next()
-  expect(screen.getByText('ボス戦 · HP 3 / 3')).toBeTruthy()
-
-  act(() => vi.advanceTimersByTime(3_001))
-  correct()
-  expect(screen.getByText('ボス戦 · HP 2 / 3')).toBeTruthy()
-  expect(screen.queryByText('かいしん！')).toBeNull()
-  act(() => vi.advanceTimersByTime(3_000))
-  correct()
-  expect(screen.getByText('かいしん！')).toBeTruthy()
-  expect(screen.getByText('オーバーキル！')).toBeTruthy()
-  expect(screen.getByText('2体討伐')).toBeTruthy()
-
-  for (let i = 0; i < 7; i++) correct()
-  expect(target().getAttribute('alt')).not.toBe('モンスター：金のスライム')
-  correct()
-  expect(target().getAttribute('alt')).toBe('モンスター：金のスライム')
-  correct()
-  expect(screen.getByText('金のスライム討伐 +3')).toBeTruthy()
-  expect(screen.getByText('12体討伐')).toBeTruthy()
-
-  act(() => vi.advanceTimersByTime(90_000))
-  expect(onFinish).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
-    correctCount: 12, defeatedCount: 12, maxCombo: 11, missCount: 4,
-    reviewQuestions: expect.arrayContaining([
-      { expression: missed.expression, answer: missed.answer, outcome: 'miss', wrongAnswers: ['0'] },
-    ]),
-  }))
-})
-
-test('ボス戦中に10コンボを達成したら、撃破直後に金のスライムが出る', () => {
+test.each([30, 'survival'] as const)('討伐のチャージ・復習・時間切れの引き渡し（%s）', (duration) => {
   vi.useFakeTimers()
   vi.spyOn(Math, 'random').mockReturnValue(0.25)
   const generate = createQuestionGenerator()
@@ -413,94 +342,91 @@ test('ボス戦中に10コンボを達成したら、撃破直後に金のスラ
     fireEvent.keyDown(window, { key: 'Enter' })
     question = generate(1, 'addition')
   }
-  render(<GameScreen level={1} mode="addition" duration={30} skipCountdown showMonsterBattle onFinish={vi.fn()} />)
+  const onSound = vi.fn()
+  const onFinish = vi.fn()
+  const { container } = render(
+    <GameScreen level={1} mode="addition" duration={duration} skipCountdown showMonsterBattle
+      onSound={onSound} onFinish={onFinish} />,
+  )
+  const arena = container.querySelector<HTMLElement>('.charge-arena')!
+  const initialWidth = parseFloat(arena.style.getPropertyValue('--swarm-width'))
+  const initialScale = Number(arena.style.getPropertyValue('--charge-scale'))
+  const initialMonsters = arena.querySelectorAll('img').length
+  const missed = question
 
-  for (let i = 0; i < 8; i++) submit(question.answer)
-  for (let hit = 0; hit < 2; hit++) {
-    act(() => vi.advanceTimersByTime(3_001))
-    submit(question.answer)
-  }
-  expect(screen.getByText('ボス戦 · HP 1 / 3')).toBeTruthy()
-  expect(screen.queryByRole('img', { name: 'モンスター：金のスライム' })).toBeNull()
   submit('0')
-  expect(screen.getByText('ボス戦 · HP 1 / 3')).toBeTruthy()
+  expect(screen.getByText(question.expression + ' =')).toBeTruthy()
+  fireEvent.keyDown(window, { key: 'Tab' })
+  expect(screen.getByText('正解：' + question.answer)).toBeTruthy()
+  act(() => vi.advanceTimersByTime(1_000))
+  question = generate(1, 'addition')
+  expect(arena.querySelectorAll('img')).toHaveLength(initialMonsters)
+  expect(Number(arena.style.getPropertyValue('--charge-scale'))).toBe(initialScale)
+
+  act(() => vi.advanceTimersByTime(3_001))
   submit(question.answer)
-  expect(screen.getByRole('img', { name: 'モンスター：金のスライム' })).toBeTruthy()
-  expect(screen.getByText('8体討伐')).toBeTruthy()
+  expect(screen.queryByText('CRITICAL CHARGE!')).toBeNull()
+  expect(arena.querySelectorAll('img')).toHaveLength(initialMonsters + 1)
+  expect(parseFloat(arena.style.getPropertyValue('--swarm-width'))).toBeLessThan(initialWidth)
+  expect(Number(arena.style.getPropertyValue('--charge-scale'))).toBeGreaterThan(initialScale)
+  const firstRing = arena.querySelector('.charge-shockwave')
+  expect(firstRing).not.toBeNull()
+
+  act(() => vi.advanceTimersByTime(3_000))
+  submit(question.answer)
+  expect(screen.getByText('CRITICAL CHARGE!')).toBeTruthy()
+  expect(container.querySelector('.charge-flash')).not.toBeNull()
+  expect(arena.querySelector('.charge-shockwave')).not.toBe(firstRing)
+  expect(screen.getByText(question.expression + ' =')).toBeTruthy()
+  expect(onSound).toHaveBeenCalledWith('correct', 1)
+  expect(onSound).toHaveBeenCalledWith('correct', 2)
+
+  act(() => vi.advanceTimersByTime(650))
+  expect(screen.queryByText('CRITICAL CHARGE!')).toBeNull()
+  act(() => vi.advanceTimersByTime(90_000))
+  expect(onFinish).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+    correctCount: 2, maxCombo: 2, missCount: 2,
+    charge: { power: 38, criticalCount: 1 },
+    reviewQuestions: expect.arrayContaining([
+      { expression: missed.expression, answer: missed.answer, outcome: 'miss', wrongAnswers: ['0'] },
+    ]),
+  }))
 })
 
 test.each([
-  { level: 1, hp: 3, answerMs: 5_000 },
-  { level: 2, hp: 3, answerMs: 5_000 },
-  { level: 3, hp: 4, answerMs: 6_000 },
-  { level: 4, hp: 5, answerMs: 9_000 },
-  { level: 5, hp: 5, answerMs: 12_000 },
-] as const)('Lv.$level の60秒プレイで 4枠目に HP $hp のボスが登場する', ({ level, hp, answerMs }) => {
+  [1, 3_000], [2, 4_000], [3, 5_000], [4, 7_000], [5, 10_000],
+] as const)('Lv.%s の会心しきい値は %s ms', (level, threshold) => {
   vi.useFakeTimers()
   vi.spyOn(Math, 'random').mockReturnValue(0.25)
   const generate = createQuestionGenerator()
   render(<GameScreen level={level} mode="addition" duration={60} skipCountdown showMonsterBattle onFinish={vi.fn()} />)
 
-  const correctAfter = (ms: number) => {
-    act(() => vi.advanceTimersByTime(ms))
+  for (const delay of [threshold + 1, threshold]) {
+    act(() => vi.advanceTimersByTime(delay))
     const { answer } = generate(level, 'addition')
     for (const key of answer) fireEvent.keyDown(window, { key })
     fireEvent.keyDown(window, { key: 'Enter' })
+    expect(Boolean(screen.queryByText('CRITICAL CHARGE!'))).toBe(delay === threshold)
   }
-  const hpBar = () => screen.queryByRole('progressbar', { name: 'ボスのHP' })
-  for (let slot = 1; slot < 4; slot++) {
-    expect(hpBar()).toBeNull()
-    correctAfter(answerMs)
-  }
-
-  expect(Number(screen.getByRole('timer').textContent)).toBeGreaterThan(0)
-  expect(screen.getByText('ボス戦！')).toBeTruthy()
-  expect(hpBar()?.getAttribute('aria-valuemax')).toBe(String(hp))
-  expect(hpBar()?.getAttribute('aria-valuenow')).toBe(String(hp))
-
-  for (let hit = 0; hit < Math.ceil(hp / 2); hit++) {
-    correctAfter(level === 1 && hit === 1 ? answerMs : 1_000)
-    if (hp - 2 * (hit + 1) > 0) {
-      expect(hpBar()?.getAttribute('aria-valuenow')).toBe(String(hp - 2 * (hit + 1)))
-    }
-  }
-
-  expect(hpBar()).toBeNull()
-  expect(screen.getByText('ボス撃破！')).toBeTruthy()
-  if (level === 1) expect(screen.queryByText('オーバーキル！')).toBeNull()
-  expect(screen.getByText('累計 4体討伐')).toBeTruthy()
 })
 
-test('討伐の攻撃演出とコンボ表示は次の問題を待たせない', () => {
+test('問題と入力欄の下でチャージ色が青・黄・赤・黒の順に変わる', () => {
   vi.useFakeTimers()
   vi.spyOn(Math, 'random').mockReturnValue(0.25)
   const generate = createQuestionGenerator()
-  let question = generate(1, 'addition')
   const { container } = render(
     <GameScreen level={1} mode="addition" duration={30} skipCountdown showMonsterBattle onFinish={vi.fn()} />,
   )
-
-  for (let combo = 1; combo <= 15; combo++) {
-    if (combo === 1) act(() => vi.advanceTimersByTime(3_001))
-    const previousDamage = container.querySelector('.monster-damage')
-    for (const key of question.answer) fireEvent.keyDown(window, { key })
+  const arena = container.querySelector<HTMLElement>('.charge-arena')!
+  const keypad = screen.getByRole('group', { name: 'テンキー' })
+  expect(keypad.compareDocumentPosition(arena) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  for (let count = 0; count <= 15; count++) {
+    expect(arena.dataset.color).toBe(count < 4 ? 'blue' : count < 9 ? 'yellow' : count < 15 ? 'red' : 'black')
+    expect(screen.queryByText(/STAGE|体討伐|ボス戦/)).toBeNull()
+    const { answer } = generate(1, 'addition')
+    for (const key of answer) fireEvent.keyDown(window, { key })
     fireEvent.keyDown(window, { key: 'Enter' })
-    question = generate(1, 'addition')
-
-    expect(screen.getByText(question.expression + ' =')).toBeTruthy()
-    const damage = screen.getByText(combo === 1 ? '−1' : '−2')
-    expect(damage).not.toBe(previousDamage)
-    expect(screen.getByRole('img', { name: '勇者' }).classList.contains('monster-attacking')).toBe(true)
-    expect(container.querySelector('.monster-slash')).not.toBeNull()
-    expect(container.querySelector('.monster-defeated') !== null).toBe(![4, 9, 15].includes(combo))
-    expect((screen.queryByText(/^\d+コンボ！$/)?.textContent ?? '')).toBe(combo % 5 === 0 ? combo + 'コンボ！' : '')
   }
-
-  fireEvent.keyDown(window, { key: '0' })
-  fireEvent.keyDown(window, { key: 'Enter' })
-  expect(container.querySelector('.monster-damage')).toBeNull()
-  expect(container.querySelector('.monster-slash')).toBeNull()
-  expect(screen.queryByText(/^\d+コンボ！$/)).toBeNull()
 })
 
 test.each([30, 'survival'] as const)('討伐の残り10秒でのラッシュと加算（%s）', (duration) => {
@@ -512,12 +438,9 @@ test.each([30, 'survival'] as const)('討伐の残り10秒でのラッシュと�
     for (const key of answer) fireEvent.keyDown(window, { key })
     fireEvent.keyDown(window, { key: 'Enter' })
   }
-  const { container } = render(
-    <GameScreen level={1} mode="addition" duration={duration} skipCountdown showMonsterBattle onFinish={vi.fn()} />,
-  )
+  render(<GameScreen level={1} mode="addition" duration={duration} skipCountdown showMonsterBattle onFinish={vi.fn()} />)
   const survival = duration === 'survival'
   const rush = () => screen.queryByText('ラッシュ！')
-  const damage = () => container.querySelector('.monster-damage')?.textContent
   for (let i = 0; i < 3; i++) correct()
 
   act(() => vi.advanceTimersByTime((survival ? 16_000 : 20_000) - 50))
@@ -525,7 +448,6 @@ test.each([30, 'survival'] as const)('討伐の残り10秒でのラッシュと�
   act(() => vi.advanceTimersByTime(50))
   expect(Boolean(rush())).toBe(survival)
   correct()
-  expect(damage()).toBe(survival ? '−2' : '−1')
   expect(rush()).toBeNull()
   expect(Boolean(screen.queryByText('＋2秒'))).toBe(survival)
 
@@ -533,8 +455,7 @@ test.each([30, 'survival'] as const)('討伐の残り10秒でのラッシュと�
   expect(Boolean(rush())).toBe(survival)
   expect(screen.queryByText('＋2秒')).toBeNull()
   correct()
-  expect(damage()).toBe(survival ? '−3' : '−1')
-  expect(Boolean(screen.queryByText('かいしん！'))).toBe(survival)
+  expect(Boolean(screen.queryByText('CRITICAL CHARGE!'))).toBe(survival)
 })
 
 test('討伐サバイバルの時間加算ポップは減衰し、加算終了後は再表示されない', () => {
@@ -557,45 +478,4 @@ test('討伐サバイバルの時間加算ポップは減衰し、加算終了�
   act(() => vi.advanceTimersByTime(1_000))
   correct()
   expect(screen.queryByText('＋1秒')).toBeNull()
-})
-
-test('各ステージの敵と背景がボス撃破で切り替わり、魔王撃破で草原に戻る', () => {
-  vi.useFakeTimers()
-  vi.spyOn(Math, 'random').mockReturnValue(0.25)
-  const generate = createQuestionGenerator()
-  const correct = () => {
-    const { answer } = generate(1, 'addition')
-    for (const key of answer) fireEvent.keyDown(window, { key })
-    fireEvent.keyDown(window, { key: 'Enter' })
-  }
-  const { container } = render(
-    <GameScreen level={1} mode="addition" duration={60} skipCountdown showMonsterBattle onFinish={vi.fn()} />,
-  )
-  const stages = [
-    ['grassland', 'まるスライム', 'きのこ', 'トラの子供', 'ベビードラゴン'],
-    ['forest', 'ゴブリン', 'オオカミ', 'トレント', 'ウッドゴーレム'],
-    ['dungeon', 'スケルトン剣士', 'ダークマージ', 'ガーゴイル', 'デスナイト'],
-    ['demon-castle', 'ヘルハウンド', '死神', 'ドラゴン', '魔王'],
-  ]
-  const expectStage = (number: number, background: string) => {
-    expect(screen.getByText(`STAGE ${number}`)).toBeTruthy()
-    expect(container.querySelector<HTMLElement>('.monster-battle')?.style.getPropertyValue('--stage-background'))
-      .toContain(`/stages/${background}.jpg`)
-  }
-
-  for (const [index, [background, first, second, third, boss]] of stages.entries()) {
-    expectStage(index + 1, background)
-    if (screen.queryByRole('img', { name: 'モンスター：金のスライム' })) correct()
-    for (const name of [first, second, third]) {
-      expect(screen.getByRole('img', { name: `モンスター：${name}` })).toBeTruthy()
-      correct()
-    }
-    expect(screen.getByRole('img', { name: `ボス：${boss}` })).toBeTruthy()
-    correct()
-    expectStage(index + 1, background)
-    expect(screen.getByText('ボス戦 · HP 1 / 3')).toBeTruthy()
-    correct()
-  }
-  expectStage(1, 'grassland')
-  expect(screen.getByRole('img', { name: 'モンスター：まるスライム' })).toBeTruthy()
 })

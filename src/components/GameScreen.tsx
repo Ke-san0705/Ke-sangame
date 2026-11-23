@@ -1,9 +1,11 @@
 import { useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from 'react'
 import { createQuestionGenerator, isCorrectAnswer } from '../lib/question-generator'
 import type { Level, Question, QuestionMode } from '../lib/question-generator'
+import { calculateCharge } from '../lib/charge'
+import type { ChargeResult } from '../lib/charge'
 import { calculateScore } from '../lib/score'
 import type { SoundCue } from '../lib/soundEffects'
-import { createBattle, MonsterBattle, preloadBattleAssets, resolveBattle } from './MonsterBattle'
+import { ChargeArena, preloadChargeSprites } from './ChargeArena'
 import './GameScreen.css'
 
 const FINAL_INPUT_DRAIN_MS = 50
@@ -13,6 +15,7 @@ const TIMER_WARNING_SECONDS = 10
 const TIMER_SOUND_SECONDS = 5
 const RUSH_TIME_MS = 10_000
 const TIME_BONUS_POP_MS = 800
+const CRITICAL_NOTICE_MS = 650
 
 function survivalBonusMs(correctCount: number) {
   if (correctCount >= 60) return 0
@@ -32,7 +35,7 @@ type ReviewQuestion = Pick<Question, 'expression' | 'answer'> & {
 
 export type GameResult = ReturnType<typeof calculateScore> & {
   correctCount: number
-  defeatedCount?: number
+  charge?: ChargeResult
   maxCombo: number
   averageAnswerSeconds: number
   paceCurve?: number[]
@@ -69,10 +72,10 @@ export function GameScreen({
   const currentQuestion = useRef(firstQuestion)
   const wrongAnswers = useRef<string[]>([])
   const currentQuestionResolved = useRef(false)
-  const [counts, setCounts] = useState({ correctCount: 0, incorrectCount: 0, passCount: 0, combo: 0, maxCombo: 0 })
+  const [counts, setCounts] = useState({ correctCount: 0, incorrectCount: 0, passCount: 0, combo: 0, maxCombo: 0, criticalCount: 0 })
   const latestCounts = useRef(counts)
-  const [battle, setBattle] = useState(() => createBattle(level))
-  const latestBattle = useRef(battle)
+  const [criticalAnswer, setCriticalAnswer] = useState<number>()
+  const criticalTimeout = useRef<number | undefined>(undefined)
   const gameScreen = useRef<HTMLElement>(null)
   const { correctCount, incorrectCount, passCount } = counts
   const [countdown, setCountdown] = useState(skipCountdown ? 0 : START_COUNTDOWN_SECONDS)
@@ -98,7 +101,7 @@ export function GameScreen({
     setAnswer(value)
   }
 
-  function recordAnswer(kind: 'correctCount' | 'incorrectCount' | 'passCount') {
+  function recordAnswer(kind: 'correctCount' | 'incorrectCount' | 'passCount', critical = false) {
     const current = latestCounts.current
     const combo = kind === 'correctCount' ? current.combo + 1 : 0
     const next = {
@@ -106,17 +109,10 @@ export function GameScreen({
       [kind]: current[kind] + 1,
       combo,
       maxCombo: Math.max(current.maxCombo, combo),
+      criticalCount: current.criticalCount + Number(critical),
     }
     latestCounts.current = next
     setCounts(next)
-  }
-
-  function updateBattle(outcome: 'correct' | 'miss' | 'pass', elapsedMs?: number, rush = false) {
-    if (!showMonsterBattle) return
-    const critical = elapsedMs !== undefined && elapsedMs <= CRITICAL_TIME_MS[level] * (rush ? 1.5 : 1)
-    const next = resolveBattle(latestBattle.current, outcome, latestCounts.current.combo, critical, rush)
-    latestBattle.current = next
-    setBattle(next)
   }
 
   function recordReviewQuestion(outcome: ReviewQuestion['outcome']) {
@@ -141,7 +137,9 @@ export function GameScreen({
     onFinish({
       correctCount,
       maxCombo,
-      ...(showMonsterBattle && { defeatedCount: latestBattle.current.defeatedCount }),
+      ...(showMonsterBattle && {
+        charge: { power: calculateCharge(finalCounts), criticalCount: finalCounts.criticalCount },
+      }),
       ...calculateScore({ ...finalCounts, level }),
       paceCurve,
       reviewQuestions: reviewQuestions.current,
@@ -190,7 +188,6 @@ export function GameScreen({
         passTimeout.current = window.setTimeout(() => {
           passTimeout.current = undefined
           const nextQuestionTime = performance.now()
-          updateBattle('pass')
           if (nextQuestionTime >= deadline.current) {
             finish()
             return
@@ -211,9 +208,16 @@ export function GameScreen({
             const second = Math.ceil(Math.max(0, answerTime - gameStartedAt.current) / 1000)
             correctPerSecond.current[second] += 1
           }
-          recordAnswer('correctCount')
           const rush = battleSurvival && deadline.current - answerTime <= RUSH_TIME_MS
-          updateBattle('correct', elapsedMs, rush)
+          const critical = showMonsterBattle && elapsedMs <= CRITICAL_TIME_MS[level] * (rush ? 1.5 : 1)
+          recordAnswer('correctCount', critical)
+          if (showMonsterBattle) {
+            window.clearTimeout(criticalTimeout.current)
+            setCriticalAnswer(critical ? latestCounts.current.correctCount : undefined)
+            if (critical) {
+              criticalTimeout.current = window.setTimeout(() => setCriticalAnswer(undefined), CRITICAL_NOTICE_MS)
+            }
+          }
           onSound?.('correct', latestCounts.current.combo)
           if (survival) {
             const answerCount = latestCounts.current.correctCount
@@ -238,7 +242,6 @@ export function GameScreen({
           wrongAnswers.current.push(answer)
           if (showMonsterBattle) {
             recordReviewQuestion('miss')
-            updateBattle('miss')
             if (now < deadline.current) nextQuestion(now)
             else currentQuestionResolved.current = true
           }
@@ -318,17 +321,17 @@ export function GameScreen({
       window.clearTimeout(finishTimeout)
       window.clearTimeout(passTimeout.current)
       window.clearTimeout(timeBonusTimeout.current)
+      window.clearTimeout(criticalTimeout.current)
       window.removeEventListener('keydown', onKeyDown)
     }
   }, [duration, initialTimeMs, playing])
 
   useEffect(() => {
-    if (showMonsterBattle) preloadBattleAssets(battle.slot)
-  }, [battle.slot, showMonsterBattle])
+    if (showMonsterBattle) preloadChargeSprites()
+  }, [showMonsterBattle])
 
   useEffect(() => {
-    if (!showMonsterBattle) return
-    if (battle.comboMilestone === undefined && battle.feedback !== 'counter' && battle.feedback !== 'block') return
+    if (!showMonsterBattle || correctCount === 0) return
     const motion = window.matchMedia('(prefers-reduced-motion: no-preference)')
     if (!motion.matches) return
     const shake = gameScreen.current?.animate?.(
@@ -341,7 +344,7 @@ export function GameScreen({
       motion.removeEventListener('change', finishShake)
       finishShake()
     }
-  }, [battle.action, battle.comboMilestone, battle.feedback, showMonsterBattle])
+  }, [correctCount, showMonsterBattle])
 
   if (!playing) {
     return (
@@ -360,7 +363,7 @@ export function GameScreen({
   if (acceptsDecimal) keypad.push('.')
 
   return (
-    <main ref={gameScreen} className="game-screen" data-rush={rushActive} aria-label="ゲーム">
+    <main ref={gameScreen} className={showMonsterBattle ? 'game-screen game-screen-charge' : 'game-screen'} data-rush={rushActive} aria-label="ゲーム">
       <header className="game-hud">
         <div className="game-timer-bar" data-recovery={battleSurvival} aria-hidden="true">
           <div
@@ -405,7 +408,6 @@ export function GameScreen({
           </div>
         )}
       </header>
-      {showMonsterBattle && <MonsterBattle battle={battle} combo={counts.combo} />}
       <GameProblem
         expression={question.expression}
         answer={(showPassAnswer ? question.answer : answer).replace('-', '−')}
@@ -432,6 +434,17 @@ export function GameScreen({
         <span>Backspace：クリア</span>
         <button type="button" disabled={showPassAnswer} onClick={() => handleKey('pass')}>Tab：パス</button>
       </div>
+      {showMonsterBattle && (
+        <>
+          <ChargeArena correctCount={correctCount} />
+          <div className="charge-critical-status" role="status">
+            {criticalAnswer !== undefined && <strong key={criticalAnswer}>CRITICAL CHARGE!</strong>}
+          </div>
+          {criticalAnswer !== undefined && (
+            <div key={criticalAnswer} className="charge-flash" aria-hidden="true" />
+          )}
+        </>
+      )}
     </main>
   )
 }
