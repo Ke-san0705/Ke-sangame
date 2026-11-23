@@ -1,6 +1,8 @@
 import type { Level } from './question-generator'
 
-const basePointsByLevel = { 1: 100, 2: 130, 3: 170, 4: 220, 5: 280 }
+export const basePointsByLevel = { 1: 100, 2: 130, 3: 170, 4: 220, 5: 280 }
+
+export const missPenalty = 20
 
 type ScoreInput = {
   level: Level
@@ -20,7 +22,7 @@ export function calculateScore({ level, correctCount, incorrectCount, passCount,
 
   // Match the ranking RPC: round the correct-answer subtotal to the nearest point.
   const score = Math.floor((correctCount * basePoints * accuracyTenths * comboTenths + 50) / 100)
-    - missCount * 20
+    - missCount * missPenalty
 
   return {
     missCount, accuracy, basePoints, score,

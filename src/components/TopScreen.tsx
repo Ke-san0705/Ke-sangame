@@ -1,3 +1,4 @@
+import { DifficultyInfo } from './DifficultyInfo'
 import { durations, levels, operations, type PlayMode } from '../lib/gameMode'
 
 type TopScreenProps = {
@@ -51,6 +52,7 @@ export function TopScreen({ mode, muted, onToggleMute, onModeChange, onStart, on
             Lv.{level}{'\u3000'}{levels[level]}
           </button>
         ))}
+        <DifficultyInfo />
       </div>
 
       <div className="duration-options" role="group" aria-label="制限時間">
