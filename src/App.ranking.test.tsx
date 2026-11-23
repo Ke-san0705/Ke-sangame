@@ -106,7 +106,7 @@ test('プレイ中に切断して再接続した場合も自己ベストのみ�
   finish()
   expect(screen.getByText('NEW RECORD!')).toBeTruthy()
   expect(screen.queryByRole('button', { name: '登録' })).toBeNull()
-  expect(localStorage.getItem('ke-sangame:personal-best:add:1:30')).toBe('0')
+  expect(localStorage.getItem('ke-sangame:personal-best:mix:1:30')).toBe('0')
   expect(fetchRanking).not.toHaveBeenCalled()
 })
 
