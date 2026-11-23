@@ -1,6 +1,7 @@
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { App } from './App'
+import { createQuestionGenerator } from './lib/question-generator'
 
 beforeEach(() => {
   vi.useFakeTimers()
@@ -127,4 +128,57 @@ test('未設定でもランキング画面から戻ってリプレイできる',
   advance(3_000)
   expect(screen.getByRole('timer').textContent).toBe('30')
   expect(fetchRanking).not.toHaveBeenCalled()
+})
+
+test('サバイバルは選択したレベルで遊べ、時間を延長して正解数の自己ベストだけを保存する', () => {
+  vi.spyOn(Math, 'random').mockReturnValue(0.25)
+  const fetchRanking = vi.fn()
+  vi.stubGlobal('fetch', fetchRanking)
+  const { unmount } = render(<App />)
+  const selectSurvival = () => {
+    click('掛け算')
+    click('Lv.2\u3000中級')
+    click('サバイバル')
+    click('START')
+    advance(3_000)
+  }
+  selectSurvival()
+  const timer = () => screen.getByRole('timer').textContent
+  expect(timer()).toBe('20')
+  const generate = createQuestionGenerator()
+  const first = generate(2, 'multiplication')
+  expect(screen.getByText(first.expression + ' =')).toBeTruthy()
+  fireEvent.keyDown(window, { key: '0' })
+  fireEvent.keyDown(window, { key: 'Enter' })
+  expect(timer()).toBe('20')
+  click('pass')
+  expect(timer()).toBe('20')
+  expect(screen.getByText('ミス 2')).toBeTruthy()
+  advance(1_000)
+
+  for (let count = 1; count <= 60; count += 1) {
+    const { answer } = generate(2, 'multiplication')
+    for (const key of answer) fireEvent.keyDown(window, { key })
+    fireEvent.keyDown(window, { key: 'Enter' })
+    if (count === 1) expect(timer()).toBe('21')
+    if (count === 29) expect(timer()).toBe('77')
+    if (count === 30) expect(timer()).toBe('78')
+    if (count === 59 || count === 60) expect(timer()).toBe('107')
+  }
+
+  advance(106_999)
+  expect(timer()).toBe('1')
+  advance(2)
+  expect(screen.getByRole('heading', { name: 'TIME UP!' })).toBeTruthy()
+  expect(screen.getByText('自己ベスト').nextElementSibling?.textContent).toBe('60 問')
+  expect(screen.getByText('NEW RECORD!')).toBeTruthy()
+  expect(screen.queryByRole('textbox', { name: 'ニックネーム' })).toBeNull()
+  expect(fetchRanking).not.toHaveBeenCalled()
+  unmount()
+
+  render(<App />)
+  selectSurvival()
+  advance(20_001)
+  expect(screen.getByText('自己ベスト').nextElementSibling?.textContent).toBe('60 問')
+  expect(screen.queryByText('NEW RECORD!')).toBeNull()
 })

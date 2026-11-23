@@ -1,17 +1,17 @@
-import type { GameMode } from './gameMode'
+import type { PlayMode } from './gameMode'
 
-export function savePersonalBest({ operation, level, duration }: GameMode, score: number): boolean {
+export function savePersonalBest({ operation, level, duration }: PlayMode, score: number): { best: number; isNewRecord: boolean } {
   const key = `ke-sangame:personal-best:${operation}:${level}:${duration}`
 
   try {
     const saved = window.localStorage.getItem(key)
     const best = saved?.trim() ? Number(saved) : NaN
-    if (Number.isSafeInteger(best) && score <= best) return false
+    if (Number.isSafeInteger(best) && score <= best) return { best, isNewRecord: false }
 
     window.localStorage.setItem(key, String(score))
-    return true
+    return { best: score, isNewRecord: true }
   } catch {
     // 保存が無効な環境でも結果画面に進めるようにする。
-    return false
+    return { best: score, isNewRecord: false }
   }
 }

@@ -1,16 +1,16 @@
-import { durations, levels, operations, type GameMode } from '../lib/gameMode'
+import { durations, levels, operations, type PlayMode } from '../lib/gameMode'
 
 type TopScreenProps = {
-  mode: GameMode
+  mode: PlayMode
   muted: boolean
   onToggleMute: () => void
-  onModeChange: (mode: GameMode) => void
+  onModeChange: (mode: PlayMode) => void
   onStart: () => void
   onRanking: () => void
 }
 
-const operationKeys = Object.keys(operations) as GameMode['operation'][]
-const levelKeys = Object.keys(levels).map(Number) as GameMode['level'][]
+const operationKeys = Object.keys(operations) as PlayMode['operation'][]
+const levelKeys = Object.keys(levels).map(Number) as PlayMode['level'][]
 
 export function TopScreen({ mode, muted, onToggleMute, onModeChange, onStart, onRanking }: TopScreenProps) {
   return (
@@ -64,6 +64,14 @@ export function TopScreen({ mode, muted, onToggleMute, onModeChange, onStart, on
             {duration}秒
           </button>
         ))}
+        <button
+          type="button"
+          className="survival-option"
+          aria-pressed={mode.duration === 'survival'}
+          onClick={() => onModeChange({ ...mode, duration: 'survival' })}
+        >
+          サバイバル
+        </button>
       </div>
 
       <button type="button" className="start-button" onClick={onStart}>START</button>

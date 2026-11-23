@@ -1,6 +1,6 @@
 import type { GameResult } from './GameScreen'
 import { getRankTitle } from '../lib/score'
-import type { GameMode } from '../lib/gameMode'
+import type { GameMode, PlayMode } from '../lib/gameMode'
 import { rankingConfigured } from '../lib/ranking'
 import { RankingRegistration } from './RankingRegistration'
 import './ResultScreen.css'
@@ -8,15 +8,16 @@ import './ResultScreen.css'
 type ResultScreenProps = {
   result: GameResult
   isNewRecord: boolean
-  mode: GameMode
+  mode: PlayMode
+  best: number
   playedOnline: boolean
   online: boolean
-  onViewRanking: () => void
+  onViewRanking: (mode: GameMode) => void
   onReplay: () => void
   onBack: () => void
 }
 
-export function ResultScreen({ result, isNewRecord, mode, playedOnline, online, onViewRanking, onReplay, onBack }: ResultScreenProps) {
+export function ResultScreen({ result, best, isNewRecord, mode, playedOnline, online, onViewRanking, onReplay, onBack }: ResultScreenProps) {
   const {
     correctCount, missCount, accuracy, score, averageAnswerSeconds, reviewQuestions,
     basePoints, accuracyCoefficient, comboCoefficient, maxCombo,
@@ -34,6 +35,12 @@ export function ResultScreen({ result, isNewRecord, mode, playedOnline, online, 
         {isNewRecord && <strong>NEW RECORD!</strong>}
       </div>
       <dl className="result-stats">
+        {mode.duration === 'survival' && (
+          <div>
+            <dt>自己ベスト</dt>
+            <dd>{best} 問</dd>
+          </div>
+        )}
         <div>
           <dt>正解数</dt>
           <dd>{correctCount} 問</dd>
@@ -79,15 +86,16 @@ export function ResultScreen({ result, isNewRecord, mode, playedOnline, online, 
           </ul>
         )}
       </section>
-      {!playedOnline && <p className="result-ranking-status">オフラインでのプレイは自己ベストのみ対象です。</p>}
-      {playedOnline && rankingConfigured() && (
+      {mode.duration === 'survival' && <p className="result-ranking-status">サバイバルは自己ベストのみ対象です。</p>}
+      {mode.duration !== 'survival' && !playedOnline && <p className="result-ranking-status">オフラインでのプレイは自己ベストのみ対象です。</p>}
+      {mode.duration !== 'survival' && playedOnline && rankingConfigured() && (
         <RankingRegistration
           mode={mode}
           correctCount={correctCount}
           missCount={missCount}
           maxCombo={maxCombo}
           online={online}
-          onViewRanking={onViewRanking}
+          onViewRanking={() => onViewRanking(mode)}
         />
       )}
       <div className="result-actions">

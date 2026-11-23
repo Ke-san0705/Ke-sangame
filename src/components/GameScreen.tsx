@@ -6,6 +6,14 @@ import type { SoundCue } from '../lib/soundEffects'
 import './GameScreen.css'
 
 const START_COUNTDOWN_SECONDS = 3
+const SURVIVAL_INITIAL_SECONDS = 20
+
+function survivalBonusMs(correctCount: number) {
+  if (correctCount >= 60) return 0
+  if (correctCount >= 30) return 1_000
+  return 2_000
+}
+
 const PASS_PENALTY_MS = 3_000
 const PASS_REVEAL_MS = 1_000
 const KEYPAD_ROWS = ['7', '8', '9', 'C', '4', '5', '6', 'pass', '1', '2', '3', 'Enter']
@@ -22,12 +30,14 @@ export type GameResult = ReturnType<typeof calculateScore> & {
 type GameScreenProps = {
   level: Level
   mode: QuestionMode
-  duration: number
+  duration: number | 'survival'
   onSound?: (cue: SoundCue) => void
   onFinish: (result: GameResult) => void
 }
 
 export function GameScreen({ level, mode, duration, onSound, onFinish }: GameScreenProps) {
+  const survival = duration === 'survival'
+  const initialTimeMs = (duration === 'survival' ? SURVIVAL_INITIAL_SECONDS : duration) * 1000
   const [{ generateQuestion, firstQuestion }] = useState(() => {
     const generateQuestion = createQuestionGenerator()
     return { generateQuestion, firstQuestion: generateQuestion(level, mode) }
@@ -44,7 +54,7 @@ export function GameScreen({ level, mode, duration, onSound, onFinish }: GameScr
   const { correctCount, incorrectCount, passCount } = counts
   const [countdown, setCountdown] = useState(START_COUNTDOWN_SECONDS)
   const playing = countdown === 0
-  const [remaining, setRemaining] = useState(duration * 1000)
+  const [remaining, setRemaining] = useState(initialTimeMs)
   const deadline = useRef(0)
   const questionStartedAt = useRef(0)
   const totalCorrectAnswerMs = useRef(0)
@@ -88,9 +98,9 @@ export function GameScreen({ level, mode, duration, onSound, onFinish }: GameScr
     setRemaining(timeLeft)
     const seconds = Math.ceil(timeLeft / 1000)
     if (seconds >= 1 && seconds <= 3 && seconds !== lastCountdownSecond.current) {
-      lastCountdownSecond.current = seconds
       onSound?.('countdown')
     }
+    lastCountdownSecond.current = seconds
   }
 
   function nextQuestion(now: number) {
@@ -112,7 +122,7 @@ export function GameScreen({ level, mode, duration, onSound, onFinish }: GameScr
       case 'pass': {
         recordAnswer('passCount')
         recordReviewQuestion()
-        deadline.current -= PASS_PENALTY_MS
+        if (!survival) deadline.current -= PASS_PENALTY_MS
         updateRemaining(Math.max(0, deadline.current - now))
         setAnswer('')
         setShowPassAnswer(true)
@@ -135,6 +145,10 @@ export function GameScreen({ level, mode, duration, onSound, onFinish }: GameScr
           onSound?.('correct')
           totalCorrectAnswerMs.current += Math.max(0, answerTime - questionStartedAt.current)
           recordAnswer('correctCount')
+          if (survival) {
+            deadline.current += survivalBonusMs(latestCounts.current.correctCount)
+            updateRemaining(Math.max(0, deadline.current - now))
+          }
           nextQuestion(now)
         } else {
           onSound?.('incorrect')
@@ -166,10 +180,12 @@ export function GameScreen({ level, mode, duration, onSound, onFinish }: GameScr
     const timeLeft = Math.max(0, deadline.current - performance.now())
     if (finished.current) return false
     updateRemaining(timeLeft)
-    return timeLeft === 0 && passTimeout.current === undefined
+    return timeLeft === 0 && (survival || passTimeout.current === undefined)
   })
 
-  const finishOnTimeUp = useEffectEvent(() => finish())
+  const finishOnTimeUp = useEffectEvent(() => {
+    if (performance.now() >= deadline.current) finish()
+  })
 
   useEffect(() => {
     let count = START_COUNTDOWN_SECONDS
@@ -186,17 +202,18 @@ export function GameScreen({ level, mode, duration, onSound, onFinish }: GameScr
     const now = performance.now()
     questionStartedAt.current = now
     lastCountdownSecond.current = 0
-    deadline.current = now + duration * 1000
+    deadline.current = now + initialTimeMs
     let finishTimeout: number | undefined
     const tick = () => {
-      if (!updateTimer()) return
-      window.clearInterval(interval)
-      window.clearTimeout(timeout)
+      if (!updateTimer() || finishTimeout !== undefined) return
       // Let a pending Enter at the deadline run before taking the result snapshot.
-      finishTimeout = window.setTimeout(() => finishOnTimeUp(), 0)
+      finishTimeout = window.setTimeout(() => {
+        finishTimeout = undefined
+        finishOnTimeUp()
+      }, 0)
     }
     const interval = window.setInterval(tick, 50)
-    const timeout = window.setTimeout(tick, duration * 1000)
+    const timeout = window.setTimeout(tick, initialTimeMs)
     const onKeyDown = (event: KeyboardEvent) => handleKeyboard(event)
     window.addEventListener('keydown', onKeyDown)
     return () => {
@@ -206,7 +223,7 @@ export function GameScreen({ level, mode, duration, onSound, onFinish }: GameScr
       window.clearTimeout(passTimeout.current)
       window.removeEventListener('keydown', onKeyDown)
     }
-  }, [duration, playing])
+  }, [initialTimeMs, playing])
 
   if (!playing) {
     return (
@@ -216,7 +233,7 @@ export function GameScreen({ level, mode, duration, onSound, onFinish }: GameScr
     )
   }
 
-  const percentage = remaining / (duration * 1000) * 100
+  const percentage = Math.min(100, remaining / initialTimeMs * 100)
   const keypad = [...KEYPAD_ROWS, '0']
   if (acceptsNegative) keypad.push('−')
   if (acceptsDecimal) keypad.push('.')

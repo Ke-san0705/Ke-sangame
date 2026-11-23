@@ -28,6 +28,10 @@ button:focus-visible {
 }
 
 button[aria-pressed="true"],
+.duration-options .survival-option {
+  grid-column: 1 / -1;
+}
+
 .start-button {
   background: var(--color-accent);
   color: var(--color-background);
@@ -120,6 +124,10 @@ button[aria-pressed="true"],
 .duration-options button {
   min-block-size: 52px;
   font-weight: 700;
+}
+
+.duration-options .survival-option {
+  grid-column: 1 / -1;
 }
 
 .start-button {
