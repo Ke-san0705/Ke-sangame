@@ -3,7 +3,7 @@ import { createQuestionGenerator, isCorrectAnswer } from '../lib/question-genera
 import type { Level, Question, QuestionMode } from '../lib/question-generator'
 import { calculateScore } from '../lib/score'
 import type { SoundCue } from '../lib/soundEffects'
-import { MonsterBattle, preloadBattleSprites } from './MonsterBattle'
+import { initialBattle, MonsterBattle, preloadBattleSprites, resolveBattle } from './MonsterBattle'
 import './GameScreen.css'
 
 const START_COUNTDOWN_SECONDS = 3
@@ -17,6 +17,7 @@ function survivalBonusMs(correctCount: number) {
   return 2_000
 }
 
+const CRITICAL_TIME_MS = { 1: 3_000, 2: 4_000, 3: 5_000, 4: 7_000, 5: 10_000 }
 const PASS_PENALTY_MS = 3_000
 const PASS_REVEAL_MS = 1_000
 const KEYPAD_ROWS = ['7', '8', '9', 'C', '4', '5', '6', 'pass', '1', '2', '3', 'Enter']
@@ -28,6 +29,7 @@ type ReviewQuestion = Pick<Question, 'expression' | 'answer'> & {
 
 export type GameResult = ReturnType<typeof calculateScore> & {
   correctCount: number
+  defeatedCount?: number
   maxCombo: number
   averageAnswerSeconds: number
   paceCurve?: number[]
@@ -64,6 +66,9 @@ export function GameScreen({
   const currentQuestionResolved = useRef(false)
   const [counts, setCounts] = useState({ correctCount: 0, incorrectCount: 0, passCount: 0, combo: 0, maxCombo: 0 })
   const latestCounts = useRef(counts)
+  const [battle, setBattle] = useState(initialBattle)
+  const latestBattle = useRef(initialBattle)
+  const gameScreen = useRef<HTMLElement>(null)
   const { correctCount, incorrectCount, passCount } = counts
   const [countdown, setCountdown] = useState(skipCountdown ? 0 : START_COUNTDOWN_SECONDS)
   const playing = countdown === 0
@@ -93,6 +98,14 @@ export function GameScreen({
     setCounts(next)
   }
 
+  function updateBattle(outcome: 'correct' | 'miss' | 'pass', elapsedMs?: number) {
+    if (!showMonsterBattle) return
+    const critical = elapsedMs !== undefined && elapsedMs <= CRITICAL_TIME_MS[level]
+    const next = resolveBattle(latestBattle.current, outcome, latestCounts.current.combo, critical)
+    latestBattle.current = next
+    setBattle(next)
+  }
+
   function recordReviewQuestion(outcome: ReviewQuestion['outcome']) {
     const { expression, answer } = currentQuestion.current
     reviewQuestions.current.push({ expression, answer, outcome, wrongAnswers: wrongAnswers.current })
@@ -113,6 +126,7 @@ export function GameScreen({
     onFinish({
       correctCount,
       maxCombo,
+      ...(showMonsterBattle && { defeatedCount: latestBattle.current.defeatedCount }),
       ...calculateScore({ ...finalCounts, level }),
       paceCurve,
       reviewQuestions: reviewQuestions.current,
@@ -159,6 +173,7 @@ export function GameScreen({
         passTimeout.current = window.setTimeout(() => {
           passTimeout.current = undefined
           const nextQuestionTime = performance.now()
+          updateBattle('pass')
           if (nextQuestionTime >= deadline.current) {
             finish()
             return
@@ -172,13 +187,15 @@ export function GameScreen({
         if (answer === '') return
         setAnswer('')
         if (isCorrectAnswer(question, answer)) {
-          totalCorrectAnswerMs.current += Math.max(0, answerTime - questionStartedAt.current)
+          const elapsedMs = Math.max(0, answerTime - questionStartedAt.current)
+          totalCorrectAnswerMs.current += elapsedMs
           if (correctPerSecond.current) {
             // 配列の各要素は、その経過秒に到達した時点の累積正解数になる。
             const second = Math.ceil(Math.max(0, answerTime - gameStartedAt.current) / 1000)
             correctPerSecond.current[second] += 1
           }
           recordAnswer('correctCount')
+          updateBattle('correct', elapsedMs)
           onSound?.('correct', latestCounts.current.combo)
           if (survival) {
             deadline.current += survivalBonusMs(latestCounts.current.correctCount)
@@ -194,6 +211,12 @@ export function GameScreen({
           onSound?.('incorrect')
           recordAnswer('incorrectCount')
           wrongAnswers.current.push(answer)
+          if (showMonsterBattle) {
+            recordReviewQuestion('miss')
+            updateBattle('miss')
+            if (now < deadline.current) nextQuestion(now)
+            else currentQuestionResolved.current = true
+          }
         }
         return
       default:
@@ -274,8 +297,18 @@ export function GameScreen({
   }, [duration, initialTimeMs, playing])
 
   useEffect(() => {
-    if (showMonsterBattle) preloadBattleSprites(correctCount)
-  }, [correctCount, showMonsterBattle])
+    if (showMonsterBattle) preloadBattleSprites(battle.slot)
+  }, [battle.slot, showMonsterBattle])
+
+  useEffect(() => {
+    if (battle.feedback !== 'counter' && battle.feedback !== 'block') return
+    if (!window.matchMedia('(prefers-reduced-motion: no-preference)').matches) return
+    const shake = gameScreen.current?.animate?.(
+      [0, -3, 3, -2, 0].map((x) => ({ transform: `translateX(${x}px)` })),
+      { duration: 180 },
+    )
+    return () => shake?.finish()
+  }, [battle.action, battle.feedback])
 
   if (!playing) {
     return (
@@ -294,7 +327,7 @@ export function GameScreen({
   if (acceptsDecimal) keypad.push('.')
 
   return (
-    <main className="game-screen" aria-label="ゲーム">
+    <main ref={gameScreen} className="game-screen" aria-label="ゲーム">
       <header className="game-hud">
         <div className="game-timer-bar" aria-hidden="true">
           <div
@@ -325,7 +358,7 @@ export function GameScreen({
           )}
         </div>
       </header>
-      {showMonsterBattle && <MonsterBattle defeated={correctCount} combo={counts.combo} />}
+      {showMonsterBattle && <MonsterBattle battle={battle} combo={counts.combo} />}
       <GameProblem
         expression={question.expression}
         answer={(showPassAnswer ? question.answer : answer).replace('-', '−')}
