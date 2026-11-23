@@ -1,7 +1,7 @@
-import { useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { createDuel, formatReaction, judgeDuel, reactionLimits, saveSetsunaBest } from '../lib/setsuna'
 import type { SoundCue } from '../lib/soundEffects'
-import { GameKeypad, gameKey, keypadRows } from './GameKeypad'
+import { GameKeypad, gameKey } from './GameKeypad'
 import './SetsunaScreen.css'
 
 const enemies = [
@@ -11,7 +11,7 @@ const enemies = [
   { sprite: 'death-knight', mirrored: false },
   { sprite: 'demon-king', mirrored: false },
 ]
-const digits = keypadRows.filter((key) => /^\d$/.test(key)).concat('0')
+const digits = ['7', '8', '9', '4', '5', '6', '1', '2', '3', '0']
 const sprite = (name: string) => `${import.meta.env.BASE_URL}monsters/${name}.png`
 const lossLabels = { wrong: '誤答', slow: 'CPUに先を越された', falseStart: 'お手つき2回' }
 
@@ -40,16 +40,15 @@ export function SetsunaScreen({ onBack, onReplay, onSound }: SetsunaScreenProps)
     if (!waiting) return
     heartbeat()
     const pulse = window.setInterval(() => heartbeat(), 720)
-    const reveal = window.setTimeout(() => setSignal(true), duel.waitMs)
+    const reveal = window.setTimeout(() => {
+      signalTime.current = performance.now()
+      setSignal(true)
+    }, duel.waitMs)
     return () => {
       window.clearInterval(pulse)
       window.clearTimeout(reveal)
     }
   }, [duel, waiting])
-
-  useLayoutEffect(() => {
-    signalTime.current = signal ? performance.now() : null
-  }, [signal])
 
   function handleAnswer(key: string, eventTime = performance.now()) {
     if (settled.current) return
@@ -81,6 +80,7 @@ export function SetsunaScreen({ onBack, onReplay, onSound }: SetsunaScreenProps)
   }, [])
 
   function nextDuel() {
+    signalTime.current = null
     settled.current = false
     setEnemy(enemy + 1)
     setDuel(createDuel())
