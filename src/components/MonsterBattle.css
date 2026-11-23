@@ -163,3 +163,84 @@
     transform: translate(var(--monster-knockback), -32px) rotate(28deg) scale(1.6);
   }
 }
+
+.monster-boss-hp {
+  overflow: hidden;
+  inline-size: 100%;
+  block-size: 0.5rem;
+  border: 1px solid #b45309;
+  border-radius: 999px;
+  background: #422006;
+}
+
+.monster-boss-hp > span {
+  display: block;
+  block-size: 100%;
+  background: linear-gradient(90deg, #f97316, #fde047);
+}
+
+.monster-boss-announcement {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+}
+
+.monster-boss-banner {
+  grid-area: 1 / 1;
+  align-self: start;
+  padding: 0.15em 0.65em;
+  border-block: 2px solid #fb923c;
+  background: linear-gradient(90deg, #451a03, #7c2d12, #451a03);
+  color: #ffedd5;
+  font-size: clamp(1.25rem, 5vw, 2.25rem);
+  font-weight: 900;
+  line-height: 1.1;
+  text-align: center;
+  animation: monster-message 800ms linear both;
+}
+
+.monster-boss-victory {
+  align-self: center;
+  border-color: #fde047;
+  background: linear-gradient(90deg, #422006, #713f12, #422006);
+  color: #fef08a;
+  box-shadow: 0 0 18px #f59e0b80;
+  animation-duration: 1.2s;
+}
+
+.monster-boss-victory > strong {
+  display: block;
+  margin-block-start: 0.15em;
+  font-size: 0.55em;
+}
+
+.monster-boss-finisher {
+  display: flex;
+  justify-content: center;
+  gap: 0.5em;
+  margin-block-start: 0.2em;
+  font-size: 0.75rem;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .monster-boss-arriving {
+    animation: monster-boss-arrival 420ms ease-out;
+  }
+
+  .monster-boss-hp > span {
+    transition: inline-size 180ms ease-out;
+  }
+
+  .monster-defeated[data-boss="true"] {
+    animation: monster-burst 430ms ease-out;
+  }
+}
+
+@keyframes monster-boss-arrival {
+  from { opacity: 0; transform: translateX(18px) scale(0.82); }
+  60% { opacity: 1; filter: drop-shadow(0 0 10px #fb923c); transform: scale(1.08); }
+  to { opacity: 1; transform: scale(1); }
+}

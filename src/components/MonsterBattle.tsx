@@ -1,4 +1,5 @@
 import { preload } from 'react-dom'
+import type { Level } from '../lib/question-generator'
 import './MonsterBattle.css'
 
 const monsters = [
@@ -23,12 +24,18 @@ const bosses = [
   ['demon-king', '魔王'],
 ] as const
 
-const bossInterval = 10
-const bossMaxHp = 3
+const bossRules = {
+  1: { interval: 10, maxHp: 3 },
+  2: { interval: 10, maxHp: 3 },
+  3: { interval: 8, maxHp: 4 },
+  4: { interval: 5, maxHp: 5 },
+  5: { interval: 5, maxHp: 5 },
+} satisfies Record<Level, { interval: number; maxHp: number }>
 const spriteUrl = (sprite: string) => `${import.meta.env.BASE_URL}monsters/${sprite}.png`
 const heroUrl = spriteUrl('hero')
 
-function encounter(slot: number, gold = false) {
+function encounter(level: Level, slot: number, gold = false) {
+  const { interval: bossInterval } = bossRules[level]
   const previousBosses = Math.floor(slot / bossInterval)
   const boss = !gold && (slot + 1) % bossInterval === 0
   const [sprite, name] = gold
@@ -42,6 +49,7 @@ function encounter(slot: number, gold = false) {
 type BattleFeedback = 'hit' | 'critical' | 'counter' | 'block' | 'pass' | 'gold' | 'overkill'
 
 export type BattleState = {
+  level: Level
   slot: number
   gold: boolean
   goldPending: boolean
@@ -53,14 +61,16 @@ export type BattleState = {
   departing?: ReturnType<typeof encounter>
 }
 
-export const initialBattle: BattleState = {
-  slot: 0, gold: false, goldPending: false, bossHp: bossMaxHp, defeatedCount: 0, action: 0,
+export function createBattle(level: Level): BattleState {
+  return {
+    level, slot: 0, gold: false, goldPending: false, bossHp: bossRules[level].maxHp, defeatedCount: 0, action: 0,
+  }
 }
 
 export function resolveBattle(
   battle: BattleState, outcome: 'correct' | 'miss' | 'pass', combo: number, critical = false,
 ): BattleState {
-  const current = encounter(battle.slot, battle.gold)
+  const current = encounter(battle.level, battle.slot, battle.gold)
   const correct = outcome === 'correct'
   const damage = correct ? (critical ? 2 : 1) : 0
   const bossHp = battle.bossHp - damage
@@ -77,7 +87,7 @@ export function resolveBattle(
     slot: battle.slot + (current.gold ? 0 : 1),
     gold: goldPending,
     goldPending: false,
-    bossHp: bossMaxHp,
+    bossHp: bossRules[battle.level].maxHp,
     defeatedCount: battle.defeatedCount + (correct ? (current.gold ? 3 : 1) : 0),
     departing: current,
     feedback: correct && current.gold ? 'gold'
@@ -86,21 +96,23 @@ export function resolveBattle(
   }
 }
 
-export function preloadBattleSprites(slot: number) {
+export function preloadBattleSprites(level: Level, slot: number) {
   if (slot === 0) {
     preload(heroUrl, { as: 'image' })
-    preload(encounter(0).src, { as: 'image' })
-    preload(encounter(1).src, { as: 'image', fetchPriority: 'low' })
+    preload(encounter(level, 0).src, { as: 'image' })
+    preload(encounter(level, 1).src, { as: 'image', fetchPriority: 'low' })
   }
-  preload(encounter(slot + 2).src, { as: 'image', fetchPriority: 'low' })
+  preload(encounter(level, slot + 2).src, { as: 'image', fetchPriority: 'low' })
 }
 
 export function MonsterBattle({ battle, combo }: {
   battle: BattleState
   combo: number
 }) {
-  const { slot, gold, action, bossHp, defeatedCount, departing, feedback, critical } = battle
-  const current = encounter(slot, gold)
+  const { level, slot, gold, action, bossHp, defeatedCount, departing, feedback, critical } = battle
+  const { maxHp } = bossRules[level]
+  const current = encounter(level, slot, gold)
+  const bossDefeated = departing?.boss === true
   const counter = feedback === 'counter' || feedback === 'block'
   const effect = feedback === 'block' ? 'BLOCK!'
     : feedback === 'gold' ? '金のスライム討伐 +3'
@@ -118,11 +130,26 @@ export function MonsterBattle({ battle, combo }: {
       />
       <div className="monster-battle-status">
         <span>{defeatedCount}体討伐</span>
-        {current.boss && <span className="monster-boss-label">ボス戦 · HP {bossHp} / {bossMaxHp}</span>}
+        {current.boss && (
+          <>
+            <span className="monster-boss-label">ボス戦 · HP {bossHp} / {maxHp}</span>
+            <div
+              className="monster-boss-hp"
+              role="progressbar"
+              aria-label="ボスのHP"
+              aria-valuemin={0}
+              aria-valuemax={maxHp}
+              aria-valuenow={bossHp}
+            >
+              <span style={{ inlineSize: `${100 * bossHp / maxHp}%` }} />
+            </div>
+          </>
+        )}
       </div>
       <div className="monster-battle-target" key={`${slot}:${gold}`}>
         <img
-          className={departing ? 'monster-sprite monster-arriving' : 'monster-sprite'}
+          className={current.boss ? 'monster-sprite monster-boss-arriving'
+            : departing ? 'monster-sprite monster-arriving' : 'monster-sprite'}
           data-boss={current.boss}
           data-gold={current.gold}
           src={current.src}
@@ -143,8 +170,23 @@ export function MonsterBattle({ battle, combo }: {
           />
         )}
       </div>
+      <div className="monster-boss-announcement" role="status">
+        {current.boss && <div key={slot} className="monster-boss-banner">ボス戦！</div>}
+        {bossDefeated && (
+          <div key={action} className="monster-boss-banner monster-boss-victory">
+            ボス撃破！
+            <strong>累計 {defeatedCount}体討伐</strong>
+            {feedback === 'overkill' && (
+              <div className="monster-boss-finisher">
+                <span>かいしん！</span>
+                <span>{effect}</span>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
       <div className="monster-battle-feedback" role="status">
-        {(critical || effect) && (
+        {!bossDefeated && (critical || effect) && (
           <div key={action} className="monster-feedback-message" data-effect={feedback}>
             {critical && <span>かいしん！</span>}
             {effect && <span>{effect}</span>}
