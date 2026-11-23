@@ -21,7 +21,7 @@ afterEach(() => {
 
 const click = (name: string) => fireEvent.click(screen.getByRole('button', { name }))
 const advance = (ms: number) => act(() => vi.advanceTimersByTime(ms))
-const finish = () => advance(30_001)
+const finish = () => advance(30_050)
 
 test('トップから看板種目を表示し、ドロップダウンで条件を切り替えられる', async () => {
   const fetchRanking = vi.fn(async (_url: string, options: RequestInit) => {
@@ -182,7 +182,7 @@ test('サバイバルは選択したレベルで遊べ、時間を延長して�
 
   advance(106_999)
   expect(timer()).toBe('1')
-  advance(2)
+  advance(51)
   expect(screen.getByRole('heading', { name: 'TIME UP!' })).toBeTruthy()
   expect(screen.getByText('自己ベスト').nextElementSibling?.textContent).toBe('60 問')
   expect(screen.getByText('NEW RECORD!')).toBeTruthy()
@@ -200,7 +200,7 @@ test('サバイバルは選択したレベルで遊べ、時間を延長して�
 
   render(<App />)
   selectSurvival()
-  advance(20_001)
+  advance(20_050)
   expect(screen.getByText('自己ベスト').nextElementSibling?.textContent).toBe('60 問')
   expect(screen.queryByText('NEW RECORD!')).toBeNull()
   expect(screen.getByText('自己ベストまであと60問')).toBeTruthy()

@@ -6,6 +6,7 @@ import type { SoundCue } from '../lib/soundEffects'
 import { createBattle, MonsterBattle, preloadBattleAssets, resolveBattle } from './MonsterBattle'
 import './GameScreen.css'
 
+const FINAL_INPUT_DRAIN_MS = 50
 const START_COUNTDOWN_SECONDS = 3
 const SURVIVAL_INITIAL_SECONDS = 20
 const TIMER_WARNING_SECONDS = 10
@@ -61,6 +62,7 @@ export function GameScreen({
   })
   const [question, setQuestion] = useState(firstQuestion)
   const [answer, setAnswer] = useState('')
+  const latestAnswer = useRef('')
   const [showPassAnswer, setShowPassAnswer] = useState(false)
   const passTimeout = useRef<number | undefined>(undefined)
   const reviewQuestions = useRef<ReviewQuestion[]>([])
@@ -91,6 +93,11 @@ export function GameScreen({
   const acceptsDecimal = level >= 2
   const acceptsNegative = level >= 3
 
+  function updateAnswer(value: string) {
+    latestAnswer.current = value
+    setAnswer(value)
+  }
+
   function recordAnswer(kind: 'correctCount' | 'incorrectCount' | 'passCount') {
     const current = latestCounts.current
     const combo = kind === 'correctCount' ? current.combo + 1 : 0
@@ -120,7 +127,9 @@ export function GameScreen({
   function finish() {
     if (finished.current) return
     finished.current = true
-    if (!currentQuestionResolved.current) recordReviewQuestion('timeout')
+    if (!currentQuestionResolved.current) {
+      recordReviewQuestion(wrongAnswers.current.length > 0 ? 'miss' : 'timeout')
+    }
     const finalCounts = latestCounts.current
     const { correctCount, maxCombo } = finalCounts
     let cumulativeCorrect = 0
@@ -158,15 +167,17 @@ export function GameScreen({
     setQuestion(next)
   }
 
-  function handleKey(key: string, submittedAt?: number) {
-    if (finished.current || passTimeout.current !== undefined) return
+  function handleKey(key: string, eventTime?: number) {
+    if (finished.current || currentQuestionResolved.current || passTimeout.current !== undefined) return
     const now = performance.now()
-    const answerTime = submittedAt ?? now
-    if (key === 'Enter' ? answerTime > deadline.current : now >= deadline.current) return
+    const answerTime = eventTime ?? now
+    if (answerTime < questionStartedAt.current || answerTime > deadline.current) return
+    if (key === 'pass' && now >= deadline.current) return
+    const answer = latestAnswer.current
 
     switch (key) {
       case 'C':
-        setAnswer('')
+        updateAnswer('')
         return
       case 'pass': {
         recordAnswer('passCount')
@@ -174,7 +185,7 @@ export function GameScreen({
         recordReviewQuestion('pass')
         if (!survival) deadline.current -= PASS_PENALTY_MS
         updateRemaining(Math.max(0, deadline.current - now))
-        setAnswer('')
+        updateAnswer('')
         setShowPassAnswer(true)
         passTimeout.current = window.setTimeout(() => {
           passTimeout.current = undefined
@@ -191,8 +202,8 @@ export function GameScreen({
       }
       case 'Enter':
         if (answer === '') return
-        setAnswer('')
-        if (isCorrectAnswer(question, answer)) {
+        updateAnswer('')
+        if (isCorrectAnswer(currentQuestion.current, answer)) {
           const elapsedMs = Math.max(0, answerTime - questionStartedAt.current)
           totalCorrectAnswerMs.current += elapsedMs
           if (correctPerSecond.current) {
@@ -237,7 +248,7 @@ export function GameScreen({
         if (/^\d$/.test(key)
           || (key === '.' && acceptsDecimal && !answer.includes('.'))
           || (key === '-' && acceptsNegative && answer === '')) {
-          setAnswer(answer + key)
+          updateAnswer(answer + key)
         }
     }
   }
@@ -250,7 +261,7 @@ export function GameScreen({
     if (!['C', 'pass', 'Enter', '.', '-'].includes(key) && !/^\d$/.test(key)) return
     event.preventDefault()
     if (event.repeat && (key === 'pass' || key === 'Enter')) return
-    handleKey(key, key === 'Enter' && event.isTrusted ? event.timeStamp : undefined)
+    handleKey(key, event.isTrusted ? event.timeStamp : undefined)
   })
 
   const updateTimer = useEffectEvent(() => {
@@ -291,11 +302,11 @@ export function GameScreen({
     let finishTimeout: number | undefined
     const tick = () => {
       if (!updateTimer() || finishTimeout !== undefined) return
-      // Let a pending Enter at the deadline run before taking the result snapshot.
+      // Give queued input time to reach the handlers. The deadline still gates event timestamps.
       finishTimeout = window.setTimeout(() => {
         finishTimeout = undefined
         finishOnTimeUp()
-      }, 0)
+      }, FINAL_INPUT_DRAIN_MS)
     }
     const interval = window.setInterval(tick, 50)
     const timeout = window.setTimeout(tick, initialTimeMs)
@@ -409,7 +420,7 @@ export function GameScreen({
             className={`game-key game-key-${key === '.' ? 'decimal' : key === '−' ? 'minus' : key}`}
             onClick={(event) => handleKey(
               key === '−' ? '-' : key,
-              key === 'Enter' && event.isTrusted ? event.timeStamp : undefined,
+              event.isTrusted ? event.timeStamp : undefined,
             )}
           >
             {key}
