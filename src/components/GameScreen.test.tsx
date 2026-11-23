@@ -258,3 +258,49 @@ test('ベスト比の表示中も幅に合わせて問題文と入力を縮小�
   expect(answer.style.getPropertyValue('--game-text-scale')).toBe('0.5')
   expect(screen.getByText('ベスト比 0問')).toBeTruthy()
 })
+
+test.each([30, 'survival'] as const)('正解ごとに討伐し、10体目のボスを挟んで通常の順番に戻る（%s）', (duration) => {
+  vi.useFakeTimers()
+  vi.spyOn(Math, 'random').mockReturnValue(0.25)
+  const generate = createQuestionGenerator()
+  const next = () => generate(1, 'addition')
+  const enter = (answer: string) => {
+    for (const key of answer) fireEvent.keyDown(window, { key })
+    fireEvent.keyDown(window, { key: 'Enter' })
+  }
+  const target = () => screen.getByRole('img', { name: /^(モンスター|ボス)：/ })
+  render(<GameScreen level={1} mode="addition" duration={duration} skipCountdown onFinish={vi.fn()} />)
+
+  expect(screen.getByRole('img', { name: '勇者' }).getAttribute('src')).toMatch(/\/monsters\/hero\.png$/)
+  expect(screen.getByText('0体討伐')).toBeTruthy()
+  expect(target().getAttribute('src')).toMatch(/\/slime\.png$/)
+  enter('0')
+  expect(screen.getByText('0体討伐')).toBeTruthy()
+  expect(target().getAttribute('src')).toMatch(/\/slime\.png$/)
+  fireEvent.keyDown(window, { key: 'Tab' })
+  act(() => vi.advanceTimersByTime(1_000))
+  next()
+  expect(screen.getByText('0体討伐')).toBeTruthy()
+  expect(target().getAttribute('src')).toMatch(/\/slime\.png$/)
+
+  const following = [
+    'mushroom', 'tiger-cub', 'goblin', 'wolf', 'treant', 'skeleton', 'dark-mage', 'gargoyle',
+    'baby-dragon', 'hellhound', 'reaper', 'dragon', 'slime',
+  ]
+  for (const [index, sprite] of following.entries()) {
+    enter(next().answer)
+    expect(screen.getByText(`${index + 1}体討伐`)).toBeTruthy()
+    expect(target().getAttribute('src')).toBe(`${import.meta.env.BASE_URL}monsters/${sprite}.png`)
+    if (sprite === 'baby-dragon') expect(screen.getByRole('img', { name: /^ボス：/ })).toBe(target())
+  }
+
+  let count = following.length
+  for (const [defeated, boss] of [[19, 'wood-golem'], [29, 'death-knight'], [39, 'demon-king'], [49, 'baby-dragon']] as const) {
+    for (; count < defeated; count++) {
+      enter(next().answer)
+    }
+    expect(screen.getByRole('img', { name: /^ボス：/ }).getAttribute('src')).toBe(
+      `${import.meta.env.BASE_URL}monsters/${boss}.png`,
+    )
+  }
+})

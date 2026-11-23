@@ -55,7 +55,7 @@ export function ResultScreen({ result, personalBest, mode, playedOnline, online,
         )}
         <div>
           <dt>正解数</dt>
-          <dd>{correctCount} 問</dd>
+          <dd>{correctCount} 問 <span className="result-defeated">{correctCount}体討伐</span></dd>
         </div>
         <div>
           <dt>ミス数</dt>

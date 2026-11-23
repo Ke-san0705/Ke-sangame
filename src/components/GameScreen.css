@@ -252,3 +252,31 @@
     cursor: pointer;
   }
 }
+
+@media (max-height: 660px) and ((max-width: 767px) or (pointer: coarse)) {
+  .game-status {
+    grid-template-columns: minmax(0, 0.75fr) minmax(0, 1.5fr) repeat(2, minmax(0, 1fr));
+    gap: 3px 6px;
+    margin: 4px 12px 6px;
+  }
+
+  .game-stat-label {
+    font-size: 0.75rem;
+  }
+
+  .game-stat-value {
+    font-size: clamp(1.4rem, 5vw, 1.875rem);
+  }
+
+  .game-problem {
+    min-block-size: 112px;
+    padding-block: 8px;
+    --game-expression-size: clamp(1.75rem, 11vw, 2.75rem);
+    --game-answer-size: clamp(1.75rem, 9vw, 2.25rem);
+  }
+
+  .game-keypad {
+    gap: 6px 10px;
+    padding-block-start: 10px;
+  }
+}

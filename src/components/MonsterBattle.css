@@ -1,0 +1,87 @@
+.monster-battle {
+  --monster-size: clamp(56px, 12dvh, 72px);
+  display: grid;
+  grid-template-columns: var(--monster-size) minmax(0, 1fr) var(--monster-size);
+  align-items: center;
+  justify-items: center;
+  inline-size: min(calc(100% - 48px), 18rem);
+  block-size: var(--monster-size);
+  margin: 0 auto 4px;
+}
+
+.monster-battle-status {
+  display: grid;
+  gap: 2px;
+  color: var(--color-accent);
+  font-size: 0.9375rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.monster-boss-label {
+  color: #fbbf24;
+  font-size: 0.75rem;
+}
+
+.monster-battle-target {
+  display: grid;
+  place-items: center;
+  inline-size: var(--monster-size);
+  block-size: var(--monster-size);
+}
+
+.monster-sprite {
+  grid-area: 1 / 1;
+  display: block;
+  inline-size: calc(var(--monster-size) * 0.82);
+  aspect-ratio: 1;
+  object-fit: contain;
+  image-rendering: pixelated;
+}
+
+.monster-sprite[data-boss="true"] {
+  inline-size: var(--monster-size);
+}
+
+.monster-defeated {
+  opacity: 0;
+  pointer-events: none;
+  --monster-knockback: 5px;
+}
+
+.monster-defeated[data-combo="true"] {
+  --monster-knockback: 10px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .monster-arriving {
+    animation: monster-arrival 160ms ease-out;
+  }
+
+  .monster-defeated {
+    animation: monster-defeat 160ms ease-out;
+  }
+}
+
+@keyframes monster-arrival {
+  0%, 35% { opacity: 0; }
+}
+
+@keyframes monster-defeat {
+  0% { opacity: 1; }
+  25% { opacity: 1; filter: brightness(1.3); }
+  100% { transform: translateX(var(--monster-knockback)) scale(0.9); }
+}
+
+@media (min-width: 768px) and (pointer: fine) {
+  .monster-battle {
+    --monster-size: clamp(80px, 17dvh, 144px);
+    inline-size: min(calc(100% - 48px), 32rem);
+  }
+}
+
+@media (max-height: 660px) and ((max-width: 767px) or (pointer: coarse)) {
+  .monster-battle {
+    --monster-size: 48px;
+  }
+}

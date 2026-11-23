@@ -3,6 +3,7 @@ import { createQuestionGenerator, isCorrectAnswer } from '../lib/question-genera
 import type { Level, Question, QuestionMode } from '../lib/question-generator'
 import { calculateScore } from '../lib/score'
 import type { SoundCue } from '../lib/soundEffects'
+import { MonsterBattle, preloadBattleSprites } from './MonsterBattle'
 import './GameScreen.css'
 
 const START_COUNTDOWN_SECONDS = 3
@@ -58,9 +59,8 @@ export function GameScreen({ level, mode, duration, skipCountdown = false, bestC
   const currentQuestion = useRef(firstQuestion)
   const wrongAnswers = useRef<string[]>([])
   const currentQuestionResolved = useRef(false)
-  const [counts, setCounts] = useState({ correctCount: 0, incorrectCount: 0, passCount: 0, maxCombo: 0 })
+  const [counts, setCounts] = useState({ correctCount: 0, incorrectCount: 0, passCount: 0, combo: 0, maxCombo: 0 })
   const latestCounts = useRef(counts)
-  const streak = useRef(0)
   const { correctCount, incorrectCount, passCount } = counts
   const [countdown, setCountdown] = useState(skipCountdown ? 0 : START_COUNTDOWN_SECONDS)
   const playing = countdown === 0
@@ -78,12 +78,13 @@ export function GameScreen({ level, mode, duration, skipCountdown = false, bestC
   const acceptsNegative = level >= 3
 
   function recordAnswer(kind: 'correctCount' | 'incorrectCount' | 'passCount') {
-    streak.current = kind === 'correctCount' ? streak.current + 1 : 0
     const current = latestCounts.current
+    const combo = kind === 'correctCount' ? current.combo + 1 : 0
     const next = {
       ...current,
       [kind]: current[kind] + 1,
-      maxCombo: Math.max(current.maxCombo, streak.current),
+      combo,
+      maxCombo: Math.max(current.maxCombo, combo),
     }
     latestCounts.current = next
     setCounts(next)
@@ -175,7 +176,7 @@ export function GameScreen({ level, mode, duration, skipCountdown = false, bestC
             correctPerSecond.current[second] += 1
           }
           recordAnswer('correctCount')
-          onSound?.('correct', streak.current)
+          onSound?.('correct', latestCounts.current.combo)
           if (survival) {
             deadline.current += survivalBonusMs(latestCounts.current.correctCount)
             updateRemaining(Math.max(0, deadline.current - now))
@@ -269,6 +270,10 @@ export function GameScreen({ level, mode, duration, skipCountdown = false, bestC
     }
   }, [duration, initialTimeMs, playing])
 
+  useEffect(() => {
+    preloadBattleSprites(correctCount)
+  }, [correctCount])
+
   if (!playing) {
     return (
       <main className="game-screen game-start-countdown" aria-label="ゲーム">
@@ -317,6 +322,7 @@ export function GameScreen({ level, mode, duration, skipCountdown = false, bestC
           )}
         </div>
       </header>
+      <MonsterBattle defeated={correctCount} combo={counts.combo} />
       <GameProblem
         expression={question.expression}
         answer={(showPassAnswer ? question.answer : answer).replace('-', '−')}
