@@ -356,3 +356,9 @@
   70% { opacity: 1; }
   to { transform: translateY(-8px); opacity: 0; }
 }
+
+.game-rush-status .game-overcharge-warning {
+  margin-inline: 4px;
+  background: #300811;
+  color: #ffb8c3;
+}

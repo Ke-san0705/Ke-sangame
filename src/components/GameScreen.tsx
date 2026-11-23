@@ -18,6 +18,8 @@ const TIMER_SOUND_SECONDS = 5
 const RUSH_TIME_MS = 10_000
 const TIME_BONUS_POP_MS = 800
 const CRITICAL_NOTICE_MS = 650
+const OVERCHARGE_MISS_MS = 3_000
+const OVERCHARGE_TIME_MS = 10_000
 
 function survivalBonusMs(correctCount: number) {
   if (correctCount >= 60) return 0
@@ -82,9 +84,14 @@ export function GameScreen({
   const gameScreen = useRef<HTMLElement>(null)
   const { correctCount, incorrectCount, passCount } = counts
   const [countdown, setCountdown] = useState(skipCountdown ? 0 : START_COUNTDOWN_SECONDS)
-  const [pendingResult, setPendingResult] = useState<GameResult>()
-  const playing = countdown === 0 && pendingResult === undefined
+  const [pendingRelease, setPendingRelease] = useState<{ result: GameResult; overcharged: boolean }>()
+  const playing = countdown === 0 && pendingRelease === undefined
   const [remaining, setRemaining] = useState(initialTimeMs)
+  const [missOvercharge, setMissOvercharge] = useState(false)
+  const missOverchargeTimeout = useRef<number | undefined>(undefined)
+  const wasOvercharged = useRef(false)
+  const overchargeActive = showMonsterBattle && remaining > 0
+    && (missOvercharge || remaining <= OVERCHARGE_TIME_MS)
   const rushActive = battleSurvival && remaining > 0 && remaining <= RUSH_TIME_MS
   const [timeBonus, setTimeBonus] = useState<{ seconds: number; answerCount: number }>()
   const timeBonusTimeout = useRef<number | undefined>(undefined)
@@ -149,11 +156,12 @@ export function GameScreen({
       reviewQuestions: reviewQuestions.current,
       averageAnswerSeconds: correctCount === 0 ? 0 : totalCorrectAnswerMs.current / correctCount / 1000,
     }
-    if (result.charge) setPendingResult(result)
+    if (result.charge) setPendingRelease({ result, overcharged: wasOvercharged.current })
     else onFinish(result)
   }
 
   function updateRemaining(timeLeft: number) {
+    if (showMonsterBattle && timeLeft <= OVERCHARGE_TIME_MS) wasOvercharged.current = true
     setRemaining(timeLeft)
     const seconds = Math.ceil(timeLeft / 1000)
     if (seconds >= 1 && seconds <= TIMER_SOUND_SECONDS && seconds < lastCountdownSecond.current) {
@@ -226,6 +234,10 @@ export function GameScreen({
           }
           onSound?.('correct', latestCounts.current.combo)
           if (survival) {
+            // A bonus can bring the timer back above the threshold before the next tick.
+            if (battleSurvival && deadline.current - answerTime <= OVERCHARGE_TIME_MS) {
+              wasOvercharged.current = true
+            }
             const answerCount = latestCounts.current.correctCount
             const bonusMs = survivalBonusMs(answerCount)
             deadline.current += bonusMs
@@ -247,6 +259,10 @@ export function GameScreen({
           recordAnswer('incorrectCount')
           wrongAnswers.current.push(answer)
           if (showMonsterBattle) {
+            wasOvercharged.current = true
+            setMissOvercharge(true)
+            window.clearTimeout(missOverchargeTimeout.current)
+            missOverchargeTimeout.current = window.setTimeout(() => setMissOvercharge(false), OVERCHARGE_MISS_MS)
             recordReviewQuestion('miss')
             if (now < deadline.current) nextQuestion(now)
             else currentQuestionResolved.current = true
@@ -328,6 +344,7 @@ export function GameScreen({
       window.clearTimeout(passTimeout.current)
       window.clearTimeout(timeBonusTimeout.current)
       window.clearTimeout(criticalTimeout.current)
+      window.clearTimeout(missOverchargeTimeout.current)
       window.removeEventListener('keydown', onKeyDown)
     }
   }, [duration, initialTimeMs, playing])
@@ -352,12 +369,13 @@ export function GameScreen({
     }
   }, [correctCount, showMonsterBattle])
 
-  if (pendingResult?.charge) {
+  if (pendingRelease?.result.charge) {
     return (
       <ReleaseSequence
-        power={pendingResult.charge.power}
-        correctCount={pendingResult.correctCount}
-        onComplete={(release) => onFinish({ ...pendingResult, release })}
+        power={pendingRelease.result.charge.power}
+        correctCount={pendingRelease.result.correctCount}
+        overcharged={pendingRelease.overcharged}
+        onComplete={(release) => onFinish({ ...pendingRelease.result, release })}
       />
     )
   }
@@ -418,9 +436,10 @@ export function GameScreen({
             </span>
           )}
         </div>
-        {battleSurvival && (
+        {showMonsterBattle && (
           <div className="game-rush-status" role="status">
             {rushActive && <strong>ラッシュ！</strong>}
+            {overchargeActive && <strong className="game-overcharge-warning">危険！過充電</strong>}
           </div>
         )}
       </header>
@@ -452,7 +471,7 @@ export function GameScreen({
       </div>
       {showMonsterBattle && (
         <>
-          <ChargeArena correctCount={correctCount} />
+          <ChargeArena correctCount={correctCount} overcharged={overchargeActive} />
           <div className="charge-critical-status" role="status">
             {criticalAnswer !== undefined && <strong key={criticalAnswer}>CRITICAL CHARGE!</strong>}
           </div>

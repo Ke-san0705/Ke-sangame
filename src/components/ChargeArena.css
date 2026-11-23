@@ -214,3 +214,35 @@
     min-block-size: clamp(164px, 32dvh, 224px);
   }
 }
+
+.charge-arena[data-overcharged="true"] {
+  --charge-light: #ff2849;
+  --charge-core: #100409;
+  --charge-outline: #ff8293;
+}
+
+.charge-arena[data-overcharged="true"] :is(.charge-cannon-mount, .charge-cannon-body, .charge-cannon-rim) {
+  fill: #1d080e;
+  stroke: var(--charge-light);
+}
+
+.charge-lightning {
+  fill: none;
+  stroke: var(--charge-outline);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 5px var(--charge-light));
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .charge-arena[data-overcharged="true"] .charge-cannon svg {
+    animation: charge-overload 280ms linear infinite;
+  }
+}
+
+@keyframes charge-overload {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px) rotate(-1deg); }
+  75% { transform: translateX(2px) rotate(1deg); }
+}

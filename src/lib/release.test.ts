@@ -16,6 +16,13 @@ test.each([[23, 2], [200, 3], [400, 3]] as const)('会心で規模だけを1段�
   expect(calculateRelease(power, true)).toEqual({ ...calculateRelease(power), tier })
 })
 
+test.each([[23, false, 2], [23, true, 3], [200, false, 3], [400, true, 3]] as const)(
+  '過充電で会心判定後の規模だけを1段階上げる（チャージ %i、会心 %s）',
+  (power, critical, tier) => {
+    expect(calculateRelease(power, critical, true)).toEqual({ ...calculateRelease(power, critical), tier })
+  },
+)
+
 test.each([
   [-1, false], [0, false], [209, false], [210, true], [250, true],
   [290, true], [291, false], [500, false], [750, true], [1000, false],
