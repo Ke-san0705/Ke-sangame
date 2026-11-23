@@ -431,7 +431,7 @@ test('問題と入力欄の下でチャージ色が青・黄・赤・黒の順�
   }
 })
 
-test.each([30, 'survival'] as const)('討伐の残り10秒でのラッシュと加算（%s）', (duration) => {
+test('討伐サバイバルは残り10秒で過充電し、旧ラッシュなしで時間切れ後に解放する', () => {
   vi.useFakeTimers()
   vi.spyOn(Math, 'random').mockReturnValue(0.25)
   const generate = createQuestionGenerator()
@@ -440,27 +440,45 @@ test.each([30, 'survival'] as const)('討伐の残り10秒でのラッシュと�
     for (const key of answer) fireEvent.keyDown(window, { key })
     fireEvent.keyDown(window, { key: 'Enter' })
   }
-  render(<GameScreen level={1} mode="addition" duration={duration} skipCountdown showMonsterBattle onFinish={vi.fn()} />)
-  const survival = duration === 'survival'
+  const onFinish = vi.fn()
+  render(<GameScreen level={1} mode="addition" duration="survival" skipCountdown showMonsterBattle onFinish={onFinish} />)
+  const warning = () => screen.queryByText('危険！過充電')
   const rush = () => screen.queryByText('ラッシュ！')
+  const timer = screen.getByRole('timer', { name: '残り時間' })
   for (let i = 0; i < 3; i++) correct()
 
-  act(() => vi.advanceTimersByTime((survival ? 16_000 : 20_000) - 50))
-  expect(rush()).toBeNull()
-  expect(screen.queryByText('危険！過充電')).toBeNull()
+  act(() => vi.advanceTimersByTime(15_950))
+  expect(warning()).toBeNull()
   act(() => vi.advanceTimersByTime(50))
-  expect(screen.getByText('危険！過充電')).toBeTruthy()
-  expect(Boolean(rush())).toBe(survival)
-  correct()
+  expect(timer.textContent).toBe('10')
+  expect(warning()).toBeTruthy()
   expect(rush()).toBeNull()
-  expect(Boolean(screen.queryByText('＋2秒'))).toBe(survival)
-  expect(Boolean(screen.queryByText('危険！過充電'))).toBe(!survival)
+  expect(screen.getByRole('main').hasAttribute('data-rush')).toBe(false)
+
+  correct()
+  expect(timer.textContent).toBe('12')
+  expect(screen.getByText('＋2秒')).toBeTruthy()
+  expect(warning()).toBeNull()
 
   act(() => vi.advanceTimersByTime(3_500))
-  expect(Boolean(rush())).toBe(survival)
+  expect(warning()).toBeTruthy()
+  expect(rush()).toBeNull()
   expect(screen.queryByText('＋2秒')).toBeNull()
   correct()
-  expect(Boolean(screen.queryByText('CRITICAL CHARGE!'))).toBe(survival)
+  expect(screen.queryByText('CRITICAL CHARGE!')).toBeNull()
+  expect(timer.textContent).toBe('11')
+
+  act(() => vi.advanceTimersByTime(10_450))
+  expect(screen.queryByText('CHARGE COMPLETE')).toBeNull()
+  act(() => vi.advanceTimersByTime(100))
+  expect(screen.getByText('CHARGE COMPLETE')).toBeTruthy()
+  expect(onFinish).not.toHaveBeenCalled()
+  finishReleaseWithoutInput()
+  expect(onFinish).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+    correctCount: 5,
+    charge: { power: 99, criticalCount: 3 },
+    release: { tier: 2, koCount: 990, distanceKm: 49_005 },
+  }))
 })
 
 test('討伐サバイバルの時間加算ポップは減衰し、加算終了後は再表示されない', () => {

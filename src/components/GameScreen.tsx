@@ -15,7 +15,6 @@ const START_COUNTDOWN_SECONDS = 3
 const SURVIVAL_INITIAL_SECONDS = 20
 const TIMER_WARNING_SECONDS = 10
 const TIMER_SOUND_SECONDS = 5
-const RUSH_TIME_MS = 10_000
 const TIME_BONUS_POP_MS = 800
 const CRITICAL_NOTICE_MS = 650
 const OVERCHARGE_MISS_MS = 3_000
@@ -92,7 +91,6 @@ export function GameScreen({
   const wasOvercharged = useRef(false)
   const overchargeActive = showMonsterBattle && remaining > 0
     && (missOvercharge || remaining <= OVERCHARGE_TIME_MS)
-  const rushActive = battleSurvival && remaining > 0 && remaining <= RUSH_TIME_MS
   const [timeBonus, setTimeBonus] = useState<{ seconds: number; answerCount: number }>()
   const timeBonusTimeout = useRef<number | undefined>(undefined)
   const deadline = useRef(0)
@@ -222,8 +220,7 @@ export function GameScreen({
             const second = Math.ceil(Math.max(0, answerTime - gameStartedAt.current) / 1000)
             correctPerSecond.current[second] += 1
           }
-          const rush = battleSurvival && deadline.current - answerTime <= RUSH_TIME_MS
-          const critical = showMonsterBattle && elapsedMs <= CRITICAL_TIME_MS[level] * (rush ? 1.5 : 1)
+          const critical = showMonsterBattle && elapsedMs <= CRITICAL_TIME_MS[level]
           recordAnswer('correctCount', critical)
           if (showMonsterBattle) {
             window.clearTimeout(criticalTimeout.current)
@@ -397,7 +394,7 @@ export function GameScreen({
   if (acceptsDecimal) keypad.push('.')
 
   return (
-    <main ref={gameScreen} className={showMonsterBattle ? 'game-screen game-screen-charge' : 'game-screen'} data-rush={rushActive} aria-label="ゲーム">
+    <main ref={gameScreen} className={showMonsterBattle ? 'game-screen game-screen-charge' : 'game-screen'} aria-label="ゲーム">
       <header className="game-hud">
         <div className="game-timer-bar" data-recovery={battleSurvival} aria-hidden="true">
           <div
@@ -437,8 +434,7 @@ export function GameScreen({
           )}
         </div>
         {showMonsterBattle && (
-          <div className="game-rush-status" role="status">
-            {rushActive && <strong>ラッシュ！</strong>}
+          <div className="game-overcharge-status" role="status">
             {overchargeActive && <strong className="game-overcharge-warning">危険！過充電</strong>}
           </div>
         )}

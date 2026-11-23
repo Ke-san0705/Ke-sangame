@@ -281,22 +281,18 @@
   }
 }
 
-.game-screen[data-rush="true"],
-.game-screen[data-rush="true"] .game-hud {
-  background: color-mix(in srgb, var(--game-warning) 14%, var(--color-background));
-}
-
-.game-rush-status {
+.game-overcharge-status {
   text-align: center;
 }
 
-.game-rush-status strong {
+.game-overcharge-warning {
   display: inline-block;
   margin-block-end: 6px;
+  margin-inline: 4px;
   padding: 2px 12px;
   border-radius: 999px;
-  background: #a41735;
-  color: white;
+  background: #300811;
+  color: #ffb8c3;
 }
 
 .game-time {
@@ -355,10 +351,4 @@
   25% { transform: translateY(-3px); }
   70% { opacity: 1; }
   to { transform: translateY(-8px); opacity: 0; }
-}
-
-.game-rush-status .game-overcharge-warning {
-  margin-inline: 4px;
-  background: #300811;
-  color: #ffb8c3;
 }
