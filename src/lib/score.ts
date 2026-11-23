@@ -29,10 +29,32 @@ export function calculateScore({ level, correctCount, incorrectCount, passCount,
   }
 }
 
-export function getRankTitle(score: number) {
-  if (score >= 20000) return '神速の計算無双'
-  if (score >= 10000) return '閃光の計算将軍'
-  if (score >= 5000) return '数字の達人'
-  if (score >= 1500) return '高速の計算士'
-  return '電算見習い'
+const ranks = [
+  { minimum: -Infinity, title: '電算見習い' },
+  { minimum: 500, title: '計算練習生' },
+  { minimum: 1000, title: '計算の基礎士' },
+  { minimum: 1500, title: '高速の計算士' },
+  { minimum: 2000, title: '俊足の計算士' },
+  { minimum: 2500, title: '計算の職人' },
+  { minimum: 3000, title: '計算の名手' },
+  { minimum: 4000, title: '数字の熟練者' },
+  { minimum: 5000, title: '数字の達人' },
+  { minimum: 6500, title: '計算の師範' },
+  { minimum: 8000, title: '暗算の剣豪' },
+  { minimum: 10000, title: '閃光の計算将軍' },
+  { minimum: 12500, title: '計算の覇者' },
+  { minimum: 15000, title: '音速の計算王' },
+  { minimum: 20000, title: '神速の計算無双' },
+]
+
+export function getRankProgress(score: number) {
+  const nextIndex = ranks.findIndex(({ minimum }) => minimum > score)
+  if (nextIndex === -1) {
+    return { title: ranks[ranks.length - 1].title, pointsToNextRank: null }
+  }
+
+  return {
+    title: ranks[nextIndex - 1].title,
+    pointsToNextRank: ranks[nextIndex].minimum - score,
+  }
 }

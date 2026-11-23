@@ -105,7 +105,7 @@ test('タッチ用テンキーで負数・小数を入力し、Cでミスを増�
   expect(onFinish).toHaveBeenCalledExactlyOnceWith({
     correctCount: 0, missCount: 1, accuracy: 0, score: -20, averageAnswerSeconds: 0,
     maxCombo: 0, basePoints: 170, accuracyCoefficient: 1, comboCoefficient: 1,
-    reviewQuestions: [expect.objectContaining({ expression: expect.any(String), answer: expect.any(String) })],
+    reviewQuestions: [expect.objectContaining({ expression: expect.any(String), answer: expect.any(String), outcome: 'pass' })],
   })
 })
 
@@ -158,7 +158,9 @@ test.each([
     basePoints: 100,
     accuracyCoefficient: expected ? 1.2 : 1,
     comboCoefficient: 1,
-    reviewQuestions: [],
+    reviewQuestions: expected && offset === 0
+      ? []
+      : [expect.objectContaining({ outcome: 'timeout', answer: expect.any(String) })],
     averageAnswerSeconds: expected ? (30_000 + (offset ?? 0)) / 1000 : 0,
   })
 })
