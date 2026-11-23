@@ -1,48 +1,61 @@
+import type { CSSProperties } from 'react'
 import { preload } from 'react-dom'
 import type { Level } from '../lib/question-generator'
 import './MonsterBattle.css'
 
-const monsters = [
-  ['slime', 'スライム'],
-  ['mushroom', 'キノコ'],
-  ['tiger-cub', '子トラ'],
-  ['goblin', 'ゴブリン'],
-  ['wolf', 'ウルフ'],
-  ['treant', 'トレント'],
-  ['skeleton', 'スケルトン'],
-  ['dark-mage', '闇の魔術師'],
-  ['gargoyle', 'ガーゴイル'],
-  ['hellhound', 'ヘルハウンド'],
-  ['reaper', '死神'],
-  ['dragon', 'ドラゴン'],
+const stages = [
+  {
+    background: 'grassland',
+    enemies: [
+      ['slime', 'まるスライム'],
+      ['mushroom', 'きのこ'],
+      ['tiger-cub', 'トラの子供'],
+      ['baby-dragon', 'ベビードラゴン'],
+    ],
+  },
+  {
+    background: 'forest',
+    enemies: [
+      ['goblin', 'ゴブリン'],
+      ['wolf', 'オオカミ'],
+      ['treant', 'トレント'],
+      ['wood-golem', 'ウッドゴーレム'],
+    ],
+  },
+  {
+    background: 'dungeon',
+    enemies: [
+      ['skeleton', 'スケルトン剣士'],
+      ['dark-mage', 'ダークマージ'],
+      ['gargoyle', 'ガーゴイル'],
+      ['death-knight', 'デスナイト'],
+    ],
+  },
+  {
+    background: 'demon-castle',
+    enemies: [
+      ['hellhound', 'ヘルハウンド'],
+      ['reaper', '死神'],
+      ['dragon', 'ドラゴン'],
+      ['demon-king', '魔王'],
+    ],
+  },
 ] as const
 
-const bosses = [
-  ['baby-dragon', 'ベビードラゴン'],
-  ['wood-golem', 'ウッドゴーレム'],
-  ['death-knight', 'デスナイト'],
-  ['demon-king', '魔王'],
-] as const
-
-const bossRules = {
-  1: { interval: 10, maxHp: 3 },
-  2: { interval: 10, maxHp: 3 },
-  3: { interval: 8, maxHp: 4 },
-  4: { interval: 5, maxHp: 5 },
-  5: { interval: 5, maxHp: 5 },
-} satisfies Record<Level, { interval: number; maxHp: number }>
+const encountersPerStage = stages[0].enemies.length
+const bossMaxHp = { 1: 3, 2: 3, 3: 4, 4: 5, 5: 5 } satisfies Record<Level, number>
 const spriteUrl = (sprite: string) => `${import.meta.env.BASE_URL}monsters/${sprite}.png`
 const heroUrl = spriteUrl('hero')
 
-function encounter(level: Level, slot: number, gold = false) {
-  const { interval: bossInterval } = bossRules[level]
-  const previousBosses = Math.floor(slot / bossInterval)
-  const boss = !gold && (slot + 1) % bossInterval === 0
+const stageIndexFor = (slot: number) => Math.floor(slot / encountersPerStage) % stages.length
+const backgroundUrl = (stageIndex: number) => `${import.meta.env.BASE_URL}stages/${stages[stageIndex].background}.jpg`
+
+function encounter(slot: number, gold = false) {
+  const enemyIndex = slot % encountersPerStage
+  const boss = !gold && enemyIndex === encountersPerStage - 1
   const [sprite, name] = gold
     ? ['slime', '金のスライム']
-    : boss
-      ? bosses[previousBosses % bosses.length]
-      : monsters[(slot - previousBosses) % monsters.length]
+    : stages[stageIndexFor(slot)].enemies[enemyIndex]
   return { src: spriteUrl(sprite), name, boss, gold }
 }
 
@@ -65,14 +78,14 @@ export type BattleState = {
 
 export function createBattle(level: Level): BattleState {
   return {
-    level, slot: 0, gold: false, goldPending: false, bossHp: bossRules[level].maxHp, defeatedCount: 0, damage: 0, action: 0,
+    level, slot: 0, gold: false, goldPending: false, bossHp: bossMaxHp[level], defeatedCount: 0, damage: 0, action: 0,
   }
 }
 
 export function resolveBattle(
   battle: BattleState, outcome: 'correct' | 'miss' | 'pass', combo: number, critical = false, rush = false,
 ): BattleState {
-  const current = encounter(battle.level, battle.slot, battle.gold)
+  const current = encounter(battle.slot, battle.gold)
   const correct = outcome === 'correct'
   const bossBonus = current.boss && rush ? 1 : 0
   const damage = correct ? (critical ? 2 : 1) + bossBonus : 0
@@ -93,7 +106,7 @@ export function resolveBattle(
     slot: battle.slot + (current.gold ? 0 : 1),
     gold: goldPending,
     goldPending: false,
-    bossHp: bossRules[battle.level].maxHp,
+    bossHp: bossMaxHp[battle.level],
     defeatedCount: battle.defeatedCount + (correct ? (current.gold ? 3 : 1) : 0),
     departing: current,
     feedback: correct && current.gold ? 'gold'
@@ -102,13 +115,18 @@ export function resolveBattle(
   }
 }
 
-export function preloadBattleSprites(level: Level, slot: number) {
+export function preloadBattleAssets(slot: number) {
   if (slot === 0) {
+    preload(backgroundUrl(0), { as: 'image' })
     preload(heroUrl, { as: 'image' })
-    preload(encounter(level, 0).src, { as: 'image' })
-    preload(encounter(level, 1).src, { as: 'image', fetchPriority: 'low' })
+    preload(encounter(0).src, { as: 'image' })
+    preload(encounter(1).src, { as: 'image', fetchPriority: 'low' })
   }
-  preload(encounter(level, slot + 2).src, { as: 'image', fetchPriority: 'low' })
+  if (slot % encountersPerStage === 0) {
+    const nextStage = (stageIndexFor(slot) + 1) % stages.length
+    preload(backgroundUrl(nextStage), { as: 'image', fetchPriority: 'low' })
+  }
+  preload(encounter(slot + 2).src, { as: 'image', fetchPriority: 'low' })
 }
 
 export function MonsterBattle({ battle, combo }: {
@@ -116,8 +134,10 @@ export function MonsterBattle({ battle, combo }: {
   combo: number
 }) {
   const { level, slot, gold, action, bossHp, defeatedCount, departing, feedback, critical, damage, comboMilestone } = battle
-  const { maxHp } = bossRules[level]
-  const current = encounter(level, slot, gold)
+  const maxHp = bossMaxHp[level]
+  const stageIndex = stageIndexFor(slot)
+  const stageStyle = { '--stage-background': `url("${backgroundUrl(stageIndex)}")` } as CSSProperties
+  const current = encounter(slot, gold)
   const bossDefeated = departing?.boss === true
   const counter = feedback === 'counter' || feedback === 'block'
   const heroMotion = counter ? ' monster-countered' : damage > 0 ? ' monster-attacking' : ''
@@ -127,7 +147,7 @@ export function MonsterBattle({ battle, combo }: {
     : undefined
 
   return (
-    <div className="monster-battle">
+    <div className="monster-battle" style={stageStyle}>
       <img
         key={heroMotion ? action : 'hero'}
         className={`monster-sprite${heroMotion}`}
@@ -136,6 +156,7 @@ export function MonsterBattle({ battle, combo }: {
         decoding="async"
       />
       <div className="monster-battle-status">
+        <strong className="monster-stage" role="status">STAGE {stageIndex + 1}</strong>
         <span>{defeatedCount}体討伐</span>
         {current.boss && (
           <>

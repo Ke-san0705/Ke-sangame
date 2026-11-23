@@ -10,7 +10,7 @@ export default defineConfig({
     react(),
     VitePWA({
       injectRegister: 'script',
-      includeAssets: ['monsters/*.png'],
+      includeAssets: ['monsters/*.png', 'stages/*.jpg'],
       manifest: {
         name: '計算無双',
         short_name: '計算無双',
