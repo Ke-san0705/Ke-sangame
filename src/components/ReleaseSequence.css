@@ -1,9 +1,12 @@
 .release-scene {
+  --release-moon-size: min(15vw, 13dvh);
+  --release-moon-x: calc(35vw - var(--release-moon-size) / 2);
+  --release-moon-y: calc(-20dvh + var(--release-moon-size) / 2);
   position: relative;
   isolation: isolate;
   display: grid;
   min-block-size: 100dvh;
-  overflow: hidden;
+  overflow: clip;
   background: #030615;
   color: #fff;
 }
@@ -22,7 +25,6 @@
   border: 0;
   border-radius: 0;
   background: none;
-  transition: opacity 180ms ease;
 }
 
 .release-scene:is([data-phase="ready"], [data-phase="meter"]) .charge-arena {
@@ -101,7 +103,7 @@
 
 .release-moon {
   inset: 7% 15% auto auto;
-  inline-size: min(15vw, 13dvh);
+  inline-size: var(--release-moon-size);
   aspect-ratio: 1;
   background: radial-gradient(circle at 31% 46%, #7b8299 8%, transparent 10%),
     radial-gradient(circle at 63% 62%, #7b8299 12%, transparent 14%),
@@ -161,6 +163,10 @@
   text-shadow: 0 2px 4px #020410, 0 0 14px #020410, 0 0 24px #020410;
 }
 
+.release-scene[data-phase="ready"] .release-status {
+  animation: release-appear 120ms 240ms ease-out both;
+}
+
 .release-status .release-ko {
   color: #ffedab;
   font-size: clamp(2.8rem, 12vw, 7rem);
@@ -213,7 +219,7 @@
   animation: release-fade 420ms ease-out both;
 }
 
-.release-scene[data-phase="aftermath"][data-tier="1"] .release-land {
+.release-scene[data-phase="aftermath"]:is([data-tier="1"], [data-tier="2"]) .release-land {
   animation: release-fade 900ms ease-out both;
 }
 
@@ -255,6 +261,14 @@
   .release-scene[data-phase="aftermath"][data-tier="1"] .release-land {
     animation: release-collapse 900ms ease-in both;
   }
+
+  .release-scene[data-phase="aftermath"][data-tier="2"] .release-land {
+    animation: release-collapse 480ms ease-in both;
+  }
+
+  .release-scene[data-phase="aftermath"][data-tier="2"] .release-orbit {
+    animation-delay: 210ms;
+  }
 }
 
 @keyframes release-dim {
@@ -279,8 +293,19 @@
 }
 
 @keyframes release-to-moon {
-  76% { transform: translate(29vw, -19dvh) scale(0.12); }
-  to { opacity: 0; transform: translate(calc(29vw + var(--release-flight-x) / 4), -47dvh) scale(0.03); }
+  78% {
+    transform: translate(
+      calc(var(--release-moon-x) - var(--release-start-x)),
+      calc(var(--release-moon-y) - var(--release-start-y))
+    ) scale(0.12);
+  }
+  to {
+    opacity: 0;
+    transform: translate(
+      calc(var(--release-moon-x) - var(--release-start-x)),
+      -64dvh
+    ) scale(0.03);
+  }
 }
 
 @keyframes release-shake {
