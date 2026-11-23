@@ -58,6 +58,7 @@ test('結果に正確率・回答時間・スコア・称号を表示し、同�
   expect(screen.getByText('60 pt')).toBeTruthy()
   expect(screen.getByText('電算見習い')).toBeTruthy()
   expect(screen.getByText('1 問')).toBeTruthy()
+  expect(screen.getByText('1体討伐')).toBeTruthy()
   expect(screen.getByText('2 回')).toBeTruthy()
   expect(screen.getByText('33.3 %')).toBeTruthy()
   expect(screen.getByText('1.5 秒/問')).toBeTruthy()
@@ -320,4 +321,20 @@ test('スコアだけの自己ベストは維持し、タイ記録でカーブ�
   click('もう1回')
   advance(1_000)
   expect(screen.getByText('ベスト比 −1問')).toBeTruthy()
+})
+
+
+test('サバイバルの終了画面に討伐数を表示し、再戦時にリセットする', () => {
+  render(<App />)
+  click('掛け算')
+  click('サバイバル')
+  click('START')
+  advance(3_000)
+  enter(first().answer)
+  expect(screen.getByText('1体討伐')).toBeTruthy()
+  advance(22_001)
+  expect(screen.getByRole('heading', { name: 'TIME UP!' })).toBeTruthy()
+  expect(screen.getByText('1体討伐')).toBeTruthy()
+  click('もう1回')
+  expect(screen.getByText('0体討伐')).toBeTruthy()
 })
