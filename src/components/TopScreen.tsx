@@ -1,8 +1,10 @@
 import { DifficultyInfo } from './DifficultyInfo'
 import { durations, levels, operations, presentations, type GamePresentation, type PlayMode } from '../lib/gameMode'
+import type { ReplayRecords } from '../lib/replayRecords'
 
 type TopScreenProps = {
   mode: PlayMode
+  replayRecords: ReplayRecords
   presentation: GamePresentation
   onPresentationChange: (presentation: GamePresentation) => void
   muted: boolean
@@ -18,7 +20,7 @@ const levelKeys = Object.keys(levels).map(Number) as PlayMode['level'][]
 const presentationKeys = Object.keys(presentations) as GamePresentation[]
 
 export function TopScreen({
-  mode, presentation, onPresentationChange, muted, onToggleMute, onModeChange, onStart, onRanking,
+  mode, replayRecords, presentation, onPresentationChange, muted, onToggleMute, onModeChange, onStart, onRanking,
 }: TopScreenProps) {
   return (
     <main className="top-screen">
@@ -95,6 +97,11 @@ export function TopScreen({
       </div>
 
       <button type="button" className="start-button" onClick={onStart}>START</button>
+      <p className="top-replay-records">
+        <span>{`累計KO数 ${replayRecords.totalKoCount.toLocaleString('ja-JP')}`}</span>
+        <span>{`最大飛距離 ${replayRecords.maxDistanceKm.toLocaleString('ja-JP')} km`}</span>
+        <span>{`地球爆破 ${replayRecords.earthExplosionCount.toLocaleString('ja-JP')} 回`}</span>
+      </p>
     </main>
   )
 }

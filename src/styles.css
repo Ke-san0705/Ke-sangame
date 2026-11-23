@@ -150,6 +150,15 @@ button[aria-pressed="true"],
   font-weight: 700;
 }
 
+.top-replay-records {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 12px;
+  margin: 12px 0 0;
+  font-size: 12px;
+}
+
 @media (min-width: 768px) {
   .top-screen {
     display: grid;
@@ -160,8 +169,13 @@ button[aria-pressed="true"],
   }
 
   .top-header,
+  .top-replay-records,
   .start-button {
     grid-column: 1 / -1;
+  }
+
+  .top-replay-records {
+    margin: 0;
   }
 
   .operation-options,

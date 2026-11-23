@@ -8,6 +8,7 @@ import {
   defaultMode, readGamePresentation, saveGamePresentation, type GameMode, type PlayMode,
 } from './lib/gameMode'
 import { createSoundEffects, readMuted, saveMuted } from './lib/soundEffects'
+import { readReplayRecords, saveReplayRecords } from './lib/replayRecords'
 import type { QuestionMode } from './lib/question-generator'
 
 const featuredRankingMode: GameMode = { operation: 'mix', level: 1, duration: 60 }
@@ -23,7 +24,7 @@ const questionModes = {
 type Screen =
   | { name: 'top' }
   | { name: 'game'; mode: PlayMode; skipCountdown: boolean; bestCurve?: number[] }
-  | { name: 'result'; mode: PlayMode; result: GameResult; personalBest: ReturnType<typeof savePersonalBest>; playedOnline: boolean }
+  | { name: 'result'; mode: PlayMode; result: GameResult; personalBest: ReturnType<typeof savePersonalBest>; replayRecords: ReturnType<typeof saveReplayRecords>; playedOnline: boolean }
   | { name: 'ranking'; mode: GameMode }
 
 function subscribeOnline(onChange: () => void) {
@@ -75,8 +76,11 @@ export function App() {
           const personalBest = savePersonalBest(
             gameMode, gameMode.duration === 'survival' ? result.correctCount : result.score, result.paceCurve,
           )
+          const replayRecords = presentation === 'monster' && result.release
+            ? saveReplayRecords(result.release)
+            : undefined
           setScreen({
-            name: 'result', mode: gameMode, result, personalBest,
+            name: 'result', mode: gameMode, result, personalBest, replayRecords,
             playedOnline: playedOnline.current && isOnline(),
           })
         }}
@@ -89,6 +93,7 @@ export function App() {
       <ResultScreen
         result={screen.result}
         personalBest={screen.personalBest}
+        replayRecords={screen.replayRecords}
         mode={screen.mode}
         playedOnline={screen.playedOnline}
         online={online}
@@ -106,6 +111,7 @@ export function App() {
   return (
     <TopScreen
       mode={mode}
+      replayRecords={readReplayRecords()}
       presentation={presentation}
       onPresentationChange={(selection) => {
         setPresentation(selection)
