@@ -37,10 +37,12 @@ export function ChargeArena({ correctCount }: { correctCount: number }) {
               alt=""
               decoding="async"
               style={{
+                '--release-flight-x': `${Math.cos(angle) * 43}vw`,
+                '--release-flight-y': `${-80 - Math.abs(Math.sin(angle)) * 24}dvh`,
                 left: `${50 + Math.cos(angle) * radius}%`,
                 top: `${50 + depth}%`,
                 zIndex: Math.round(50 + depth),
-              }}
+              } as CSSProperties}
             />
           )
         })}

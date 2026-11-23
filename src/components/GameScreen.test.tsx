@@ -218,6 +218,7 @@ test.each([
     expect(screen.getByRole('timer').textContent).toBe('2')
     act(() => vi.advanceTimersByTime(2_000))
   }
+  if (showMonsterBattle) finishReleaseWithoutInput()
   expect(onFinish).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
     correctCount: beforeDeadline ? 1 : 0,
     reviewQuestions: beforeDeadline && duration !== 'survival'
@@ -384,6 +385,7 @@ test.each([30, 'survival'] as const)('討伐のチャージ・復習・時間切
   act(() => vi.advanceTimersByTime(650))
   expect(screen.queryByText('CRITICAL CHARGE!')).toBeNull()
   act(() => vi.advanceTimersByTime(90_000))
+  finishReleaseWithoutInput()
   expect(onFinish).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
     correctCount: 2, maxCombo: 2, missCount: 2,
     charge: { power: 38, criticalCount: 1 },
@@ -478,4 +480,50 @@ test('討伐サバイバルの時間加算ポップは減衰し、加算終了�
   act(() => vi.advanceTimersByTime(1_000))
   correct()
   expect(screen.queryByText('＋1秒')).toBeNull()
+})
+
+
+function finishReleaseWithoutInput() {
+  for (const ms of [450, 1000, 200, 1400]) {
+    act(() => vi.advanceTimersByTime(ms))
+  }
+}
+
+test.each(['keyboard', 'button', 'early', 'timeout'] as const)('時間切れ後に解放する（%s）', (input) => {
+  vi.useFakeTimers()
+  const onFinish = vi.fn()
+  const { container } = render(
+    <GameScreen level={1} mode="addition" duration={30} skipCountdown showMonsterBattle onFinish={onFinish} />,
+  )
+
+  act(() => vi.advanceTimersByTime(30_050))
+  expect(screen.getByText('CHARGE COMPLETE')).toBeTruthy()
+  expect(onFinish).not.toHaveBeenCalled()
+  expect(screen.queryByRole('group', { name: 'テンキー' })).toBeNull()
+  act(() => vi.advanceTimersByTime(450))
+
+  const critical = input === 'keyboard' || input === 'button'
+  if (critical) {
+    act(() => vi.advanceTimersByTime(250))
+    if (input === 'keyboard') fireEvent.keyDown(window, { key: 'Enter' })
+    else fireEvent.click(screen.getByRole('button', { name: '決定' }))
+    expect(screen.getByText('CRITICAL RELEASE!')).toBeTruthy()
+  } else if (input === 'early') {
+    fireEvent.keyDown(window, { key: 'Enter' })
+  } else {
+    act(() => vi.advanceTimersByTime(1000))
+  }
+
+  const releaseScene = container.querySelector('.release-scene')
+  expect(releaseScene?.getAttribute('data-phase')).toBe('impact')
+  act(() => vi.advanceTimersByTime(199))
+  expect(releaseScene?.getAttribute('data-phase')).toBe('impact')
+  act(() => vi.advanceTimersByTime(1))
+  expect(screen.getByText('0 KO')).toBeTruthy()
+  expect(onFinish).not.toHaveBeenCalled()
+  act(() => vi.advanceTimersByTime(1400))
+  expect(onFinish).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+    score: 0,
+    release: { koCount: 0, distanceKm: 0, tier: critical ? 2 : 1 },
+  }))
 })

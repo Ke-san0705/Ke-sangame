@@ -22,7 +22,7 @@ export function ResultScreen({
 }: ResultScreenProps) {
   const {
     correctCount, missCount, accuracy, score, averageAnswerSeconds, reviewQuestions,
-    maxCombo, charge,
+    maxCombo, charge, release,
   } = result
 
   const { best, isNewRecord, pointsToBest } = personalBest
@@ -64,6 +64,18 @@ export function ResultScreen({
             <dt>チャージ量</dt>
             <dd>{charge.power.toLocaleString('ja-JP')}</dd>
           </div>
+        )}
+        {release && (
+          <>
+            <div>
+              <dt>KO数</dt>
+              <dd>{release.koCount.toLocaleString('ja-JP')}</dd>
+            </div>
+            <div>
+              <dt>飛距離</dt>
+              <dd>{release.distanceKm.toLocaleString('ja-JP')} km</dd>
+            </div>
+          </>
         )}
         <div>
           <dt>ミス数</dt>

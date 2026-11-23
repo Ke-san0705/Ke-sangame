@@ -3,9 +3,11 @@ import { createQuestionGenerator, isCorrectAnswer } from '../lib/question-genera
 import type { Level, Question, QuestionMode } from '../lib/question-generator'
 import { calculateCharge } from '../lib/charge'
 import type { ChargeResult } from '../lib/charge'
+import type { ReleaseResult } from '../lib/release'
 import { calculateScore } from '../lib/score'
 import type { SoundCue } from '../lib/soundEffects'
 import { ChargeArena, preloadChargeSprites } from './ChargeArena'
+import { ReleaseSequence } from './ReleaseSequence'
 import './GameScreen.css'
 
 const FINAL_INPUT_DRAIN_MS = 50
@@ -36,6 +38,7 @@ type ReviewQuestion = Pick<Question, 'expression' | 'answer'> & {
 export type GameResult = ReturnType<typeof calculateScore> & {
   correctCount: number
   charge?: ChargeResult
+  release?: ReleaseResult
   maxCombo: number
   averageAnswerSeconds: number
   paceCurve?: number[]
@@ -79,7 +82,8 @@ export function GameScreen({
   const gameScreen = useRef<HTMLElement>(null)
   const { correctCount, incorrectCount, passCount } = counts
   const [countdown, setCountdown] = useState(skipCountdown ? 0 : START_COUNTDOWN_SECONDS)
-  const playing = countdown === 0
+  const [pendingResult, setPendingResult] = useState<GameResult>()
+  const playing = countdown === 0 && pendingResult === undefined
   const [remaining, setRemaining] = useState(initialTimeMs)
   const rushActive = battleSurvival && remaining > 0 && remaining <= RUSH_TIME_MS
   const [timeBonus, setTimeBonus] = useState<{ seconds: number; answerCount: number }>()
@@ -134,7 +138,7 @@ export function GameScreen({
       return cumulativeCorrect
     })
     onSound?.('timeUp')
-    onFinish({
+    const result: GameResult = {
       correctCount,
       maxCombo,
       ...(showMonsterBattle && {
@@ -144,7 +148,9 @@ export function GameScreen({
       paceCurve,
       reviewQuestions: reviewQuestions.current,
       averageAnswerSeconds: correctCount === 0 ? 0 : totalCorrectAnswerMs.current / correctCount / 1000,
-    })
+    }
+    if (result.charge) setPendingResult(result)
+    else onFinish(result)
   }
 
   function updateRemaining(timeLeft: number) {
@@ -345,6 +351,16 @@ export function GameScreen({
       finishShake()
     }
   }, [correctCount, showMonsterBattle])
+
+  if (pendingResult?.charge) {
+    return (
+      <ReleaseSequence
+        power={pendingResult.charge.power}
+        correctCount={pendingResult.correctCount}
+        onComplete={(release) => onFinish({ ...pendingResult, release })}
+      />
+    )
+  }
 
   if (!playing) {
     return (
