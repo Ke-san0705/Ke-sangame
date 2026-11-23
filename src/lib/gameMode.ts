@@ -29,6 +29,7 @@ export const defaultMode: PlayMode = { operation: 'mix', level: 1, duration: 60 
 export const presentations = {
   calculation: '計算モード',
   monster: 'モンスター討伐モード',
+  setsuna: '刹那',
 } as const
 
 export type GamePresentation = keyof typeof presentations
@@ -37,7 +38,8 @@ const presentationKey = 'ke-sangame:game-presentation'
 
 export function readGamePresentation(): GamePresentation {
   try {
-    return localStorage.getItem(presentationKey) === 'monster' ? 'monster' : 'calculation'
+    const saved = localStorage.getItem(presentationKey)
+    return saved === 'monster' || saved === 'setsuna' ? saved : 'calculation'
   } catch {
     return 'calculation'
   }

@@ -8,7 +8,7 @@ import { calculateScore } from '../lib/score'
 import type { SoundCue } from '../lib/soundEffects'
 import { ChargeArena, preloadChargeSprites } from './ChargeArena'
 import { ReleaseSequence } from './ReleaseSequence'
-import './GameScreen.css'
+import { GameKeypad, gameKey, keypadRows } from './GameKeypad'
 
 const FINAL_INPUT_DRAIN_MS = 50
 const START_COUNTDOWN_SECONDS = 3
@@ -30,7 +30,6 @@ function survivalBonusMs(correctCount: number) {
 const CRITICAL_TIME_MS = { 1: 3_000, 2: 4_000, 3: 5_000, 4: 7_000, 5: 10_000 }
 const PASS_PENALTY_MS = 3_000
 const PASS_REVEAL_MS = 1_000
-const KEYPAD_ROWS = ['7', '8', '9', 'C', '4', '5', '6', 'pass', '1', '2', '3', 'Enter']
 
 type ReviewQuestion = Pick<Question, 'expression' | 'answer'> & {
   outcome: 'miss' | 'pass' | 'timeout'
@@ -279,11 +278,8 @@ export function GameScreen({
   }
 
   const handleKeyboard = useEffectEvent((event: KeyboardEvent) => {
-    if (event.ctrlKey || event.metaKey || event.altKey || event.isComposing) return
-    const key = event.key === 'Backspace' ? 'C'
-      : event.key === 'Tab' ? 'pass'
-      : event.key
-    if (!['C', 'pass', 'Enter', '.', '-'].includes(key) && !/^\d$/.test(key)) return
+    const key = gameKey(event)
+    if (!key) return
     event.preventDefault()
     if (event.repeat && (key === 'pass' || key === 'Enter')) return
     handleKey(key, event.isTrusted ? event.timeStamp : undefined)
@@ -392,7 +388,7 @@ export function GameScreen({
   const remainingSeconds = Math.ceil(remaining / 1000)
   const { score } = calculateScore({ ...counts, level })
   const percentage = Math.min(100, remaining / initialTimeMs * 100)
-  const keypad = [...KEYPAD_ROWS, '0']
+  const keypad = [...keypadRows, '0']
   if (acceptsNegative) keypad.push('−')
   if (acceptsDecimal) keypad.push('.')
 
@@ -448,22 +444,7 @@ export function GameScreen({
         answer={(showPassAnswer ? question.answer : answer).replace('-', '−')}
         showPassAnswer={showPassAnswer}
       />
-      <div className="game-keypad" role="group" aria-label="テンキー">
-        {keypad.map((key) => (
-          <button
-            key={key}
-            type="button"
-            disabled={showPassAnswer}
-            className={`game-key game-key-${key === '.' ? 'decimal' : key === '−' ? 'minus' : key}`}
-            onClick={(event) => handleKey(
-              key === '−' ? '-' : key,
-              event.isTrusted ? event.timeStamp : undefined,
-            )}
-          >
-            {key}
-          </button>
-        ))}
-      </div>
+      <GameKeypad keys={keypad} disabled={showPassAnswer} onKey={handleKey} />
       <div className="game-shortcuts">
         <span>Enter：決定</span>
         <span>Backspace：クリア</span>

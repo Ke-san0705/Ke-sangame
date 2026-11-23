@@ -1,0 +1,135 @@
+.setsuna-screen {
+  box-sizing: border-box;
+  min-block-size: 100dvh;
+  padding: 16px;
+  text-align: center;
+}
+
+.setsuna-header {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  max-inline-size: 36rem;
+  margin-inline: auto;
+}
+
+.setsuna-header h1 {
+  margin: 0;
+}
+
+.setsuna-header button,
+.setsuna-actions button {
+  min-block-size: 44px;
+  padding-inline: 12px;
+}
+
+.setsuna-header button {
+  justify-self: start;
+}
+
+.setsuna-arena {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(9rem, 1.25fr) minmax(0, 1fr);
+  align-items: center;
+  min-block-size: clamp(145px, 33dvh, 280px);
+  max-inline-size: 36rem;
+  margin: 16px auto 0;
+  overflow: hidden;
+  border-radius: 14px;
+  background: linear-gradient(#182438, #0a0e19);
+}
+
+.setsuna-arena img {
+  inline-size: 100%;
+  align-self: end;
+}
+
+.setsuna-mirrored {
+  transform: scaleX(-1);
+}
+
+.setsuna-message {
+  display: grid;
+  gap: 4px;
+  font-size: clamp(1rem, 5vw, 2rem);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.setsuna-message strong {
+  font-size: clamp(2rem, 8vw, 4rem);
+}
+
+.setsuna-reaction {
+  font-size: clamp(1.5rem, 7vw, 3.25rem);
+  white-space: nowrap;
+}
+
+.setsuna-screen .game-keypad {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  padding: 16px 0;
+}
+
+.setsuna-screen[data-outcome="loss"] {
+  background: radial-gradient(#861a28, #490e18);
+}
+
+.setsuna-screen[data-outcome="win"] {
+  background: #101010;
+}
+
+.setsuna-screen[data-outcome="win"] .setsuna-arena {
+  color: #101010;
+  background: repeating-conic-gradient(at 50% 55%, #fff 0deg 9deg, #dedede 9deg 10deg);
+}
+
+.setsuna-screen[data-outcome="win"] img {
+  filter: grayscale(1) contrast(2.5);
+}
+
+.setsuna-screen[data-outcome="win"] .setsuna-arena::after {
+  content: '';
+  position: absolute;
+  inset: 50% -15% auto;
+  block-size: 5px;
+  background: #ed172e;
+  box-shadow: 0 0 12px #e3162b;
+  transform: rotate(-15deg);
+  animation: setsuna-slash 400ms ease-out both;
+  pointer-events: none;
+}
+
+@keyframes setsuna-slash {
+  from { clip-path: inset(0 100% 0 0); }
+  65% { clip-path: inset(0); }
+  to { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .setsuna-screen[data-outcome="win"] .setsuna-arena::after {
+    animation: none;
+    inset-block-start: 80%;
+  }
+}
+
+.setsuna-actions {
+  margin-block-start: 20px;
+}
+
+.setsuna-records {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px 24px;
+  margin: 24px 0;
+  text-align: center;
+  font-size: 0.875rem;
+}
+
+.setsuna-records dd {
+  margin: 4px 0 0;
+  font-size: 1.125rem;
+  font-weight: 700;
+}

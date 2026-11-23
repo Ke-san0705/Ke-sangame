@@ -2,6 +2,7 @@ const cues = {
   correct: [660, 880],
   incorrect: [180],
   countdown: [520],
+  heartbeat: [62, 48],
   timeUp: [660, 494, 330],
 } as const
 

@@ -1,3 +1,5 @@
+import { readSetsunaBest } from '../lib/setsuna'
+import { SetsunaRecords } from './SetsunaScreen'
 import { DifficultyInfo } from './DifficultyInfo'
 import { durations, levels, operations, presentations, type GamePresentation, type PlayMode } from '../lib/gameMode'
 import type { ReplayRecords } from '../lib/replayRecords'
@@ -46,55 +48,61 @@ export function TopScreen({
         </div>
       </header>
 
-      <div className="operation-options" role="group" aria-label="演算">
-        {operationKeys.map((operation) => (
-          <button
-            key={operation}
-            type="button"
-            className={operation === 'mix' ? 'mix-option' : undefined}
-            aria-label={operations[operation].label}
-            aria-pressed={mode.operation === operation}
-            onClick={() => onModeChange({ ...mode, operation })}
-          >
-            {operations[operation].symbol}
-          </button>
-        ))}
-      </div>
+      {presentation === 'setsuna' ? (
+        <SetsunaRecords best={readSetsunaBest()} />
+      ) : (
+        <>
+          <div className="operation-options" role="group" aria-label="演算">
+            {operationKeys.map((operation) => (
+              <button
+                key={operation}
+                type="button"
+                className={operation === 'mix' ? 'mix-option' : undefined}
+                aria-label={operations[operation].label}
+                aria-pressed={mode.operation === operation}
+                onClick={() => onModeChange({ ...mode, operation })}
+              >
+                {operations[operation].symbol}
+              </button>
+            ))}
+          </div>
 
-      <div className="level-options" role="group" aria-label="レベル">
-        {levelKeys.map((level) => (
-          <button
-            key={level}
-            type="button"
-            aria-pressed={mode.level === level}
-            onClick={() => onModeChange({ ...mode, level })}
-          >
-            Lv.{level}{'\u3000'}{levels[level]}
-          </button>
-        ))}
-        <DifficultyInfo />
-      </div>
+          <div className="level-options" role="group" aria-label="レベル">
+            {levelKeys.map((level) => (
+              <button
+                key={level}
+                type="button"
+                aria-pressed={mode.level === level}
+                onClick={() => onModeChange({ ...mode, level })}
+              >
+                Lv.{level}{'\u3000'}{levels[level]}
+              </button>
+            ))}
+            <DifficultyInfo />
+          </div>
 
-      <div className="duration-options" role="group" aria-label="制限時間">
-        {durations.map((duration) => (
-          <button
-            key={duration}
-            type="button"
-            aria-pressed={mode.duration === duration}
-            onClick={() => onModeChange({ ...mode, duration })}
-          >
-            {duration}秒
-          </button>
-        ))}
-        <button
-          type="button"
-          className="survival-option"
-          aria-pressed={mode.duration === 'survival'}
-          onClick={() => onModeChange({ ...mode, duration: 'survival' })}
-        >
-          サバイバル
-        </button>
-      </div>
+          <div className="duration-options" role="group" aria-label="制限時間">
+            {durations.map((duration) => (
+              <button
+                key={duration}
+                type="button"
+                aria-pressed={mode.duration === duration}
+                onClick={() => onModeChange({ ...mode, duration })}
+              >
+                {duration}秒
+              </button>
+            ))}
+            <button
+              type="button"
+              className="survival-option"
+              aria-pressed={mode.duration === 'survival'}
+              onClick={() => onModeChange({ ...mode, duration: 'survival' })}
+            >
+              サバイバル
+            </button>
+          </div>
+        </>
+      )}
 
       <button type="button" className="start-button" onClick={onStart}>START</button>
       <p className="top-replay-records">
