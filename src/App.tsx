@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { GameScreen, type GameResult } from './components/GameScreen'
 import { RankingScreen } from './components/RankingScreen'
 import { ResultScreen } from './components/ResultScreen'
-import { savePersonalBest } from './lib/personalBest'
+import { readPersonalBestCurve, savePersonalBest } from './lib/personalBest'
 import { TopScreen } from './components/TopScreen'
 import { defaultMode, type GameMode, type PlayMode } from './lib/gameMode'
 import { createSoundEffects, readMuted, saveMuted } from './lib/soundEffects'
@@ -20,7 +20,7 @@ const questionModes = {
 
 type Screen =
   | { name: 'top' }
-  | { name: 'game'; mode: PlayMode; skipCountdown: boolean }
+  | { name: 'game'; mode: PlayMode; skipCountdown: boolean; bestCurve?: number[] }
   | { name: 'result'; mode: PlayMode; result: GameResult; personalBest: ReturnType<typeof savePersonalBest>; playedOnline: boolean }
   | { name: 'ranking'; mode: GameMode }
 
@@ -53,7 +53,7 @@ export function App() {
   const startGame = (gameMode: PlayMode, skipCountdown = false) => {
     if (!muted) sound.unlock()
     playedOnline.current = isOnline()
-    setScreen({ name: 'game', mode: gameMode, skipCountdown })
+    setScreen({ name: 'game', mode: gameMode, skipCountdown, bestCurve: readPersonalBestCurve(gameMode) })
   }
   const goBack = () => setScreen({ name: 'top' })
 
@@ -65,10 +65,11 @@ export function App() {
         mode={questionModes[gameMode.operation]}
         duration={gameMode.duration}
         skipCountdown={screen.skipCountdown}
+        bestCurve={screen.bestCurve}
         onSound={muted ? undefined : sound.play}
         onFinish={(result) => {
           const personalBest = savePersonalBest(
-            gameMode, gameMode.duration === 'survival' ? result.correctCount : result.score,
+            gameMode, gameMode.duration === 'survival' ? result.correctCount : result.score, result.paceCurve,
           )
           setScreen({
             name: 'result', mode: gameMode, result, personalBest,
