@@ -74,6 +74,15 @@ test.each(['計算モード', 'モンスター討伐モード'])('%sで任意の
     expect(screen.getByText('正解 11')).toBeTruthy()
   }
   finish()
+  if (presentation === 'モンスター討伐モード') {
+    advance(450)
+    advance(250)
+    click('決定')
+    expect(screen.getByText('CRITICAL RELEASE!')).toBeTruthy()
+    advance(200)
+    expect(screen.getByText('新星座誕生')).toBeTruthy()
+    advance(1400)
+  }
   expect(screen.getByText('1,584 pt')).toBeTruthy()
 
   const nickname = screen.getByRole('textbox', { name: 'ニックネーム' })

@@ -1,0 +1,325 @@
+.release-scene {
+  --release-moon-size: min(15vw, 13dvh);
+  --release-moon-x: calc(35vw - var(--release-moon-size) / 2);
+  --release-moon-y: calc(-20dvh + var(--release-moon-size) / 2);
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  min-block-size: 100dvh;
+  overflow: clip;
+  background: #030615;
+  color: #fff;
+}
+
+.release-scene .charge-arena,
+.release-world,
+.release-hud {
+  grid-area: 1 / 1;
+}
+
+.release-scene .charge-arena {
+  inline-size: 100%;
+  min-block-size: 100%;
+  margin: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+
+.release-scene:is([data-phase="ready"], [data-phase="meter"]) .charge-arena {
+  opacity: 0.23;
+}
+
+.release-scene[data-phase="ready"] .charge-arena {
+  animation: release-dim 240ms ease-out both;
+}
+
+.release-scene .charge-cannon {
+  max-block-size: 37%;
+}
+
+.release-scene .charge-shockwave,
+.release-scene[data-phase="aftermath"] .charge-barrier {
+  display: none;
+}
+
+.release-world,
+.release-land,
+.release-orbit {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.release-land {
+  background: linear-gradient(0deg, #020410, #06091748), var(--release-castle) center / cover;
+  opacity: 0.35;
+}
+
+.release-scene[data-tier="2"] .release-land {
+  background-image: linear-gradient(0deg, #030614, #03061450), var(--release-continent);
+}
+
+.release-scene[data-tier="3"] .release-land,
+.release-scene[data-tier="1"] .release-orbit,
+.release-scene[data-tier="2"] .release-constellation {
+  display: none;
+}
+
+.release-orbit {
+  opacity: 0;
+  background:
+    radial-gradient(circle at 16% 22%, #fff 1px, transparent 2px),
+    radial-gradient(circle at 82% 29%, #aff6ff 1px, transparent 2px),
+    radial-gradient(circle at 28% 73%, #fff 1px, transparent 2px),
+    radial-gradient(ellipse at 52% 40%, #1e2251, #030615 75%);
+}
+
+.release-planet,
+.release-moon {
+  position: absolute;
+  border-radius: 50%;
+}
+
+.release-planet {
+  inset: 12% 0 auto;
+  margin-inline: auto;
+  inline-size: min(56vw, 48dvh);
+  aspect-ratio: 1;
+  background: var(--release-continent) 52% 59% / cover, #307991;
+  background-blend-mode: luminosity;
+  box-shadow: inset -18px -18px 35px #030512, 0 0 35px #459fff9c;
+}
+
+.release-scene[data-tier="2"] .release-planet {
+  inset: 55% auto auto 8%;
+  inline-size: min(45vw, 38dvh);
+  background-image:
+    linear-gradient(123deg, transparent 47%, #030615 48% 52%, transparent 53%),
+    linear-gradient(38deg, transparent 56%, #030615 57% 59%, transparent 60%),
+    var(--release-continent);
+}
+
+.release-moon {
+  inset: 7% 15% auto auto;
+  inline-size: var(--release-moon-size);
+  aspect-ratio: 1;
+  background: radial-gradient(circle at 31% 46%, #7b8299 8%, transparent 10%),
+    radial-gradient(circle at 63% 62%, #7b8299 12%, transparent 14%),
+    radial-gradient(circle at 40% 30%, #e8eef8, #444e70 80%);
+  box-shadow: 0 0 20px #dce8ff4d;
+}
+
+.release-scene[data-tier="3"] .release-moon {
+  display: none;
+}
+
+.release-constellation {
+  position: absolute;
+  inset: 12% 32% 47%;
+  background:
+    radial-gradient(circle at 20% 64%, white 2px, transparent 5px),
+    radial-gradient(circle at 45% 18%, white 3px, transparent 6px),
+    radial-gradient(circle at 65% 52%, white 2px, transparent 5px),
+    radial-gradient(circle at 83% 28%, white 2px, transparent 5px),
+    #73cfff;
+  clip-path: polygon(19% 64%, 45% 15%, 65% 49%, 84% 26%, 84% 30%, 65% 54%, 45% 20%, 21% 66%);
+  filter: drop-shadow(0 0 9px #90eaff);
+  opacity: 0;
+}
+
+.release-beam {
+  position: absolute;
+  pointer-events: none;
+  z-index: 2;
+  inset: 0 0 13%;
+  inline-size: min(48vw, 32rem);
+  margin-inline: auto;
+  clip-path: polygon(0 0, 100% 0, 65% 100%, 35% 100%);
+  background: linear-gradient(90deg, #8b55fa 0%, #82efff 21%, #fff 39% 61%, #82efff 79%, #8b55fa 100%);
+}
+
+.release-scene[data-phase="aftermath"] .release-beam {
+  animation: release-fade 240ms ease-out both;
+}
+
+.release-hud {
+  position: relative;
+  z-index: 3;
+  align-self: center;
+  display: grid;
+  justify-items: center;
+  gap: 12px;
+  padding: 16px;
+  text-align: center;
+}
+
+.release-status {
+  display: grid;
+  gap: 6px;
+  font-size: clamp(1.25rem, 5vw, 2.7rem);
+  font-weight: 900;
+  text-shadow: 0 2px 4px #020410, 0 0 14px #020410, 0 0 24px #020410;
+}
+
+.release-scene[data-phase="ready"] .release-status {
+  animation: release-appear 120ms 240ms ease-out both;
+}
+
+.release-status .release-ko {
+  color: #ffedab;
+  font-size: clamp(2.8rem, 12vw, 7rem);
+  line-height: 1;
+}
+
+.release-meter {
+  position: relative;
+  inline-size: min(100%, 20rem);
+  block-size: 24px;
+  border: 2px solid #9bdcef;
+  border-radius: 8px;
+  background: #152743;
+}
+
+.release-meter-target,
+.release-meter-needle {
+  position: absolute;
+  inset-block: 0;
+}
+
+.release-meter-target {
+  inset-inline: 42% 42%;
+  background: #ffcf6f;
+}
+
+.release-meter-needle {
+  left: 0;
+  inline-size: 4px;
+  translate: -50%;
+  background: white;
+  box-shadow: 0 0 7px #8affff;
+}
+
+.release-confirm {
+  min-block-size: 44px;
+  min-inline-size: 110px;
+  padding: 8px 22px;
+  border: 1px solid #a3d9ed;
+  border-radius: 8px;
+  background: #163c59;
+  color: #fff;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.release-scene[data-phase="aftermath"] .charge-swarm img {
+  animation: release-fade 420ms ease-out both;
+}
+
+.release-scene[data-phase="aftermath"]:is([data-tier="1"], [data-tier="2"]) .release-land {
+  animation: release-fade 900ms ease-out both;
+}
+
+.release-scene:is([data-phase="impact"], [data-phase="aftermath"])[data-tier="3"] .release-orbit,
+.release-scene[data-phase="aftermath"][data-tier="2"] .release-orbit {
+  opacity: 1;
+}
+
+.release-scene[data-phase="aftermath"][data-tier="2"] .release-orbit,
+.release-scene[data-phase="aftermath"] .release-ko {
+  animation: release-appear 420ms ease-out both;
+}
+
+.release-scene[data-phase="aftermath"][data-tier="3"] .release-planet {
+  background-image:
+    linear-gradient(127deg, transparent 46%, #fff 47% 48%, #ff752e 49%, transparent 51%),
+    linear-gradient(28deg, transparent 52%, #ffc275 53% 55%, transparent 56%),
+    var(--release-continent);
+  animation: release-explode 780ms ease-out both;
+}
+
+.release-scene[data-phase="aftermath"][data-tier="3"] .release-constellation {
+  animation: release-appear 400ms 500ms ease-out both;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .release-scene[data-phase="aftermath"] .charge-swarm img {
+    animation: release-flight 640ms cubic-bezier(.26, .65, .48, 1) both;
+  }
+
+  .release-scene[data-phase="aftermath"][data-tier="2"] .charge-swarm img {
+    animation-name: release-to-moon;
+  }
+
+  .release-scene[data-phase="aftermath"] .release-world {
+    animation: release-shake 240ms ease-out;
+  }
+
+  .release-scene[data-phase="aftermath"][data-tier="1"] .release-land {
+    animation: release-collapse 900ms ease-in both;
+  }
+
+  .release-scene[data-phase="aftermath"][data-tier="2"] .release-land {
+    animation: release-collapse 480ms ease-in both;
+  }
+
+  .release-scene[data-phase="aftermath"][data-tier="2"] .release-orbit {
+    animation-delay: 210ms;
+  }
+}
+
+@keyframes release-dim {
+  from { opacity: 0.75; }
+  to { opacity: 0.23; }
+}
+
+@keyframes release-fade {
+  to { opacity: 0; }
+}
+
+@keyframes release-appear {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes release-flight {
+  to {
+    opacity: 0;
+    transform: translate(var(--release-flight-x), var(--release-flight-y)) rotate(36deg) scale(0.12);
+  }
+}
+
+@keyframes release-to-moon {
+  78% {
+    transform: translate(
+      calc(var(--release-moon-x) - var(--release-start-x)),
+      calc(var(--release-moon-y) - var(--release-start-y))
+    ) scale(0.12);
+  }
+  to {
+    opacity: 0;
+    transform: translate(
+      calc(var(--release-moon-x) - var(--release-start-x)),
+      -64dvh
+    ) scale(0.03);
+  }
+}
+
+@keyframes release-shake {
+  25% { transform: translateX(-8px); }
+  55% { transform: translateX(7px); }
+  80% { transform: translateX(-3px); }
+}
+
+@keyframes release-collapse {
+  25% { transform: translateY(3%) rotate(-2deg); }
+  to { opacity: 0; transform: translateY(55%) rotate(7deg); }
+}
+
+@keyframes release-explode {
+  30% { filter: brightness(2.4); }
+  to { opacity: 0; }
+}

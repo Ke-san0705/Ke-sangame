@@ -17,10 +17,12 @@ export function ChargeArena({ correctCount }: { correctCount: number }) {
   const color = correctCount >= 15 ? 'black' : correctCount >= 9 ? 'red' : correctCount >= 4 ? 'yellow' : 'blue'
   const compression = correctCount / (correctCount + 10)
   const monsterCount = Math.min(maxMonsters, initialMonsters + correctCount)
+  const swarmWidth = 92 - 50 * compression
+  const swarmHeight = 46 - 22 * compression
   const arenaStyle = {
     '--charge-scale': 0.58 + 1.5 * compression,
-    '--swarm-width': `${92 - 50 * compression}%`,
-    '--swarm-height': `${46 - 22 * compression}%`,
+    '--swarm-width': `${swarmWidth}%`,
+    '--swarm-height': `${swarmHeight}%`,
   } as CSSProperties
 
   return (
@@ -29,6 +31,7 @@ export function ChargeArena({ correctCount }: { correctCount: number }) {
         {Array.from({ length: monsterCount }, (_, index) => {
           const angle = index * goldenAngle
           const radius = Math.sqrt((index + 0.5) / monsterCount) * 48
+          const horizontal = Math.cos(angle) * radius
           const depth = Math.sin(angle) * radius
           return (
             <img
@@ -37,10 +40,14 @@ export function ChargeArena({ correctCount }: { correctCount: number }) {
               alt=""
               decoding="async"
               style={{
-                left: `${50 + Math.cos(angle) * radius}%`,
+                '--release-flight-x': `${Math.cos(angle) * 43}vw`,
+                '--release-flight-y': `${-80 - Math.abs(Math.sin(angle)) * 24}dvh`,
+                '--release-start-x': `${horizontal * swarmWidth / 100}vw`,
+                '--release-start-y': `${depth * swarmHeight / 100}dvh`,
+                left: `${50 + horizontal}%`,
                 top: `${50 + depth}%`,
                 zIndex: Math.round(50 + depth),
-              }}
+              } as CSSProperties}
             />
           )
         })}

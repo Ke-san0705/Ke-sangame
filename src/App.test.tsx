@@ -334,13 +334,21 @@ test.each(['30秒', 'サバイバル'])('モンスター討伐モードの%sで�
   enter(first().answer)
   expect(screen.getByText('CRITICAL CHARGE!')).toBeTruthy()
   advance(30_050)
+  expect(screen.getByText('CHARGE COMPLETE')).toBeTruthy()
+  for (const ms of [450, 1000, 200, 1400]) advance(ms)
   expect(screen.getByRole('heading', { name: 'TIME UP!' })).toBeTruthy()
   expect(screen.getByText('チャージ量').nextElementSibling?.textContent).toBe('23')
+  expect(screen.getByText('KO数').nextElementSibling?.textContent).toBe('230')
+  expect(screen.getByText('飛距離').nextElementSibling?.textContent).toBe('2,645 km')
   click('もう1回')
   expect(document.querySelector('.charge-arena')?.getAttribute('data-color')).toBe('blue')
   expect(screen.queryByText('CRITICAL CHARGE!')).toBeNull()
   advance(30_050)
+  expect(screen.getByText('CHARGE COMPLETE')).toBeTruthy()
+  for (const ms of [450, 1000, 200, 1400]) advance(ms)
   expect(screen.getByText('チャージ量').nextElementSibling?.textContent).toBe('0')
+  expect(screen.getByText('KO数').nextElementSibling?.textContent).toBe('0')
+  expect(screen.getByText('飛距離').nextElementSibling?.textContent).toBe('0 km')
 })
 
 test.each(['30秒', 'サバイバル'])('計算モードの%sでチャージ画面とチャージ結果を表示しない', (duration) => {
@@ -357,6 +365,8 @@ test.each(['30秒', 'サバイバル'])('計算モードの%sでチャージ画�
   advance(30_050)
   expect(screen.getByRole('heading', { name: 'TIME UP!' })).toBeTruthy()
   expect(screen.queryByText('チャージ量')).toBeNull()
+  expect(screen.queryByText('KO数')).toBeNull()
+  expect(screen.queryByText('飛距離')).toBeNull()
 })
 
 test('選択した表示モードを次の起動時にも復元する', () => {
