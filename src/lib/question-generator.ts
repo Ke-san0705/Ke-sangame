@@ -53,7 +53,7 @@ const definitions = {
     commutative: true,
     decimalsFrom: 2,
     ranges: {
-      1: [[1, 99], [1, 9]],
+      1: [[1, 9], [1, 9]],
       2: [[1, 999], [1, 99]],
       3: [[1, 9999], [1, 999]],
       4: [[1000, 9999], [1000, 9999]],
@@ -67,7 +67,7 @@ const definitions = {
     commutative: false,
     decimalsFrom: 2,
     ranges: {
-      1: [[10, 99], [1, 9]],
+      1: [[2, 18], [1, 9]],
       2: [[1, 999], [1, 99]],
       3: [[1, 9999], [1, 999]],
       4: [[1000, 9999], [1000, 9999]],
@@ -75,8 +75,10 @@ const definitions = {
     },
     sample: (random, [leftRange, rightRange], level) => {
       const left = draw(random, leftRange)
+      // Keep the Lv.1 difference within 0–9 for every sampled sum.
+      const rightMin = level === 1 ? Math.max(rightRange[0], left - 9) : rightRange[0]
       const rightMax = level <= 2 ? Math.min(rightRange[1], left) : rightRange[1]
-      return [BigInt(left) * SCALE, BigInt(draw(random, [rightRange[0], rightMax])) * SCALE]
+      return [BigInt(left) * SCALE, BigInt(draw(random, [rightMin, rightMax])) * SCALE]
     },
     calculate: (left, right) => left - right,
   },
@@ -192,9 +194,21 @@ function sampleExpression(operation: Operation, level: Level, random: Random, pl
   return combine(operation, literal(left), literal(right))
 }
 
+// Lv.4 parentheses retain their original integer operand ranges.
+const level4GroupedRanges: Record<'addition' | 'subtraction', Ranges> = {
+  addition: [[1, 99], [1, 9]],
+  subtraction: [[10, 99], [1, 9]],
+}
+
 function sampleGroupedExpression(operation: Operation, level: Level, random: Random, plain: boolean) {
   const innerOperation = random() < 0.5 ? 'addition' : 'subtraction'
-  const inner = sampleExpression(innerOperation, level === 4 ? 1 : level, random, plain)
+  let inner: Expression
+  if (level === 4) {
+    const [left, right] = samplePair(random, level4GroupedRanges[innerOperation])
+    inner = combine(innerOperation, literal(left), literal(right))
+  } else {
+    inner = sampleExpression(innerOperation, level, random, plain)
+  }
   const outerValue = BigInt(draw(random, definitions[operation].ranges[level][0])) * SCALE
   const left = literal(level === 5 && !plain ? signed(random, outerValue) : outerValue)
   return combine(operation, left, { ...inner, text: `(${inner.text})` })

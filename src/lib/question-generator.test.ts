@@ -15,7 +15,7 @@ const operations = ['addition', 'subtraction', 'multiplication', 'division'] as 
 const groupedExpression = /[+−] \((?:\(−[\d.]+\)|[\d.]+) [+−] (?:\(−[\d.]+\)|[\d.]+)\)$/
 const symbols = { addition: '+', subtraction: '−', multiplication: '×', division: '÷' }
 const maxima = [
-  [[99, 9], [99, 9], [9, 9], [81, 9]],
+  [[9, 9], [18, 9], [9, 9], [81, 9]],
   [[999, 99], [999, 99], [99, 99], [999, 9]],
   [[9999, 999], [9999, 999], [99, 99], [9999, 99]],
   [[9999, 9999], [9999, 9999], [99, 999], [9999, 99]],
@@ -95,9 +95,14 @@ describe.each(levels)('Lv.%i', (level) => {
         if (level === 1) expect(Math.abs(answer)).toBeLessThanOrEqual(9)
         if (level === 2) expect(left).toBeGreaterThanOrEqual(10)
       }
+      if (level === 1 && operation === 'addition') {
+        expect(question.expression).toMatch(/^[1-9] \+ [1-9]$/)
+        expect(answer).toBeLessThanOrEqual(18)
+      }
       if (level === 1 && operation === 'subtraction') {
-        expect(left).toBeGreaterThanOrEqual(10)
-        expect(answer).toBeGreaterThanOrEqual(0)
+        expect(left).toBeGreaterThanOrEqual(2)
+        expect(question.expression).toMatch(/^\d{1,2} − [1-9]$/)
+        expect(question.answer).toMatch(/^\d$/)
       }
       if (level === 2 && operation === 'multiplication') {
         expect(left).toBeGreaterThanOrEqual(10)
@@ -130,6 +135,15 @@ describe.each(levels)('Lv.%i', (level) => {
       }
       expect(rest.every((value) => value <= rightMax)).toBe(true)
       expect(Number(answer)).toBeCloseTo(evaluate(expression), 7)
+      if (level === 1 && operation === 'addition') {
+        expect(expression).toMatch(/^[1-9] \+ [1-9]$/)
+        expect(Number(answer)).toBeLessThanOrEqual(18)
+      }
+      if (level === 1 && operation === 'subtraction') {
+        expect(left).toBeGreaterThanOrEqual(2)
+        expect(expression).toMatch(/^\d{1,2} − [1-9]$/)
+        expect(answer).toMatch(/^\d$/)
+      }
       if (operation === 'division') {
         expect(Number.isInteger(Number(answer))).toBe(true)
         expect(rest[0]).toBeGreaterThan(1)
@@ -139,6 +153,26 @@ describe.each(levels)('Lv.%i', (level) => {
       }
     }
   })
+})
+
+it.each([
+  { operation: 'addition', draws: [0.999, 0.999], expression: '9 + 9', answer: '18' },
+  { operation: 'subtraction', draws: [0, 0.999], expression: '2 − 2', answer: '0' },
+  { operation: 'subtraction', draws: [0.999, 0.999], expression: '18 − 9', answer: '9' },
+] as const)('reaches the Lv.1 boundary $expression', ({ operation, draws, expression, answer }) => {
+  const samples = [...draws]
+  expect(createQuestionGenerator(() => samples.shift()!)(1, operation)).toEqual({
+    operation, expression, answer,
+  })
+})
+
+it('preserves the seeded Lv.4 grouped operands', () => {
+  const questions = nextMany(4, 'mix', 20).filter(({ expression }) => groupedExpression.test(expression))
+  expect(questions.map(({ expression }) => expression)).toEqual([
+    '8464 − (83 − 2)',
+    '8945 − (28 + 4)',
+    '1695 − (48 − 1)',
+  ])
 })
 
 it.each([4, 5] as const)('includes grouped two-step questions in a 20-question Lv.%i mix', (level) => {
@@ -235,7 +269,7 @@ it.each(operations)('excludes the last five %s questions even when the random so
 })
 
 it.each([
-  { operation: 'addition', first: [0.025, 0.5], reverse: [0, 0.045, 0.25], original: '3 + 5', swapped: '5 + 3' },
+  { operation: 'addition', first: [0.25, 0.5], reverse: [0, 0.5, 0.25], original: '3 + 5', swapped: '5 + 3' },
   { operation: 'multiplication', first: [0, 0.5], reverse: [0.5, 0.5, 0], original: '1 × 5', swapped: '5 × 1' },
 ] as const)('excludes reversed operands for $operation across mode changes', ({ operation, first, reverse, original, swapped }) => {
   const draws = [...first, ...reverse]
