@@ -12,6 +12,7 @@ function seededRandom() {
 
 const levels = [1, 2, 3, 4, 5] as const
 const operations = ['addition', 'subtraction', 'multiplication', 'division'] as const
+const groupedExpression = /[+−] \((?:\(−[\d.]+\)|[\d.]+) [+−] (?:\(−[\d.]+\)|[\d.]+)\)$/
 const symbols = { addition: '+', subtraction: '−', multiplication: '×', division: '÷' }
 const maxima = [
   [[99, 9], [99, 9], [9, 9], [81, 9]],
@@ -120,12 +121,28 @@ describe.each(levels)('Lv.%i', (level) => {
       const [leftMax, rightMax] = maxima[level - 1][operations.indexOf(operation)]
       const [left, ...rest] = expression.match(/\d+(?:\.\d+)?/g)!.map(Number)
       expect(left).toBeLessThanOrEqual(leftMax)
-      expect(rest).toHaveLength(1)
+      const grouped = groupedExpression.test(expression)
+      expect(rest).toHaveLength(grouped ? 2 : 1)
+      if (grouped) {
+        expect(level).toBeGreaterThanOrEqual(4)
+        expect(['addition', 'subtraction']).toContain(operation)
+      }
       expect(rest.every((value) => value <= rightMax)).toBe(true)
       expect(Number(answer)).toBeCloseTo(evaluate(expression), 7)
       if (operation === 'division') expect(Number.isInteger(Number(answer))).toBe(true)
     }
   })
+})
+
+it.each([4, 5] as const)('includes grouped two-step questions in a 20-question Lv.%i mix', (level) => {
+  const grouped = nextMany(level, 'mix', 20).filter(({ expression }) => groupedExpression.test(expression))
+
+  expect(grouped.length).toBeGreaterThanOrEqual(2)
+  expect(grouped.length).toBeLessThanOrEqual(4)
+  for (const { expression, answer } of grouped) {
+    expect(Number(answer)).toBeCloseTo(evaluate(expression), 7)
+  }
+  if (level === 5) expect(grouped.some(({ expression }) => expression.includes('(−'))).toBe(true)
 })
 
 it('preserves decimals and signed operands at their respective levels', () => {
