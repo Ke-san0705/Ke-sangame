@@ -122,6 +122,10 @@ button[aria-pressed="true"],
   font-weight: 700;
 }
 
+.duration-options .survival-option {
+  grid-column: 1 / -1;
+}
+
 .start-button {
   inline-size: 100%;
   min-block-size: 80px;

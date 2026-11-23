@@ -4,7 +4,7 @@ import { RankingScreen } from './components/RankingScreen'
 import { ResultScreen } from './components/ResultScreen'
 import { savePersonalBest } from './lib/personalBest'
 import { TopScreen } from './components/TopScreen'
-import { defaultMode, type GameMode } from './lib/gameMode'
+import { defaultMode, type GameMode, type PlayMode } from './lib/gameMode'
 import { createSoundEffects, readMuted, saveMuted } from './lib/soundEffects'
 import type { QuestionMode } from './lib/question-generator'
 
@@ -20,8 +20,8 @@ const questionModes = {
 
 type Screen =
   | { name: 'top' }
-  | { name: 'game'; mode: GameMode }
-  | { name: 'result'; mode: GameMode; result: GameResult; isNewRecord: boolean; playedOnline: boolean }
+  | { name: 'game'; mode: PlayMode }
+  | { name: 'result'; mode: PlayMode; result: GameResult; best: number; isNewRecord: boolean; playedOnline: boolean }
   | { name: 'ranking'; mode: GameMode }
 
 function subscribeOnline(onChange: () => void) {
@@ -40,7 +40,7 @@ export function App() {
   const [sound] = useState(createSoundEffects)
   useEffect(() => sound.dispose, [sound])
 
-  const [mode, setMode] = useState(defaultMode)
+  const [mode, setMode] = useState<PlayMode>(defaultMode)
   const [screen, setScreen] = useState<Screen>({ name: 'top' })
   const online = useSyncExternalStore(subscribeOnline, isOnline)
   const playedOnline = useRef(false)
@@ -50,7 +50,7 @@ export function App() {
     return () => window.removeEventListener('offline', markOffline)
   }, [])
 
-  const startGame = (gameMode: GameMode) => {
+  const startGame = (gameMode: PlayMode) => {
     if (!muted) sound.unlock()
     playedOnline.current = isOnline()
     setScreen({ name: 'game', mode: gameMode })
@@ -66,9 +66,11 @@ export function App() {
         duration={gameMode.duration}
         onSound={muted ? undefined : sound.play}
         onFinish={(result) => {
-          const isNewRecord = savePersonalBest(gameMode, result.score)
+          const { best, isNewRecord } = savePersonalBest(
+            gameMode, gameMode.duration === 'survival' ? result.correctCount : result.score,
+          )
           setScreen({
-            name: 'result', mode: gameMode, result, isNewRecord,
+            name: 'result', mode: gameMode, result, best, isNewRecord,
             playedOnline: playedOnline.current && isOnline(),
           })
         }}
@@ -80,11 +82,12 @@ export function App() {
     return (
       <ResultScreen
         result={screen.result}
+        best={screen.best}
         isNewRecord={screen.isNewRecord}
         mode={screen.mode}
         playedOnline={screen.playedOnline}
         online={online}
-        onViewRanking={() => setScreen({ name: 'ranking', mode: screen.mode })}
+        onViewRanking={(mode) => setScreen({ name: 'ranking', mode })}
         onReplay={() => startGame(screen.mode)}
         onBack={goBack}
       />

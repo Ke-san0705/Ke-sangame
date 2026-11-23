@@ -22,4 +22,6 @@ export type GameMode = {
   duration: (typeof durations)[number]
 }
 
-export const defaultMode: GameMode = { operation: 'add', level: 1, duration: 60 }
+export type PlayMode = GameMode | (Omit<GameMode, 'duration'> & { duration: 'survival' })
+
+export const defaultMode: PlayMode = { operation: 'add', level: 1, duration: 60 }
