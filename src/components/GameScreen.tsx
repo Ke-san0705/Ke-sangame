@@ -272,12 +272,9 @@ export function GameScreen({ level, mode, duration, skipCountdown = false, onSou
           />
         </div>
         <div className="game-status">
-          <div className="game-countdown">
-            <span className="game-stat-label" aria-hidden="true">残り時間（秒）</span>
-            <strong className="game-stat-value" role="timer" aria-label="残り時間">
-              {remainingSeconds}
-            </strong>
-          </div>
+          <strong className="game-stat-value" role="timer" aria-label="残り時間">
+            {remainingSeconds}
+          </strong>
           <div className="game-score" role="group" aria-label="暫定スコア">
             <span className="game-stat-label" aria-hidden="true">スコア（暫定）</span>
             <strong className="game-stat-value">{score.toLocaleString('ja-JP')}</strong>
