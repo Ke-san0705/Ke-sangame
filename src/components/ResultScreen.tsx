@@ -2,6 +2,7 @@ import type { GameResult } from './GameScreen'
 import { getRankProgress } from '../lib/score'
 import type { savePersonalBest } from '../lib/personalBest'
 import type { GameMode, PlayMode } from '../lib/gameMode'
+import type { saveReplayRecords } from '../lib/replayRecords'
 import { rankingConfigured } from '../lib/ranking'
 import { RankingRegistration } from './RankingRegistration'
 import './ResultScreen.css'
@@ -9,6 +10,7 @@ import './ResultScreen.css'
 type ResultScreenProps = {
   result: GameResult
   personalBest: ReturnType<typeof savePersonalBest>
+  replayRecords: ReturnType<typeof saveReplayRecords>
   mode: PlayMode
   playedOnline: boolean
   online: boolean
@@ -18,7 +20,7 @@ type ResultScreenProps = {
 }
 
 export function ResultScreen({
-  result, personalBest, mode, playedOnline, online, onViewRanking, onReplay, onBack,
+  result, personalBest, replayRecords, mode, playedOnline, online, onViewRanking, onReplay, onBack,
 }: ResultScreenProps) {
   const {
     correctCount, missCount, accuracy, score, averageAnswerSeconds, reviewQuestions,
@@ -68,13 +70,25 @@ export function ResultScreen({
         {release && (
           <>
             <div>
-              <dt>KO数</dt>
+              <dt>
+                KO数
+                {replayRecords?.updated.totalKoCount && <strong className="replay-record">新記録</strong>}
+              </dt>
               <dd>{release.koCount.toLocaleString('ja-JP')}</dd>
             </div>
             <div>
-              <dt>飛距離</dt>
+              <dt>
+                飛距離
+                {replayRecords?.updated.maxDistanceKm && <strong className="replay-record">新記録</strong>}
+              </dt>
               <dd>{release.distanceKm.toLocaleString('ja-JP')} km</dd>
             </div>
+            {replayRecords?.updated.earthExplosionCount && (
+              <div>
+                <dt>地球爆破<strong className="replay-record">新記録</strong></dt>
+                <dd>{replayRecords.records.earthExplosionCount.toLocaleString('ja-JP')} 回</dd>
+              </div>
+            )}
           </>
         )}
         <div>

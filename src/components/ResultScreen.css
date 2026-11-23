@@ -204,3 +204,9 @@
 .result-review-answers {
   overflow-wrap: anywhere;
 }
+
+.replay-record {
+  margin-inline-start: 6px;
+  color: var(--color-accent);
+  white-space: nowrap;
+}
