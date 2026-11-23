@@ -17,9 +17,10 @@ type Phase =
   | { name: 'ready' | 'meter' }
   | { name: 'impact' | 'aftermath'; critical: boolean; release: ReleaseResult }
 
-export function ReleaseSequence({ power, correctCount, onComplete }: {
+export function ReleaseSequence({ power, correctCount, overcharged, onComplete }: {
   power: number
   correctCount: number
+  overcharged: boolean
   onComplete: (release: ReleaseResult) => void
 }) {
   const [phase, setPhase] = useState<Phase>({ name: 'ready' })
@@ -30,7 +31,7 @@ export function ReleaseSequence({ power, correctCount, onComplete }: {
   function fire(critical: boolean) {
     if (meterStartedAt.current === null) return
     meterStartedAt.current = null
-    setPhase({ name: 'impact', critical, release: calculateRelease(power, critical) })
+    setPhase({ name: 'impact', critical, release: calculateRelease(power, critical, overcharged) })
   }
 
   function confirm() {
@@ -77,7 +78,7 @@ export function ReleaseSequence({ power, correctCount, onComplete }: {
   }, [phase])
 
   const fired = 'release' in phase
-  const tier = fired ? phase.release.tier : calculateRelease(power).tier
+  const tier = fired ? phase.release.tier : calculateRelease(power, false, overcharged).tier
   const style = { '--release-castle': castleImage, '--release-continent': continentImage } as CSSProperties
 
   return (

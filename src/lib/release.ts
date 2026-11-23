@@ -7,9 +7,10 @@ export type ReleaseResult = {
   distanceKm: number
 }
 
-export function calculateRelease(power: number, critical = false): ReleaseResult {
-  let tier: ReleaseResult['tier'] = power >= 400 ? 3 : power >= 200 ? 2 : 1
-  if (critical) tier = tier === 1 ? 2 : 3
+export function calculateRelease(power: number, critical = false, overcharged = false): ReleaseResult {
+  const baseTier = power >= 400 ? 3 : power >= 200 ? 2 : 1
+  const boost = Number(critical) + Number(overcharged)
+  const tier = Math.min(3, baseTier + boost) as ReleaseResult['tier']
 
   return {
     tier,

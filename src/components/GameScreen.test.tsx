@@ -387,7 +387,7 @@ test.each([30, 'survival'] as const)('討伐のチャージ・復習・時間切
   act(() => vi.advanceTimersByTime(90_000))
   finishReleaseWithoutInput()
   expect(onFinish).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
-    correctCount: 2, maxCombo: 2, missCount: 2,
+    correctCount: 2, maxCombo: 2, missCount: 2, score: 160,
     charge: { power: 38, criticalCount: 1 },
     reviewQuestions: expect.arrayContaining([
       { expression: missed.expression, answer: missed.answer, outcome: 'miss', wrongAnswers: ['0'] },
@@ -447,11 +447,14 @@ test.each([30, 'survival'] as const)('討伐の残り10秒でのラッシュと�
 
   act(() => vi.advanceTimersByTime((survival ? 16_000 : 20_000) - 50))
   expect(rush()).toBeNull()
+  expect(screen.queryByText('危険！過充電')).toBeNull()
   act(() => vi.advanceTimersByTime(50))
+  expect(screen.getByText('危険！過充電')).toBeTruthy()
   expect(Boolean(rush())).toBe(survival)
   correct()
   expect(rush()).toBeNull()
   expect(Boolean(screen.queryByText('＋2秒'))).toBe(survival)
+  expect(Boolean(screen.queryByText('危険！過充電'))).toBe(!survival)
 
   act(() => vi.advanceTimersByTime(3_500))
   expect(Boolean(rush())).toBe(survival)
@@ -516,6 +519,7 @@ test.each(['keyboard', 'button', 'early', 'timeout'] as const)('時間切れ後�
 
   const releaseScene = container.querySelector('.release-scene')
   expect(releaseScene?.getAttribute('data-phase')).toBe('impact')
+  expect(releaseScene?.getAttribute('data-tier')).toBe(critical ? '3' : '2')
   act(() => vi.advanceTimersByTime(199))
   expect(releaseScene?.getAttribute('data-phase')).toBe('impact')
   act(() => vi.advanceTimersByTime(1))
@@ -524,6 +528,35 @@ test.each(['keyboard', 'button', 'early', 'timeout'] as const)('時間切れ後�
   act(() => vi.advanceTimersByTime(1400))
   expect(onFinish).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
     score: 0,
-    release: { koCount: 0, distanceKm: 0, tier: critical ? 2 : 1 },
+    release: { koCount: 0, distanceKm: 0, tier: critical ? 3 : 2 },
   }))
+})
+
+
+test.each([true, false])('誤答後の過充電は討伐でのみ発動し、再誤答で延長する（%s）', (showMonsterBattle) => {
+  vi.useFakeTimers()
+  vi.spyOn(Math, 'random').mockReturnValue(0.25)
+  const { container } = render(
+    <GameScreen level={1} mode="addition" duration={30} skipCountdown
+      showMonsterBattle={showMonsterBattle} onFinish={vi.fn()} />,
+  )
+  const warning = () => screen.queryByText('危険！過充電')
+  const miss = () => {
+    fireEvent.keyDown(window, { key: '0' })
+    fireEvent.keyDown(window, { key: 'Enter' })
+  }
+
+  expect(warning()).toBeNull()
+  miss()
+  expect(Boolean(warning())).toBe(showMonsterBattle)
+  expect(Boolean(container.querySelector('.charge-lightning'))).toBe(showMonsterBattle)
+  act(() => vi.advanceTimersByTime(2_000))
+  miss()
+  act(() => vi.advanceTimersByTime(2_999))
+  expect(Boolean(warning())).toBe(showMonsterBattle)
+  act(() => vi.advanceTimersByTime(1))
+  expect(warning()).toBeNull()
+  expect(container.querySelector('.charge-lightning')).toBeNull()
+  act(() => vi.advanceTimersByTime(15_000))
+  expect(Boolean(warning())).toBe(showMonsterBattle)
 })

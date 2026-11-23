@@ -13,7 +13,7 @@ export function preloadChargeSprites() {
   for (const src of sprites) preload(src, { as: 'image' })
 }
 
-export function ChargeArena({ correctCount }: { correctCount: number }) {
+export function ChargeArena({ correctCount, overcharged = false }: { correctCount: number; overcharged?: boolean }) {
   const color = correctCount >= 15 ? 'black' : correctCount >= 9 ? 'red' : correctCount >= 4 ? 'yellow' : 'blue'
   const compression = correctCount / (correctCount + 10)
   const monsterCount = Math.min(maxMonsters, initialMonsters + correctCount)
@@ -26,7 +26,7 @@ export function ChargeArena({ correctCount }: { correctCount: number }) {
   } as CSSProperties
 
   return (
-    <div className="charge-arena" data-color={color} style={arenaStyle} aria-hidden="true">
+    <div className="charge-arena" data-color={color} data-overcharged={overcharged} style={arenaStyle} aria-hidden="true">
       <div className="charge-swarm">
         {Array.from({ length: monsterCount }, (_, index) => {
           const angle = index * goldenAngle
@@ -63,6 +63,12 @@ export function ChargeArena({ correctCount }: { correctCount: number }) {
           <ellipse className="charge-cannon-field" cx="100" cy="57" rx="53" ry="26" />
           <ellipse className="charge-cannon-core" cx="100" cy="56" rx="38" ry="17" />
           <path className="charge-cannon-rail" d="M91 84h18m-9 10v22" />
+          {overcharged && (
+            <g className="charge-lightning">
+              <path d="m61 49-24-13 4 16-26-9m108 1 14-22 8 11 17-17m-12 48 22 11-11 7 26 9" />
+              <path d="m82 40-12-18-4 7-13-15m-6 55-18 8 8 6-21 12" />
+            </g>
+          )}
         </svg>
       </div>
     </div>
