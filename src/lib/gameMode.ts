@@ -25,3 +25,28 @@ export type GameMode = {
 export type PlayMode = GameMode | (Omit<GameMode, 'duration'> & { duration: 'survival' })
 
 export const defaultMode: PlayMode = { operation: 'mix', level: 1, duration: 60 }
+
+export const presentations = {
+  calculation: '計算モード',
+  monster: 'モンスター討伐モード',
+} as const
+
+export type GamePresentation = keyof typeof presentations
+
+const presentationKey = 'ke-sangame:game-presentation'
+
+export function readGamePresentation(): GamePresentation {
+  try {
+    return localStorage.getItem(presentationKey) === 'monster' ? 'monster' : 'calculation'
+  } catch {
+    return 'calculation'
+  }
+}
+
+export function saveGamePresentation(presentation: GamePresentation) {
+  try {
+    localStorage.setItem(presentationKey, presentation)
+  } catch {
+    // Keep the selection in memory when storage is unavailable.
+  }
+}

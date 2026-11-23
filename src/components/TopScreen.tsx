@@ -1,8 +1,10 @@
 import { DifficultyInfo } from './DifficultyInfo'
-import { durations, levels, operations, type PlayMode } from '../lib/gameMode'
+import { durations, levels, operations, presentations, type GamePresentation, type PlayMode } from '../lib/gameMode'
 
 type TopScreenProps = {
   mode: PlayMode
+  presentation: GamePresentation
+  onPresentationChange: (presentation: GamePresentation) => void
   muted: boolean
   onToggleMute: () => void
   onModeChange: (mode: PlayMode) => void
@@ -13,7 +15,11 @@ type TopScreenProps = {
 const operationKeys = Object.keys(operations) as PlayMode['operation'][]
 const levelKeys = Object.keys(levels).map(Number) as PlayMode['level'][]
 
-export function TopScreen({ mode, muted, onToggleMute, onModeChange, onStart, onRanking }: TopScreenProps) {
+const presentationKeys = Object.keys(presentations) as GamePresentation[]
+
+export function TopScreen({
+  mode, presentation, onPresentationChange, muted, onToggleMute, onModeChange, onStart, onRanking,
+}: TopScreenProps) {
   return (
     <main className="top-screen">
       <header className="top-header">
@@ -24,6 +30,18 @@ export function TopScreen({ mode, muted, onToggleMute, onModeChange, onStart, on
           <button type="button" className="ranking-button" onClick={onRanking}>ランキング</button>
         </div>
         <h1>計算無双</h1>
+        <div className="presentation-options" role="group" aria-label="ゲームモード">
+          {presentationKeys.map((selection) => (
+            <button
+              key={selection}
+              type="button"
+              aria-pressed={presentation === selection}
+              onClick={() => onPresentationChange(selection)}
+            >
+              {presentations[selection]}
+            </button>
+          ))}
+        </div>
       </header>
 
       <div className="operation-options" role="group" aria-label="演算">

@@ -58,7 +58,7 @@ test('結果に正確率・回答時間・スコア・称号を表示し、同�
   expect(screen.getByText('60 pt')).toBeTruthy()
   expect(screen.getByText('電算見習い')).toBeTruthy()
   expect(screen.getByText('1 問')).toBeTruthy()
-  expect(screen.getByText('1体討伐')).toBeTruthy()
+  expect(screen.queryByText(/体討伐/)).toBeNull()
   expect(screen.getByText('2 回')).toBeTruthy()
   expect(screen.getByText('33.3 %')).toBeTruthy()
   expect(screen.getByText('1.5 秒/問')).toBeTruthy()
@@ -324,17 +324,48 @@ test('スコアだけの自己ベストは維持し、タイ記録でカーブ�
 })
 
 
-test('サバイバルの終了画面に討伐数を表示し、再戦時にリセットする', () => {
+test.each(['30秒', 'サバイバル'])('モンスター討伐モードの%sで終了画面に討伐数を表示し、再戦時にリセットする', (duration) => {
   render(<App />)
   click('掛け算')
-  click('サバイバル')
+  click('モンスター討伐モード')
+  click(duration)
   click('START')
   advance(3_000)
   enter(first().answer)
   expect(screen.getByText('1体討伐')).toBeTruthy()
-  advance(22_001)
+  advance(30_001)
   expect(screen.getByRole('heading', { name: 'TIME UP!' })).toBeTruthy()
   expect(screen.getByText('1体討伐')).toBeTruthy()
   click('もう1回')
   expect(screen.getByText('0体討伐')).toBeTruthy()
+})
+
+test.each(['30秒', 'サバイバル'])('計算モードの%sで勇者・モンスター・討伐数を表示しない', (duration) => {
+  render(<App />)
+  expect(screen.getByRole('button', { name: '計算モード', pressed: true })).toBeTruthy()
+  click('掛け算')
+  click(duration)
+  click('START')
+  advance(3_000)
+  enter(first().answer)
+  expect(screen.getByText('正解 1')).toBeTruthy()
+  expect(screen.queryAllByRole('img')).toHaveLength(0)
+  expect(screen.queryByText(/体討伐/)).toBeNull()
+  advance(30_001)
+  expect(screen.getByRole('heading', { name: 'TIME UP!' })).toBeTruthy()
+  expect(screen.queryByText(/体討伐/)).toBeNull()
+})
+
+test('選択した表示モードを次の起動時にも復元する', () => {
+  const { unmount } = render(<App />)
+  click('モンスター討伐モード')
+  unmount()
+
+  const next = render(<App />)
+  expect(screen.getByRole('button', { name: 'モンスター討伐モード', pressed: true })).toBeTruthy()
+  click('計算モード')
+  next.unmount()
+
+  render(<App />)
+  expect(screen.getByRole('button', { name: '計算モード', pressed: true })).toBeTruthy()
 })

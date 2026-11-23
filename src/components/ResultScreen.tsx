@@ -7,6 +7,7 @@ import { RankingRegistration } from './RankingRegistration'
 import './ResultScreen.css'
 
 type ResultScreenProps = {
+  showMonsterBattle: boolean
   result: GameResult
   personalBest: ReturnType<typeof savePersonalBest>
   mode: PlayMode
@@ -17,7 +18,9 @@ type ResultScreenProps = {
   onBack: () => void
 }
 
-export function ResultScreen({ result, personalBest, mode, playedOnline, online, onViewRanking, onReplay, onBack }: ResultScreenProps) {
+export function ResultScreen({
+  showMonsterBattle, result, personalBest, mode, playedOnline, online, onViewRanking, onReplay, onBack,
+}: ResultScreenProps) {
   const {
     correctCount, missCount, accuracy, score, averageAnswerSeconds, reviewQuestions,
     maxCombo,
@@ -55,7 +58,10 @@ export function ResultScreen({ result, personalBest, mode, playedOnline, online,
         )}
         <div>
           <dt>正解数</dt>
-          <dd>{correctCount} 問 <span className="result-defeated">{correctCount}体討伐</span></dd>
+          <dd>
+            {correctCount} 問
+            {showMonsterBattle && <span className="result-defeated">{correctCount}体討伐</span>}
+          </dd>
         </div>
         <div>
           <dt>ミス数</dt>
