@@ -75,7 +75,7 @@ button[aria-pressed="true"],
 
 .presentation-options {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr)) minmax(0, 0.75fr);
   gap: 8px;
   inline-size: 100%;
   max-inline-size: 342px;

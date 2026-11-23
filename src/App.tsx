@@ -3,6 +3,7 @@ import { GameScreen, type GameResult } from './components/GameScreen'
 import { RankingScreen } from './components/RankingScreen'
 import { ResultScreen } from './components/ResultScreen'
 import { readPersonalBestCurve, savePersonalBest } from './lib/personalBest'
+import { SetsunaScreen } from './components/SetsunaScreen'
 import { TopScreen } from './components/TopScreen'
 import {
   defaultMode, readGamePresentation, saveGamePresentation, type GameMode, type PlayMode,
@@ -23,6 +24,7 @@ const questionModes = {
 
 type Screen =
   | { name: 'top' }
+  | { name: 'setsuna'; attempt: number }
   | { name: 'game'; mode: PlayMode; skipCountdown: boolean; bestCurve?: number[] }
   | { name: 'result'; mode: PlayMode; result: GameResult; personalBest: ReturnType<typeof savePersonalBest>; replayRecords: ReturnType<typeof saveReplayRecords>; playedOnline: boolean }
   | { name: 'ranking'; mode: GameMode }
@@ -60,6 +62,22 @@ export function App() {
     setScreen({ name: 'game', mode: gameMode, skipCountdown, bestCurve: readPersonalBestCurve(gameMode) })
   }
   const goBack = () => setScreen({ name: 'top' })
+
+  const startSetsuna = (attempt = 0) => {
+    if (!muted) sound.unlock()
+    setScreen({ name: 'setsuna', attempt })
+  }
+
+  if (screen.name === 'setsuna') {
+    return (
+      <SetsunaScreen
+        key={screen.attempt}
+        onBack={goBack}
+        onReplay={() => startSetsuna(screen.attempt + 1)}
+        onSound={muted ? undefined : sound.play}
+      />
+    )
+  }
 
   if (screen.name === 'game') {
     const gameMode = screen.mode
@@ -123,7 +141,7 @@ export function App() {
         saveMuted(!muted)
       }}
       onModeChange={setMode}
-      onStart={() => startGame(mode)}
+      onStart={() => presentation === 'setsuna' ? startSetsuna() : startGame(mode)}
       onRanking={() => setScreen({ name: 'ranking', mode: featuredRankingMode })}
     />
   )
