@@ -53,7 +53,7 @@ export function GameScreen({ level, mode, duration, skipCountdown = false, onSou
   const reviewQuestions = useRef<ReviewQuestion[]>([])
   const currentQuestion = useRef(firstQuestion)
   const wrongAnswers = useRef<string[]>([])
-  const currentQuestionPassed = useRef(false)
+  const currentQuestionResolved = useRef(false)
   const [counts, setCounts] = useState({ correctCount: 0, incorrectCount: 0, passCount: 0 })
   const latestCounts = useRef(counts)
   const combo = useRef({ streak: 0, max: 0 })
@@ -87,7 +87,7 @@ export function GameScreen({ level, mode, duration, skipCountdown = false, onSou
   function finish() {
     if (finished.current) return
     finished.current = true
-    if (!currentQuestionPassed.current) recordReviewQuestion('timeout')
+    if (!currentQuestionResolved.current) recordReviewQuestion('timeout')
     const finalCounts = latestCounts.current
     const { correctCount } = finalCounts
     onSound?.('timeUp')
@@ -111,7 +111,7 @@ export function GameScreen({ level, mode, duration, skipCountdown = false, onSou
 
   function nextQuestion(now: number) {
     questionStartedAt.current = now
-    currentQuestionPassed.current = false
+    currentQuestionResolved.current = false
     wrongAnswers.current = []
     const next = generateQuestion(level, mode)
     currentQuestion.current = next
@@ -130,7 +130,7 @@ export function GameScreen({ level, mode, duration, skipCountdown = false, onSou
         return
       case 'pass': {
         recordAnswer('passCount')
-        currentQuestionPassed.current = true
+        currentQuestionResolved.current = true
         recordReviewQuestion('pass')
         if (!survival) deadline.current -= PASS_PENALTY_MS
         updateRemaining(Math.max(0, deadline.current - now))
@@ -160,7 +160,11 @@ export function GameScreen({ level, mode, duration, skipCountdown = false, onSou
             updateRemaining(Math.max(0, deadline.current - now))
           }
           if (wrongAnswers.current.length > 0) recordReviewQuestion('miss')
-          nextQuestion(now)
+          if (now < deadline.current) {
+            nextQuestion(now)
+          } else {
+            currentQuestionResolved.current = true
+          }
         } else {
           onSound?.('incorrect')
           recordAnswer('incorrectCount')

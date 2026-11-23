@@ -158,7 +158,9 @@ test.each([
     basePoints: 100,
     accuracyCoefficient: expected ? 1.2 : 1,
     comboCoefficient: 1,
-    reviewQuestions: [expect.objectContaining({ outcome: 'timeout', answer: expect.any(String) })],
+    reviewQuestions: expected && offset === 0
+      ? []
+      : [expect.objectContaining({ outcome: 'timeout', answer: expect.any(String) })],
     averageAnswerSeconds: expected ? (30_000 + (offset ?? 0)) / 1000 : 0,
   })
 })

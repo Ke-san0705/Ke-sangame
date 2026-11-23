@@ -87,6 +87,10 @@
 }
 
 .result-replay {
+  display: block;
+  inline-size: 100%;
+  margin-block-start: 20px;
+  border-radius: 14px;
   min-block-size: 64px;
   background: var(--color-accent);
   color: var(--color-background);
@@ -188,12 +192,6 @@
   margin: 4px 0 0;
 }
 
-.result-replay {
-  display: block;
-  inline-size: 100%;
-  margin-block-start: 20px;
-  border-radius: 14px;
-}
 
 .result-review-labels {
   display: flex;
