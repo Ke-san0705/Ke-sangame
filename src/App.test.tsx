@@ -324,7 +324,7 @@ test('スコアだけの自己ベストは維持し、タイ記録でカーブ�
 })
 
 
-test.each(['30秒', 'サバイバル'])('モンスター討伐モードの%sで終了画面に討伐数を表示し、再戦時にリセットする', (duration) => {
+test.each(['30秒', 'サバイバル'])('モンスター討伐モードの%sでチャージ結果を表示し、再戦時にリセットする', (duration) => {
   render(<App />)
   click('掛け算')
   click('モンスター討伐モード')
@@ -332,15 +332,18 @@ test.each(['30秒', 'サバイバル'])('モンスター討伐モードの%sで�
   click('START')
   advance(3_000)
   enter(first().answer)
-  expect(screen.getByText('1体討伐')).toBeTruthy()
+  expect(screen.getByText('CRITICAL CHARGE!')).toBeTruthy()
   advance(30_050)
   expect(screen.getByRole('heading', { name: 'TIME UP!' })).toBeTruthy()
-  expect(screen.getByText('1体討伐')).toBeTruthy()
+  expect(screen.getByText('チャージ量').nextElementSibling?.textContent).toBe('23')
   click('もう1回')
-  expect(screen.getByText('0体討伐')).toBeTruthy()
+  expect(document.querySelector('.charge-arena')?.getAttribute('data-color')).toBe('blue')
+  expect(screen.queryByText('CRITICAL CHARGE!')).toBeNull()
+  advance(30_050)
+  expect(screen.getByText('チャージ量').nextElementSibling?.textContent).toBe('0')
 })
 
-test.each(['30秒', 'サバイバル'])('計算モードの%sで勇者・モンスター・討伐数を表示しない', (duration) => {
+test.each(['30秒', 'サバイバル'])('計算モードの%sでチャージ画面とチャージ結果を表示しない', (duration) => {
   render(<App />)
   expect(screen.getByRole('button', { name: '計算モード', pressed: true })).toBeTruthy()
   click('掛け算')
@@ -350,10 +353,10 @@ test.each(['30秒', 'サバイバル'])('計算モードの%sで勇者・モン�
   enter(first().answer)
   expect(screen.getByText('正解 1')).toBeTruthy()
   expect(screen.queryAllByRole('img')).toHaveLength(0)
-  expect(screen.queryByText(/体討伐/)).toBeNull()
+  expect(screen.queryByText('チャージ量')).toBeNull()
   advance(30_050)
   expect(screen.getByRole('heading', { name: 'TIME UP!' })).toBeTruthy()
-  expect(screen.queryByText(/体討伐/)).toBeNull()
+  expect(screen.queryByText('チャージ量')).toBeNull()
 })
 
 test('選択した表示モードを次の起動時にも復元する', () => {

@@ -204,9 +204,3 @@
 .result-review-answers {
   overflow-wrap: anywhere;
 }
-
-.result-defeated {
-  display: block;
-  color: var(--color-accent);
-  font-size: 0.875rem;
-}

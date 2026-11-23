@@ -87,7 +87,6 @@ export function App() {
   if (screen.name === 'result') {
     return (
       <ResultScreen
-        showMonsterBattle={presentation === 'monster'}
         result={screen.result}
         personalBest={screen.personalBest}
         mode={screen.mode}
