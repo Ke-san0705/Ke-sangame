@@ -10,6 +10,8 @@ const START_COUNTDOWN_SECONDS = 3
 const SURVIVAL_INITIAL_SECONDS = 20
 const TIMER_WARNING_SECONDS = 10
 const TIMER_SOUND_SECONDS = 5
+const RUSH_TIME_MS = 10_000
+const TIME_BONUS_POP_MS = 800
 
 function survivalBonusMs(correctCount: number) {
   if (correctCount >= 60) return 0
@@ -51,6 +53,7 @@ export function GameScreen({
   level, mode, duration, skipCountdown = false, showMonsterBattle = false, bestCurve, onSound, onFinish,
 }: GameScreenProps) {
   const survival = duration === 'survival'
+  const battleSurvival = survival && showMonsterBattle
   const initialTimeMs = (survival ? SURVIVAL_INITIAL_SECONDS : duration) * 1000
   const [{ generateQuestion, firstQuestion }] = useState(() => {
     const generateQuestion = createQuestionGenerator()
@@ -73,6 +76,9 @@ export function GameScreen({
   const [countdown, setCountdown] = useState(skipCountdown ? 0 : START_COUNTDOWN_SECONDS)
   const playing = countdown === 0
   const [remaining, setRemaining] = useState(initialTimeMs)
+  const rushActive = battleSurvival && remaining > 0 && remaining <= RUSH_TIME_MS
+  const [timeBonus, setTimeBonus] = useState<{ seconds: number; answerCount: number }>()
+  const timeBonusTimeout = useRef<number | undefined>(undefined)
   const deadline = useRef(0)
   const gameStartedAt = useRef(0)
   const [elapsedSecond, setElapsedSecond] = useState(0)
@@ -98,10 +104,10 @@ export function GameScreen({
     setCounts(next)
   }
 
-  function updateBattle(outcome: 'correct' | 'miss' | 'pass', elapsedMs?: number) {
+  function updateBattle(outcome: 'correct' | 'miss' | 'pass', elapsedMs?: number, rush = false) {
     if (!showMonsterBattle) return
-    const critical = elapsedMs !== undefined && elapsedMs <= CRITICAL_TIME_MS[level]
-    const next = resolveBattle(latestBattle.current, outcome, latestCounts.current.combo, critical)
+    const critical = elapsedMs !== undefined && elapsedMs <= CRITICAL_TIME_MS[level] * (rush ? 1.5 : 1)
+    const next = resolveBattle(latestBattle.current, outcome, latestCounts.current.combo, critical, rush)
     latestBattle.current = next
     setBattle(next)
   }
@@ -195,11 +201,19 @@ export function GameScreen({
             correctPerSecond.current[second] += 1
           }
           recordAnswer('correctCount')
-          updateBattle('correct', elapsedMs)
+          const rush = battleSurvival && deadline.current - answerTime <= RUSH_TIME_MS
+          updateBattle('correct', elapsedMs, rush)
           onSound?.('correct', latestCounts.current.combo)
           if (survival) {
-            deadline.current += survivalBonusMs(latestCounts.current.correctCount)
+            const answerCount = latestCounts.current.correctCount
+            const bonusMs = survivalBonusMs(answerCount)
+            deadline.current += bonusMs
             updateRemaining(Math.max(0, deadline.current - now))
+            if (battleSurvival && bonusMs > 0) {
+              window.clearTimeout(timeBonusTimeout.current)
+              setTimeBonus({ seconds: bonusMs / 1000, answerCount })
+              timeBonusTimeout.current = window.setTimeout(() => setTimeBonus(undefined), TIME_BONUS_POP_MS)
+            }
           }
           if (wrongAnswers.current.length > 0) recordReviewQuestion('miss')
           if (now < deadline.current) {
@@ -292,6 +306,7 @@ export function GameScreen({
       window.clearTimeout(timeout)
       window.clearTimeout(finishTimeout)
       window.clearTimeout(passTimeout.current)
+      window.clearTimeout(timeBonusTimeout.current)
       window.removeEventListener('keydown', onKeyDown)
     }
   }, [duration, initialTimeMs, playing])
@@ -334,19 +349,28 @@ export function GameScreen({
   if (acceptsDecimal) keypad.push('.')
 
   return (
-    <main ref={gameScreen} className="game-screen" aria-label="ゲーム">
+    <main ref={gameScreen} className="game-screen" data-rush={rushActive} aria-label="ゲーム">
       <header className="game-hud">
-        <div className="game-timer-bar" aria-hidden="true">
+        <div className="game-timer-bar" data-recovery={battleSurvival} aria-hidden="true">
           <div
             className="game-timer-fill"
             data-time={remainingSeconds <= TIMER_WARNING_SECONDS ? 'low' : 'normal'}
             style={{ width: `${percentage}%` }}
-          />
+          >
+            {timeBonus && <span key={timeBonus.answerCount} className="game-timer-recovery" />}
+          </div>
         </div>
         <div className="game-status">
-          <strong className="game-stat-value" role="timer" aria-label="残り時間">
-            {remainingSeconds}
-          </strong>
+          <div className="game-time">
+            <strong className="game-stat-value" role="timer" aria-label="残り時間">
+              {remainingSeconds}
+            </strong>
+            {battleSurvival && (
+              <span role="status" className="game-time-bonus">
+                {timeBonus && <span key={timeBonus.answerCount}>＋{timeBonus.seconds}秒</span>}
+              </span>
+            )}
+          </div>
           <div className="game-score" role="group" aria-label="暫定スコア">
             <span className="game-stat-label" aria-hidden="true">スコア（暫定）</span>
             <strong className="game-stat-value">{score.toLocaleString('ja-JP')}</strong>
@@ -364,6 +388,11 @@ export function GameScreen({
             </span>
           )}
         </div>
+        {battleSurvival && (
+          <div className="game-rush-status" role="status">
+            {rushActive && <strong>ラッシュ！</strong>}
+          </div>
+        )}
       </header>
       {showMonsterBattle && <MonsterBattle battle={battle} combo={counts.combo} />}
       <GameProblem

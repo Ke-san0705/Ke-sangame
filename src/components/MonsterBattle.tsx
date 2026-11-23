@@ -70,11 +70,12 @@ export function createBattle(level: Level): BattleState {
 }
 
 export function resolveBattle(
-  battle: BattleState, outcome: 'correct' | 'miss' | 'pass', combo: number, critical = false,
+  battle: BattleState, outcome: 'correct' | 'miss' | 'pass', combo: number, critical = false, rush = false,
 ): BattleState {
   const current = encounter(battle.level, battle.slot, battle.gold)
   const correct = outcome === 'correct'
-  const damage = correct ? (critical ? 2 : 1) : 0
+  const bossBonus = current.boss && rush ? 1 : 0
+  const damage = correct ? (critical ? 2 : 1) + bossBonus : 0
   const bossHp = battle.bossHp - damage
   const goldPending = battle.goldPending || combo === 10
   const feedback: BattleFeedback = correct

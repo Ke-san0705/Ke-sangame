@@ -425,3 +425,59 @@ test('討伐の攻撃演出とコンボ表示は次の問題を待たせない',
   expect(container.querySelector('.monster-slash')).toBeNull()
   expect(screen.queryByText(/^\d+コンボ！$/)).toBeNull()
 })
+
+test.each([30, 'survival'] as const)('討伐の残り10秒でのラッシュと加算（%s）', (duration) => {
+  vi.useFakeTimers()
+  vi.spyOn(Math, 'random').mockReturnValue(0.25)
+  const generate = createQuestionGenerator()
+  const correct = () => {
+    const { answer } = generate(1, 'addition')
+    for (const key of answer) fireEvent.keyDown(window, { key })
+    fireEvent.keyDown(window, { key: 'Enter' })
+  }
+  const { container } = render(
+    <GameScreen level={1} mode="addition" duration={duration} skipCountdown showMonsterBattle onFinish={vi.fn()} />,
+  )
+  const survival = duration === 'survival'
+  const rush = () => screen.queryByText('ラッシュ！')
+  const damage = () => container.querySelector('.monster-damage')?.textContent
+  for (let i = 0; i < 9; i++) correct()
+
+  act(() => vi.advanceTimersByTime((survival ? 28_000 : 20_000) - 50))
+  expect(rush()).toBeNull()
+  act(() => vi.advanceTimersByTime(50))
+  expect(Boolean(rush())).toBe(survival)
+  correct()
+  expect(damage()).toBe(survival ? '−2' : '−1')
+  expect(rush()).toBeNull()
+  expect(Boolean(screen.queryByText('＋2秒'))).toBe(survival)
+
+  act(() => vi.advanceTimersByTime(3_500))
+  expect(Boolean(rush())).toBe(survival)
+  expect(screen.queryByText('＋2秒')).toBeNull()
+  correct()
+  expect(damage()).toBe(survival ? '−3' : '−1')
+  expect(Boolean(screen.queryByText('かいしん！'))).toBe(survival)
+})
+
+test('討伐サバイバルの時間加算ポップは減衰し、加算終了後は再表示されない', () => {
+  vi.useFakeTimers()
+  vi.spyOn(Math, 'random').mockReturnValue(0.25)
+  const generate = createQuestionGenerator()
+  const correct = () => {
+    const { answer } = generate(1, 'addition')
+    for (const key of answer) fireEvent.keyDown(window, { key })
+    fireEvent.keyDown(window, { key: 'Enter' })
+  }
+  render(<GameScreen level={1} mode="addition" duration="survival" skipCountdown showMonsterBattle onFinish={vi.fn()} />)
+
+  for (let i = 0; i < 29; i++) correct()
+  const firstPop = screen.getByText('＋2秒')
+  correct()
+  expect(screen.getByText('＋1秒')).toBeTruthy()
+  expect(firstPop.isConnected).toBe(false)
+  for (let i = 0; i < 29; i++) correct()
+  act(() => vi.advanceTimersByTime(1_000))
+  correct()
+  expect(screen.queryByText('＋1秒')).toBeNull()
+})
