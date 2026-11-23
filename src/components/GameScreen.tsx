@@ -29,6 +29,7 @@ export type GameResult = ReturnType<typeof calculateScore> & {
   correctCount: number
   maxCombo: number
   averageAnswerSeconds: number
+  paceCurve?: number[]
   reviewQuestions: ReviewQuestion[]
 }
 
@@ -37,11 +38,12 @@ type GameScreenProps = {
   mode: QuestionMode
   duration: number | 'survival'
   skipCountdown?: boolean
+  bestCurve?: number[]
   onSound?: (cue: SoundCue, combo?: number) => void
   onFinish: (result: GameResult) => void
 }
 
-export function GameScreen({ level, mode, duration, skipCountdown = false, onSound, onFinish }: GameScreenProps) {
+export function GameScreen({ level, mode, duration, skipCountdown = false, bestCurve, onSound, onFinish }: GameScreenProps) {
   const survival = duration === 'survival'
   const initialTimeMs = (survival ? SURVIVAL_INITIAL_SECONDS : duration) * 1000
   const [{ generateQuestion, firstQuestion }] = useState(() => {
@@ -64,6 +66,9 @@ export function GameScreen({ level, mode, duration, skipCountdown = false, onSou
   const playing = countdown === 0
   const [remaining, setRemaining] = useState(initialTimeMs)
   const deadline = useRef(0)
+  const gameStartedAt = useRef(0)
+  const [elapsedSecond, setElapsedSecond] = useState(0)
+  const correctPerSecond = useRef<number[] | undefined>(undefined)
   const questionStartedAt = useRef(0)
   const totalCorrectAnswerMs = useRef(0)
   const lastCountdownSecond = useRef(0)
@@ -95,11 +100,17 @@ export function GameScreen({ level, mode, duration, skipCountdown = false, onSou
     if (!currentQuestionResolved.current) recordReviewQuestion('timeout')
     const finalCounts = latestCounts.current
     const { correctCount, maxCombo } = finalCounts
+    let cumulativeCorrect = 0
+    const paceCurve = correctPerSecond.current?.map((count) => {
+      cumulativeCorrect += count
+      return cumulativeCorrect
+    })
     onSound?.('timeUp')
     onFinish({
       correctCount,
       maxCombo,
       ...calculateScore({ ...finalCounts, level }),
+      paceCurve,
       reviewQuestions: reviewQuestions.current,
       averageAnswerSeconds: correctCount === 0 ? 0 : totalCorrectAnswerMs.current / correctCount / 1000,
     })
@@ -158,6 +169,11 @@ export function GameScreen({ level, mode, duration, skipCountdown = false, onSou
         setAnswer('')
         if (isCorrectAnswer(question, answer)) {
           totalCorrectAnswerMs.current += Math.max(0, answerTime - questionStartedAt.current)
+          if (correctPerSecond.current) {
+            // 配列の各要素は、その経過秒に到達した時点の累積正解数になる。
+            const second = Math.ceil(Math.max(0, answerTime - gameStartedAt.current) / 1000)
+            correctPerSecond.current[second] += 1
+          }
           recordAnswer('correctCount')
           onSound?.('correct', streak.current)
           if (survival) {
@@ -197,8 +213,13 @@ export function GameScreen({ level, mode, duration, skipCountdown = false, onSou
   })
 
   const updateTimer = useEffectEvent(() => {
-    const timeLeft = Math.max(0, deadline.current - performance.now())
     if (finished.current) return false
+    const now = performance.now()
+    const timeLeft = Math.max(0, deadline.current - now)
+    if (bestCurve) {
+      const seconds = Math.floor((now - gameStartedAt.current) / 1000)
+      setElapsedSecond(Math.min(bestCurve.length - 1, seconds))
+    }
     updateRemaining(timeLeft)
     return timeLeft === 0 && (survival || passTimeout.current === undefined)
   })
@@ -221,6 +242,8 @@ export function GameScreen({ level, mode, duration, skipCountdown = false, onSou
   useEffect(() => {
     if (!playing) return
     const now = performance.now()
+    correctPerSecond.current = duration === 'survival' ? undefined : Array<number>(duration + 1).fill(0)
+    gameStartedAt.current = now
     questionStartedAt.current = now
     lastCountdownSecond.current = Math.ceil(initialTimeMs / 1000) + 1
     deadline.current = now + initialTimeMs
@@ -244,7 +267,7 @@ export function GameScreen({ level, mode, duration, skipCountdown = false, onSou
       window.clearTimeout(passTimeout.current)
       window.removeEventListener('keydown', onKeyDown)
     }
-  }, [initialTimeMs, playing])
+  }, [duration, initialTimeMs, playing])
 
   if (!playing) {
     return (
@@ -254,6 +277,7 @@ export function GameScreen({ level, mode, duration, skipCountdown = false, onSou
     )
   }
 
+  const paceDifference = bestCurve ? correctCount - bestCurve[elapsedSecond] : undefined
   const remainingSeconds = Math.ceil(remaining / 1000)
   const { score } = calculateScore({ ...counts, level })
   const percentage = Math.min(100, remaining / initialTimeMs * 100)
@@ -286,6 +310,11 @@ export function GameScreen({ level, mode, duration, skipCountdown = false, onSou
           >
             ミス {incorrectCount + passCount}
           </span>
+          {paceDifference !== undefined && (
+            <span className="game-pace">
+              {`ベスト比 ${paceDifference > 0 ? '+' : paceDifference < 0 ? '−' : ''}${Math.abs(paceDifference)}問`}
+            </span>
+          )}
         </div>
       </header>
       <GameProblem

@@ -172,6 +172,9 @@ test('正解・不正解・残り5秒からのカウントダウン・時間切�
 })
 
 test('連続正解で正解音が高くなり、誤答とパスで元の音階に戻る', () => {
+  localStorage.setItem('ke-sangame:personal-best:multiply:1:30', JSON.stringify({
+    score: 0, curve: Array(31).fill(0),
+  }))
   const play = stubAudio()
   const frequencies = () => play.mock.results.map(({ value }) => value.frequency.value)
   const generate = createQuestionGenerator()
@@ -183,6 +186,7 @@ test('連続正解で正解音が高くなり、誤答とパスで元の音階�
   advance(3_000)
 
   for (let i = 0; i < 11; i++) enter(nextAnswer())
+  expect(screen.getByText('ベスト比 +11問')).toBeTruthy()
   const pitches = frequencies()
   expect(pitches.slice(0, 2)).toEqual([660, 880])
   expect(pitches[2]).toBeGreaterThan(pitches[0])
@@ -192,6 +196,7 @@ test('連続正解で正解音が高くなり、誤答とパスで元の音階�
 
   enter('0')
   expect(frequencies().at(-1)).toBeLessThan(pitches[0])
+  expect(screen.getByText('ベスト比 +11問')).toBeTruthy()
   expect(screen.getByText('ミス 1').classList.contains('game-feedback-pop')).toBe(true)
   enter(nextAnswer())
   expect(frequencies().slice(-2)).toEqual([660, 880])
@@ -218,6 +223,7 @@ test('ミュートを再戦と再読み込み後も保持し、解除できる',
   expect(screen.getByText('ミス 1').classList.contains('game-feedback-pop')).toBe(true)
   advance(30_001)
   click('もう1回')
+  expect(screen.getByText('ベスト比 0問')).toBeTruthy()
   advance(30_001)
   expect(play).not.toHaveBeenCalled()
 
@@ -245,4 +251,73 @@ test('締切と同時に正解して復習リストが空の場合は案内を�
   const review = within(screen.getByRole('region', { name: '復習リスト' }))
   expect(review.getByText('復習する問題はありません。')).toBeTruthy()
   expect(review.queryByRole('list')).toBeNull()
+})
+
+test('同じ条件で自己ベストの経過秒ごとの正解数と比較し、更新したカーブを再読み込み後も使う', () => {
+  const generate = createQuestionGenerator()
+  const firstAnswer = generate(1, 'multiplication').answer
+  const secondAnswer = generate(1, 'multiplication').answer
+  const { unmount } = render(<App />)
+  click('掛け算')
+  click('30秒')
+  click('START')
+  advance(3_000)
+  expect(screen.queryByText(/ベスト比/)).toBeNull()
+  advance(2_000)
+  enter(firstAnswer)
+  advance(28_001)
+
+  click('もう1回')
+  expect(screen.getByText('ベスト比 0問')).toBeTruthy()
+  advance(1_000)
+  enter(firstAnswer)
+  expect(screen.getByText('ベスト比 +1問')).toBeTruthy()
+  advance(1_000)
+  expect(screen.getByText('ベスト比 0問')).toBeTruthy()
+  enter(secondAnswer)
+  advance(28_001)
+  expect(screen.getByText('NEW RECORD!')).toBeTruthy()
+  unmount()
+
+  render(<App />)
+  click('掛け算')
+  click('30秒')
+  click('START')
+  advance(3_000)
+  advance(1_000)
+  expect(screen.getByText('ベスト比 −1問')).toBeTruthy()
+  advance(1_000)
+  expect(screen.getByText('ベスト比 −2問')).toBeTruthy()
+  advance(28_001)
+
+  click('もう1回')
+  advance(2_000)
+  expect(screen.getByText('ベスト比 −2問')).toBeTruthy()
+  advance(28_001)
+  click('モード選択に戻る')
+  click('60秒')
+  click('START')
+  advance(5_000)
+  expect(screen.queryByText(/ベスト比/)).toBeNull()
+})
+
+test('スコアだけの自己ベストは維持し、タイ記録でカーブを補完する', () => {
+  localStorage.setItem('ke-sangame:personal-best:multiply:1:30', '120')
+  render(<App />)
+  click('掛け算')
+  click('30秒')
+  click('START')
+  advance(3_000)
+  expect(screen.queryByText(/ベスト比/)).toBeNull()
+  advance(30_001)
+  expect(screen.getByText('自己ベストまであと120点')).toBeTruthy()
+
+  click('もう1回')
+  advance(1_000)
+  enter(first().answer)
+  advance(29_001)
+  expect(screen.getByText('自己ベストとタイ記録')).toBeTruthy()
+  click('もう1回')
+  advance(1_000)
+  expect(screen.getByText('ベスト比 −1問')).toBeTruthy()
 })

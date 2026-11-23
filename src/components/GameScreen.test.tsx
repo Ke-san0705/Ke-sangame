@@ -105,6 +105,7 @@ test('タッチ用テンキーで負数・小数を入力し、Cでミスを増�
   act(() => vi.advanceTimersByTime(1_000))
   expect(onFinish).toHaveBeenCalledExactlyOnceWith({
     correctCount: 0, missCount: 1, accuracy: 0, score: -20, averageAnswerSeconds: 0,
+    paceCurve: Array(31).fill(0),
     maxCombo: 0, basePoints: 170, accuracyCoefficient: 1, comboCoefficient: 1,
     reviewQuestions: [expect.objectContaining({ expression: expect.any(String), answer: expect.any(String), outcome: 'pass' })],
   })
@@ -152,6 +153,7 @@ test.each([
   act(() => vi.advanceTimersByTime(30_002))
   expect(onFinish).toHaveBeenCalledExactlyOnceWith({
     correctCount: expected,
+    paceCurve: [...Array(30).fill(0), expected],
     missCount: 0,
     accuracy: expected,
     score: expected * 120,
@@ -232,4 +234,27 @@ test.each([30, 60, 'survival'] as const)('残り10秒で警告色になり、5�
   act(() => vi.advanceTimersByTime(1_001))
   expect(onSound).toHaveBeenCalledTimes(6)
   expect(onSound).toHaveBeenLastCalledWith('timeUp')
+})
+
+test('ベスト比の表示中も幅に合わせて問題文と入力を縮小する', () => {
+  vi.useFakeTimers()
+  vi.spyOn(Math, 'random').mockReturnValue(0.25)
+  vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(100)
+  vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+    const scale = Number(this.style.getPropertyValue('--game-text-scale') || 1)
+    return new DOMRect(0, 0, 200 * scale, 20)
+  })
+  const { expression } = createQuestionGenerator()(1, 'addition')
+  render(
+    <GameScreen level={1} mode="addition" duration={30} skipCountdown
+      bestCurve={Array(31).fill(0)} onFinish={vi.fn()} />,
+  )
+
+  const question = screen.getByText(expression + ' =')
+  expect(question.style.getPropertyValue('--game-text-scale')).toBe('0.5')
+  for (const key of '1234567890') fireEvent.keyDown(window, { key })
+  const answer = screen.getByLabelText('入力した答え')
+  expect(answer.textContent).toBe('1234567890')
+  expect(answer.style.getPropertyValue('--game-text-scale')).toBe('0.5')
+  expect(screen.getByText('ベスト比 0問')).toBeTruthy()
 })

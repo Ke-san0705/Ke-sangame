@@ -64,6 +64,11 @@
   font-variant-numeric: tabular-nums;
 }
 
+.game-pace {
+  grid-column: 1 / -1;
+  font-variant-numeric: tabular-nums;
+}
+
 .game-misses {
   color: var(--game-warning);
 }
