@@ -188,10 +188,19 @@ function sampleExpression(operation: Operation, level: Level, random: Random, pl
   return combine(operation, literal(left), literal(right))
 }
 
+function sampleGroupedExpression(operation: Operation, level: Level, random: Random, plain: boolean) {
+  const innerOperation = random() < 0.5 ? 'addition' : 'subtraction'
+  const inner = sampleExpression(innerOperation, level === 4 ? 1 : level, random, plain)
+  const outerValue = BigInt(draw(random, definitions[operation].ranges[level][0])) * SCALE
+  const left = literal(level === 5 && !plain ? signed(random, outerValue) : outerValue)
+  return combine(operation, left, { ...inner, text: `(${inner.text})` })
+}
+
 /** Create a generator for one play session. The random source returns values in [0, 1). */
 export function createQuestionGenerator(random: Random = Math.random) {
   const recent: string[] = []
   const recentMixOperations = new Set<Operation>()
+  let mixAdditiveQuestions = 0
 
   return (level: Level, mode: QuestionMode): Question => {
     let operation: Operation
@@ -205,13 +214,19 @@ export function createQuestionGenerator(random: Random = Math.random) {
       operation = mode
     }
 
-    let expression = sampleExpression(operation, level, random)
+    // Group every third mix addition or subtraction (about one sixth of all mix questions).
+    const grouped = mode === 'mix' && level >= 4
+      && (operation === 'addition' || operation === 'subtraction')
+      && ++mixAdditiveQuestions % 3 === 0
+    const sample = grouped ? sampleGroupedExpression : sampleExpression
+
+    let expression = sample(operation, level, random, false)
     for (let attempt = 0; recent.includes(expression.key); attempt++) {
       // After random retries, sample distinct points across the base ranges.
       // Each operation has at least six distinct base questions at these points.
       expression = attempt < 8
-        ? sampleExpression(operation, level, random)
-        : sampleExpression(operation, level, () => (attempt - 8 + 0.5) / (HISTORY_SIZE + 1), true)
+        ? sample(operation, level, random, false)
+        : sample(operation, level, () => (attempt - 8 + 0.5) / (HISTORY_SIZE + 1), true)
     }
 
     recent.push(expression.key)
