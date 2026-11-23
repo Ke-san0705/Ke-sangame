@@ -342,3 +342,19 @@
   72% { opacity: 1; }
   100% { opacity: 0; }
 }
+
+.monster-battle {
+  border-radius: 14px;
+  background: linear-gradient(#0f172a99, #0f172acc), var(--stage-background) center 58% / cover;
+}
+
+.monster-battle-status {
+  line-height: 1;
+  text-shadow: 0 1px 3px #0f172a;
+}
+
+.monster-stage {
+  color: #f8fafc;
+  font-size: 0.8125rem;
+  letter-spacing: 0.08em;
+}

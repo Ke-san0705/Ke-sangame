@@ -3,7 +3,7 @@ import { createQuestionGenerator, isCorrectAnswer } from '../lib/question-genera
 import type { Level, Question, QuestionMode } from '../lib/question-generator'
 import { calculateScore } from '../lib/score'
 import type { SoundCue } from '../lib/soundEffects'
-import { createBattle, MonsterBattle, preloadBattleSprites, resolveBattle } from './MonsterBattle'
+import { createBattle, MonsterBattle, preloadBattleAssets, resolveBattle } from './MonsterBattle'
 import './GameScreen.css'
 
 const START_COUNTDOWN_SECONDS = 3
@@ -312,8 +312,8 @@ export function GameScreen({
   }, [duration, initialTimeMs, playing])
 
   useEffect(() => {
-    if (showMonsterBattle) preloadBattleSprites(level, battle.slot)
-  }, [level, battle.slot, showMonsterBattle])
+    if (showMonsterBattle) preloadBattleAssets(battle.slot)
+  }, [battle.slot, showMonsterBattle])
 
   useEffect(() => {
     if (!showMonsterBattle) return
