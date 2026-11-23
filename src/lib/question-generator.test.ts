@@ -91,6 +91,7 @@ describe.each(levels)('Lv.%i', (level) => {
       if (operation === 'division') {
         expect(Number.isInteger(answer)).toBe(true)
         expect(left % right).toBe(0)
+        expect(right).toBeGreaterThan(1)
         if (level === 1) expect(Math.abs(answer)).toBeLessThanOrEqual(9)
         if (level === 2) expect(left).toBeGreaterThanOrEqual(10)
       }
@@ -129,7 +130,13 @@ describe.each(levels)('Lv.%i', (level) => {
       }
       expect(rest.every((value) => value <= rightMax)).toBe(true)
       expect(Number(answer)).toBeCloseTo(evaluate(expression), 7)
-      if (operation === 'division') expect(Number.isInteger(Number(answer))).toBe(true)
+      if (operation === 'division') {
+        expect(Number.isInteger(Number(answer))).toBe(true)
+        expect(rest[0]).toBeGreaterThan(1)
+      }
+      if (level === 3 && operation === 'multiplication') {
+        expect([left, ...rest].some(Number.isInteger)).toBe(true)
+      }
     }
   })
 })
@@ -163,7 +170,10 @@ it('generates both easy multiplication forms in Lv.2 and unrestricted two-digit 
   const level2 = factors(2)
   expect(level2.some(([, right]) => right < 10)).toBe(true)
   expect(level2.some(([, right]) => right >= 10)).toBe(true)
-  expect(factors(3).some((pair) => pair.every((value) =>
+  const level3 = factors(3)
+  expect(level3.every((pair) => pair.some(Number.isInteger))).toBe(true)
+  expect(level3.some((pair) => pair.some((value) => !Number.isInteger(value)))).toBe(true)
+  expect(level3.some((pair) => pair.every((value) =>
     Number.isInteger(value) && value > 11 && value % 10 !== 0,
   ))).toBe(true)
 })
@@ -205,7 +215,7 @@ it('keeps Lv.5 division in range even when the random source repeats', () => {
 })
 
 it.each([
-  { level: 3, operation: 'division', draws: [0, 0, 0, 0], expression: '(−10) ÷ (−1)' },
+  { level: 3, operation: 'division', draws: [0, 0, 0, 0], expression: '(−20) ÷ (−2)' },
   { level: 4, operation: 'subtraction', draws: [0.5, 0.82175, 0.9338, 0.5, 0, 0.5], expression: '8395 − (−9404)' },
   { level: 4, operation: 'addition', draws: [0.5, 0, 0, 0, 0, 0, 0, 0], expression: '(−1000) + (−1000)' },
   { level: 5, operation: 'addition', draws: [0.5, 0.809, 0.6967, 0.5, 0, 0, 0.1975, 0.5, 0.5], expression: '8281 + (−7270)' },
@@ -256,7 +266,7 @@ it('keeps exact answers when subtracting and multiplying decimal operands', () =
   expect(subtraction.answer).toBe('0.1')
 
   const multiplicationDraws = [0, 0, 0.002, 0.5, 0]
-  const multiplication = createQuestionGenerator(() => multiplicationDraws.shift() ?? 0)(3, 'multiplication')
+  const multiplication = createQuestionGenerator(() => multiplicationDraws.shift() ?? 0)(4, 'multiplication')
   expect(multiplication.expression).toBe('0.1 × (−0.2)')
   expect(multiplication.answer).toBe('-0.02')
 })
