@@ -40,7 +40,7 @@ test.each(countdownModes)('Lv.$level・$duration 秒の開始前に 3、2、1 �
   expect(onFinish).not.toHaveBeenCalled()
   act(() => vi.advanceTimersByTime(1_000))
   expect(screen.getByRole('timer').textContent).toBe('0')
-  act(() => vi.advanceTimersByTime(1))
+  act(() => vi.advanceTimersByTime(50))
   expect(onFinish).toHaveBeenCalledTimes(1)
 })
 
@@ -75,7 +75,7 @@ test('STARTからキーボードで回答し、時間切れで結果へ進む', 
   expect(fireEvent.keyDown(document.body, { key: 'Tab' })).toBe(false)
   expect(screen.getByText('ミス 2')).toBeTruthy()
   expect(screen.getByRole('timer').textContent).toBe('57')
-  act(() => vi.advanceTimersByTime(57_001))
+  act(() => vi.advanceTimersByTime(57_050))
   expect(screen.getByRole('heading', { name: 'TIME UP!' })).toBeTruthy()
   expect(screen.getByText('1 問')).toBeTruthy()
   expect(screen.getByText('2 回')).toBeTruthy()
@@ -150,7 +150,7 @@ test.each([
   for (const key of answer) fireEvent.keyDown(window, { key })
   if (!scheduleBeforeStart && offset !== null) window.setTimeout(submit, 30_000 + offset)
 
-  act(() => vi.advanceTimersByTime(30_002))
+  act(() => vi.advanceTimersByTime(30_050))
   expect(onFinish).toHaveBeenCalledExactlyOnceWith({
     correctCount: expected,
     paceCurve: [...Array(30).fill(0), expected],
@@ -166,6 +166,79 @@ test.each([
       : [expect.objectContaining({ outcome: 'timeout', answer: expect.any(String) })],
     averageAnswerSeconds: expected ? (30_000 + (offset ?? 0)) / 1000 : 0,
   })
+})
+
+test.each([
+  { duration: 30, showMonsterBattle: false, keypad: false, beforeDeadline: true },
+  { duration: 30, showMonsterBattle: true, keypad: true, beforeDeadline: true },
+  { duration: 'survival', showMonsterBattle: false, keypad: true, beforeDeadline: true },
+  { duration: 'survival', showMonsterBattle: true, keypad: false, beforeDeadline: true },
+  { duration: 30, showMonsterBattle: false, keypad: true, beforeDeadline: false },
+  { duration: 'survival', showMonsterBattle: true, keypad: false, beforeDeadline: false },
+] as const)('タイマーがゼロを表示した後に届いた確定（%o）', ({
+  duration, showMonsterBattle, keypad, beforeDeadline,
+}) => {
+  vi.useFakeTimers()
+  vi.spyOn(Math, 'random').mockReturnValue(0.25)
+  const { answer } = createQuestionGenerator()(1, 'addition')
+  const onFinish = vi.fn()
+  const durationMs = duration === 'survival' ? 20_000 : duration * 1000
+  render(<GameScreen level={1} mode="addition" duration={duration} skipCountdown
+    showMonsterBattle={showMonsterBattle} onFinish={onFinish} />)
+  const deadline = performance.now() + durationMs
+  const dispatchKey = (key: string, timeStamp: number) => {
+    const event = keypad
+      ? new MouseEvent('click', { bubbles: true })
+      : new KeyboardEvent('keydown', { key, bubbles: true })
+    Object.defineProperties(event, {
+      isTrusted: { value: true },
+      timeStamp: { value: timeStamp },
+    })
+    fireEvent(keypad ? screen.getByRole('button', { name: key }) : window, event)
+  }
+  if (!beforeDeadline) {
+    for (const key of answer) fireEvent.keyDown(window, { key })
+  }
+
+  act(() => vi.advanceTimersByTime(durationMs + 10))
+  expect(screen.getByRole('timer').textContent).toBe('0')
+  act(() => {
+    if (beforeDeadline) {
+      for (const [index, key] of [...answer].entries()) {
+        dispatchKey(key, deadline - answer.length - 1 + index)
+      }
+    }
+    dispatchKey('Enter', deadline + (beforeDeadline ? -1 : 1))
+  })
+  expect(screen.getByText(beforeDeadline ? '正解 1' : '正解 0')).toBeTruthy()
+
+  act(() => vi.advanceTimersByTime(90))
+  if (duration === 'survival' && beforeDeadline) {
+    expect(onFinish).not.toHaveBeenCalled()
+    expect(screen.getByRole('timer').textContent).toBe('2')
+    act(() => vi.advanceTimersByTime(2_000))
+  }
+  expect(onFinish).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+    correctCount: beforeDeadline ? 1 : 0,
+    reviewQuestions: beforeDeadline && duration !== 'survival'
+      ? []
+      : [expect.objectContaining({ outcome: 'timeout' })],
+  }))
+})
+
+test('確定済みの誤答は時間切れ時にミスとして復習に残す', () => {
+  vi.useFakeTimers()
+  const onFinish = vi.fn()
+  render(<GameScreen level={1} mode="addition" duration={30} skipCountdown onFinish={onFinish} />)
+  act(() => vi.advanceTimersByTime(29_999))
+  fireEvent.keyDown(window, { key: '0' })
+  fireEvent.keyDown(window, { key: 'Enter' })
+
+  act(() => vi.advanceTimersByTime(101))
+  expect(onFinish).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+    missCount: 1,
+    reviewQuestions: [expect.objectContaining({ outcome: 'miss', wrongAnswers: ['0'] })],
+  }))
 })
 
 test.each(['不正解', 'パス'])('%sで連続正解が途切れ、セッションの最大コンボを使う', (miss) => {
@@ -197,7 +270,7 @@ test.each(['不正解', 'パス'])('%sで連続正解が途切れ、セッショ
   expect(within(screen.getByRole('group', { name: '暫定スコア' })).getByText('640')).toBeTruthy()
   for (let i = 0; i < 5; i++) correct()
   expect(within(screen.getByRole('group', { name: '暫定スコア' })).getByText('1,311')).toBeTruthy()
-  act(() => vi.advanceTimersByTime(30_002))
+  act(() => vi.advanceTimersByTime(30_050))
 
   expect(onFinish).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
     correctCount: 11, missCount: 1, maxCombo: 6, comboCoefficient: 1.1, score: 1311,
@@ -231,7 +304,7 @@ test.each([30, 60, 'survival'] as const)('残り10秒で警告色になり、5�
     expect(onSound).toHaveBeenCalledTimes(6 - second)
     expect(onSound).toHaveBeenLastCalledWith('countdown')
   }
-  act(() => vi.advanceTimersByTime(1_001))
+  act(() => vi.advanceTimersByTime(1_050))
   expect(onSound).toHaveBeenCalledTimes(6)
   expect(onSound).toHaveBeenLastCalledWith('timeUp')
 })
