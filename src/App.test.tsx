@@ -171,6 +171,40 @@ test('正解・不正解・残り5秒からのカウントダウン・時間切�
   expect(play).toHaveBeenCalledTimes(11)
 })
 
+test('連続正解で正解音が高くなり、誤答とパスで元の音階に戻る', () => {
+  const play = stubAudio()
+  const frequencies = () => play.mock.results.map(({ value }) => value.frequency.value)
+  const generate = createQuestionGenerator()
+  const nextAnswer = () => generate(1, 'multiplication').answer
+  render(<App />)
+  click('掛け算')
+  click('30秒')
+  click('START')
+  advance(3_000)
+
+  for (let i = 0; i < 11; i++) enter(nextAnswer())
+  const pitches = frequencies()
+  expect(pitches.slice(0, 2)).toEqual([660, 880])
+  expect(pitches[2]).toBeGreaterThan(pitches[0])
+  expect(pitches[8]).toBeGreaterThan(pitches[2])
+  expect(pitches[18]).toBeGreaterThan(pitches[8])
+  expect(pitches.slice(20, 22)).toEqual(pitches.slice(18, 20))
+
+  enter('0')
+  expect(frequencies().at(-1)).toBeLessThan(pitches[0])
+  expect(screen.getByText('ミス 1').classList.contains('game-feedback-pop')).toBe(true)
+  enter(nextAnswer())
+  expect(frequencies().slice(-2)).toEqual([660, 880])
+
+  enter(nextAnswer())
+  click('pass')
+  expect(frequencies().slice(-2)).toEqual(pitches.slice(2, 4))
+  nextAnswer()
+  advance(1_000)
+  enter(nextAnswer())
+  expect(frequencies().slice(-2)).toEqual([660, 880])
+})
+
 test('ミュートを再戦と再読み込み後も保持し、解除できる', () => {
   const play = stubAudio()
   const { unmount } = render(<App />)
@@ -181,6 +215,7 @@ test('ミュートを再戦と再読み込み後も保持し、解除できる',
   click('START')
   advance(3_000)
   enter('0')
+  expect(screen.getByText('ミス 1').classList.contains('game-feedback-pop')).toBe(true)
   advance(30_001)
   click('もう1回')
   advance(30_001)

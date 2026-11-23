@@ -37,7 +37,7 @@ type GameScreenProps = {
   mode: QuestionMode
   duration: number | 'survival'
   skipCountdown?: boolean
-  onSound?: (cue: SoundCue) => void
+  onSound?: (cue: SoundCue, combo?: number) => void
   onFinish: (result: GameResult) => void
 }
 
@@ -157,9 +157,9 @@ export function GameScreen({ level, mode, duration, skipCountdown = false, onSou
         if (answer === '') return
         setAnswer('')
         if (isCorrectAnswer(question, answer)) {
-          onSound?.('correct')
           totalCorrectAnswerMs.current += Math.max(0, answerTime - questionStartedAt.current)
           recordAnswer('correctCount')
+          onSound?.('correct', streak.current)
           if (survival) {
             deadline.current += survivalBonusMs(latestCounts.current.correctCount)
             updateRemaining(Math.max(0, deadline.current - now))
@@ -280,7 +280,12 @@ export function GameScreen({ level, mode, duration, skipCountdown = false, onSou
             <strong className="game-stat-value">{score.toLocaleString('ja-JP')}</strong>
           </div>
           <span className="game-correct">正解 {correctCount}</span>
-          <span className="game-misses">ミス {incorrectCount + passCount}</span>
+          <span
+            key={incorrectCount}
+            className={incorrectCount > 0 ? 'game-misses game-feedback-pop' : 'game-misses'}
+          >
+            ミス {incorrectCount + passCount}
+          </span>
         </div>
       </header>
       <div className="game-problem">

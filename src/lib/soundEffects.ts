@@ -7,6 +7,11 @@ const cues = {
 
 export type SoundCue = keyof typeof cues
 
+function correctPitchMultiplier(combo: number) {
+  const semitones = combo >= 10 ? 7 : combo >= 5 ? 4 : combo >= 2 ? 2 : 0
+  return 2 ** (semitones / 12)
+}
+
 const muteKey = 'ke-sangame:muted'
 
 export function readMuted() {
@@ -39,19 +44,20 @@ export function createSoundEffects() {
         // Audio availability should not prevent a game from starting.
       }
     },
-    play(cue: SoundCue) {
+    play(cue: SoundCue, combo = 1) {
       if (context?.state !== 'running') return
       const audio = context
       const start = audio.currentTime
+      const pitchMultiplier = cue === 'correct' ? correctPitchMultiplier(combo) : 1
       for (const [index, frequency] of cues[cue].entries()) {
         const at = start + index * 0.11
         const duration = cue === 'timeUp' ? 0.16 : 0.1
         const oscillator = audio.createOscillator()
         const gain = audio.createGain()
         oscillator.type = cue === 'incorrect' ? 'triangle' : 'sine'
-        oscillator.frequency.value = frequency
+        oscillator.frequency.value = frequency * pitchMultiplier
         gain.gain.setValueAtTime(0.001, at)
-        gain.gain.exponentialRampToValueAtTime(0.12, at + 0.01)
+        gain.gain.exponentialRampToValueAtTime(cue === 'incorrect' ? 0.07 : 0.12, at + 0.01)
         gain.gain.exponentialRampToValueAtTime(0.001, at + duration)
         oscillator.connect(gain)
         gain.connect(audio.destination)

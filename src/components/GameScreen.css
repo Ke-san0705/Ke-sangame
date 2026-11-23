@@ -68,6 +68,16 @@
   color: var(--game-warning);
 }
 
+@media (prefers-reduced-motion: no-preference) {
+  .game-feedback-pop {
+    animation: game-feedback-pop 180ms ease-out;
+  }
+}
+
+@keyframes game-feedback-pop {
+  40% { transform: scale(1.1); }
+}
+
 .game-problem {
   box-sizing: border-box;
   display: grid;
