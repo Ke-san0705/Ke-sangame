@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from 'react'
 import { createQuestionGenerator, isCorrectAnswer } from '../lib/question-generator'
 import type { Level, Question, QuestionMode } from '../lib/question-generator'
 import { calculateScore } from '../lib/score'
@@ -288,14 +288,11 @@ export function GameScreen({ level, mode, duration, skipCountdown = false, onSou
           </span>
         </div>
       </header>
-      <div className="game-problem">
-        <span>{question.expression} =</span>
-        {showPassAnswer ? (
-          <span className="game-answer" role="status">正解：{question.answer.replace('-', '−')}</span>
-        ) : (
-          <span className="game-answer" aria-label="入力した答え">{answer.replace('-', '−')}</span>
-        )}
-      </div>
+      <GameProblem
+        expression={question.expression}
+        answer={(showPassAnswer ? question.answer : answer).replace('-', '−')}
+        showPassAnswer={showPassAnswer}
+      />
       <div className="game-keypad" role="group" aria-label="テンキー">
         {keypad.map((key) => (
           <button
@@ -318,5 +315,89 @@ export function GameScreen({ level, mode, duration, skipCountdown = false, onSou
         <button type="button" disabled={showPassAnswer} onClick={() => handleKey('pass')}>Tab：パス</button>
       </div>
     </main>
+  )
+}
+
+function fitText(element: HTMLElement, availableWidth: number) {
+  element.style.removeProperty('--game-text-scale')
+  const width = () => element.getBoundingClientRect().width
+  if (width() <= availableWidth) return
+
+  // The layout stays readable and scrollable if even the minimum size is too wide.
+  let min = 0
+  let max = 1
+  for (let step = 0; step < 8; step++) {
+    const scale = (min + max) / 2
+    element.style.setProperty('--game-text-scale', String(scale))
+    if (width() <= availableWidth) min = scale
+    else max = scale
+  }
+  element.style.setProperty('--game-text-scale', String(min))
+}
+
+function GameProblem({ expression, answer, showPassAnswer }: {
+  expression: string
+  answer: string
+  showPassAnswer: boolean
+}) {
+  const viewport = useRef<HTMLDivElement>(null)
+  const lines = useRef<HTMLDivElement>(null)
+  const expressionText = useRef<HTMLSpanElement>(null)
+  const answerText = useRef<HTMLSpanElement>(null)
+
+  useLayoutEffect(() => {
+    const container = viewport.current
+    const group = lines.current
+    const equation = expressionText.current
+    const input = answerText.current
+    if (!container || !group || !equation || !input) return
+
+    let lastWidth = 0
+    const fit = () => {
+      const width = container.clientWidth
+      lastWidth = width
+      if (getComputedStyle(group).display === 'flex') {
+        equation.style.removeProperty('--game-text-scale')
+        input.style.removeProperty('--game-text-scale')
+        fitText(group, width)
+      } else {
+        group.style.removeProperty('--game-text-scale')
+        fitText(equation, width)
+        fitText(input, width)
+      }
+    }
+
+    fit()
+    const observer = new ResizeObserver(() => {
+      if (container.clientWidth !== lastWidth) fit()
+    })
+    observer.observe(container)
+    document.fonts?.addEventListener('loadingdone', fit)
+    return () => {
+      observer.disconnect()
+      document.fonts?.removeEventListener('loadingdone', fit)
+    }
+  }, [expression, answer, showPassAnswer])
+
+  return (
+    <div className="game-problem">
+      <div className="game-problem-viewport" ref={viewport}>
+        <div className="game-problem-lines" ref={lines}>
+          <div className="game-problem-line">
+            <span className="game-expression" ref={expressionText}>{expression} =</span>
+          </div>
+          <div className="game-problem-line">
+            <span
+              className="game-answer"
+              ref={answerText}
+              role={showPassAnswer ? 'status' : undefined}
+              aria-label={showPassAnswer ? undefined : '入力した答え'}
+            >
+              {showPassAnswer ? `正解：${answer}` : answer}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }

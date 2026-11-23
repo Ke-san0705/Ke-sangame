@@ -81,28 +81,50 @@
 .game-problem {
   box-sizing: border-box;
   display: grid;
-  justify-items: center;
+  grid-template-columns: minmax(0, 1fr);
   align-content: center;
-  gap: 4px;
   min-block-size: 150px;
   margin-inline: 24px;
   padding: 12px;
   border-radius: 20px;
   background: var(--color-card);
-  font-size: clamp(1.75rem, 14vw, 3.375rem);
+  --game-expression-size: clamp(1.75rem, 14vw, 3.375rem);
+  --game-answer-size: clamp(1.75rem, 11vw, 2.625rem);
   line-height: 1.12;
   text-align: center;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+}
+
+.game-problem-lines {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 4px;
+}
+
+.game-problem-line {
+  overflow-x: auto;
+}
+
+.game-expression,
+.game-answer {
+  display: block;
+  inline-size: max-content;
+  margin-inline: auto;
+  font-size: max(1rem, calc(var(--game-text-size) * var(--game-text-scale, 1)));
+}
+
+.game-expression {
+  --game-text-size: var(--game-expression-size);
 }
 
 .game-answer {
+  --game-text-size: var(--game-answer-size);
   box-sizing: border-box;
   min-inline-size: min(160px, 100%);
   min-block-size: 1.2em;
   border-block-end: 4px solid var(--color-accent);
   border-radius: 2px;
   color: var(--color-accent);
-  font-size: clamp(1.75rem, 11vw, 2.625rem);
   font-variant-numeric: tabular-nums;
 }
 
@@ -173,21 +195,32 @@
 
   .game-problem {
     flex: 1;
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    align-items: center;
-    align-content: center;
-    gap: 0.2em;
+    --game-expression-size: clamp(2.75rem, 8.6vw, 6.875rem);
+    --game-answer-size: var(--game-expression-size);
     min-block-size: 0;
     background: transparent;
-    font-size: clamp(2.75rem, 8.6vw, 6.875rem);
+  }
+
+  .game-problem-viewport {
+    overflow-x: auto;
+  }
+
+  .game-problem-lines {
+    display: flex;
+    align-items: center;
+    gap: 0.2em;
+    inline-size: max-content;
+    margin-inline: auto;
+    font-size: max(1rem, calc(var(--game-expression-size) * var(--game-text-scale, 1)));
+  }
+
+  .game-problem-line {
+    overflow: visible;
   }
 
   .game-answer {
     min-inline-size: 1.55em;
     border-block-end-width: 5px;
-    font-size: inherit;
   }
 
   .game-keypad {
