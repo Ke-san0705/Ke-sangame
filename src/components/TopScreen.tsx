@@ -19,7 +19,7 @@ export function TopScreen({ mode, muted, onToggleMute, onModeChange, onStart, on
       <header className="top-header">
         <div className="top-controls">
           <button type="button" className="mute-button" aria-pressed={muted} onClick={onToggleMute}>
-            ミュート
+            ミュート<span aria-hidden="true">{muted ? ' ON' : ' OFF'}</span>
           </button>
           <button type="button" className="ranking-button" onClick={onRanking}>ランキング</button>
         </div>
