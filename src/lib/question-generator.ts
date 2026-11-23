@@ -103,10 +103,10 @@ const definitions = {
     symbol: '÷',
     commutative: false,
     ranges: {
-      1: [[1, 81], [1, 9]],
-      2: [[10, 999], [1, 9]],
-      3: [[1, 9999], [1, 99]],
-      4: [[1, 9999], [1, 99]],
+      1: [[1, 81], [2, 9]],
+      2: [[10, 999], [2, 9]],
+      3: [[1, 9999], [2, 99]],
+      4: [[1, 9999], [2, 99]],
       5: [[1000, 9999], [10, 999]],
     },
     sample: sampleDivision,
@@ -171,8 +171,12 @@ function sampleExpression(operation: Operation, level: Level, random: Random, pl
     return BigInt(Math.floor(index / 9) * 10 + (index % 9) + 1) * 10n
   }
 
+  const useIntegerFactor = level === 3 && operation === 'multiplication'
   let [left, right] = decimal
-    ? [decimalOperand(ranges[0]), decimalOperand(ranges[1])]
+    ? [
+        decimalOperand(ranges[0]),
+        useIntegerFactor ? BigInt(draw(random, ranges[1])) * SCALE : decimalOperand(ranges[1]),
+      ]
     : definition.sample(random, ranges, level)
   if (decimal && level === 2 && operation === 'subtraction' && left < right) {
     const smaller = left
