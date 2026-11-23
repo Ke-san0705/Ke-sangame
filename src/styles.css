@@ -73,6 +73,21 @@ button[aria-pressed="true"],
   font-weight: 700;
 }
 
+.presentation-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  inline-size: 100%;
+  max-inline-size: 342px;
+  margin-inline: auto;
+}
+
+.presentation-options button {
+  min-block-size: 48px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
 .operation-options,
 .level-options,
 .duration-options {

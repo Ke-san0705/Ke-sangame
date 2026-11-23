@@ -269,7 +269,7 @@ test.each([30, 'survival'] as const)('正解ごとに討伐し、10体目のボ�
     fireEvent.keyDown(window, { key: 'Enter' })
   }
   const target = () => screen.getByRole('img', { name: /^(モンスター|ボス)：/ })
-  render(<GameScreen level={1} mode="addition" duration={duration} skipCountdown onFinish={vi.fn()} />)
+  render(<GameScreen level={1} mode="addition" duration={duration} skipCountdown showMonsterBattle onFinish={vi.fn()} />)
 
   expect(screen.getByRole('img', { name: '勇者' }).getAttribute('src')).toMatch(/\/monsters\/hero\.png$/)
   expect(screen.getByText('0体討伐')).toBeTruthy()

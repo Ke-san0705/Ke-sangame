@@ -47,7 +47,7 @@ test('トップから看板種目を表示し、ドロップダウンで条件�
   }
 })
 
-test('任意の登録をRPCで行い、同じ条件のランキングを取得する', async () => {
+test.each(['計算モード', 'モンスター討伐モード'])('%sで任意の登録をRPCで行い、同じ条件のランキングを取得する', async (presentation) => {
   const entries: { id: number; nickname: string; score: number }[] = []
   const fetchRanking = vi.fn(async (url: string, options: RequestInit) => {
     if (url.endsWith('/submit_ranking_score')) {
@@ -58,6 +58,7 @@ test('任意の登録をRPCで行い、同じ条件のランキングを取得�
   })
   vi.stubGlobal('fetch', fetchRanking)
   render(<App />)
+  click(presentation)
   click('掛け算')
   click('30秒')
   click('START')

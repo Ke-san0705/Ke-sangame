@@ -39,12 +39,15 @@ type GameScreenProps = {
   mode: QuestionMode
   duration: number | 'survival'
   skipCountdown?: boolean
+  showMonsterBattle?: boolean
   bestCurve?: number[]
   onSound?: (cue: SoundCue, combo?: number) => void
   onFinish: (result: GameResult) => void
 }
 
-export function GameScreen({ level, mode, duration, skipCountdown = false, bestCurve, onSound, onFinish }: GameScreenProps) {
+export function GameScreen({
+  level, mode, duration, skipCountdown = false, showMonsterBattle = false, bestCurve, onSound, onFinish,
+}: GameScreenProps) {
   const survival = duration === 'survival'
   const initialTimeMs = (survival ? SURVIVAL_INITIAL_SECONDS : duration) * 1000
   const [{ generateQuestion, firstQuestion }] = useState(() => {
@@ -271,8 +274,8 @@ export function GameScreen({ level, mode, duration, skipCountdown = false, bestC
   }, [duration, initialTimeMs, playing])
 
   useEffect(() => {
-    preloadBattleSprites(correctCount)
-  }, [correctCount])
+    if (showMonsterBattle) preloadBattleSprites(correctCount)
+  }, [correctCount, showMonsterBattle])
 
   if (!playing) {
     return (
@@ -322,7 +325,7 @@ export function GameScreen({ level, mode, duration, skipCountdown = false, bestC
           )}
         </div>
       </header>
-      <MonsterBattle defeated={correctCount} combo={counts.combo} />
+      {showMonsterBattle && <MonsterBattle defeated={correctCount} combo={counts.combo} />}
       <GameProblem
         expression={question.expression}
         answer={(showPassAnswer ? question.answer : answer).replace('-', '−')}
