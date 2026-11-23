@@ -183,3 +183,26 @@
 .result-review li + li {
   margin-block-start: 6px;
 }
+
+.result-progress p {
+  margin: 4px 0 0;
+}
+
+.result-replay {
+  display: block;
+  inline-size: 100%;
+  margin-block-start: 20px;
+  border-radius: 14px;
+}
+
+.result-review-labels {
+  display: flex;
+  gap: 8px;
+  color: var(--color-accent);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.result-review-answers {
+  overflow-wrap: anywhere;
+}

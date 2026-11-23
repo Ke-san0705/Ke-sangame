@@ -20,8 +20,8 @@ const questionModes = {
 
 type Screen =
   | { name: 'top' }
-  | { name: 'game'; mode: PlayMode }
-  | { name: 'result'; mode: PlayMode; result: GameResult; best: number; isNewRecord: boolean; playedOnline: boolean }
+  | { name: 'game'; mode: PlayMode; skipCountdown: boolean }
+  | { name: 'result'; mode: PlayMode; result: GameResult; personalBest: ReturnType<typeof savePersonalBest>; playedOnline: boolean }
   | { name: 'ranking'; mode: GameMode }
 
 function subscribeOnline(onChange: () => void) {
@@ -50,10 +50,10 @@ export function App() {
     return () => window.removeEventListener('offline', markOffline)
   }, [])
 
-  const startGame = (gameMode: PlayMode) => {
+  const startGame = (gameMode: PlayMode, skipCountdown = false) => {
     if (!muted) sound.unlock()
     playedOnline.current = isOnline()
-    setScreen({ name: 'game', mode: gameMode })
+    setScreen({ name: 'game', mode: gameMode, skipCountdown })
   }
   const goBack = () => setScreen({ name: 'top' })
 
@@ -64,13 +64,14 @@ export function App() {
         level={gameMode.level}
         mode={questionModes[gameMode.operation]}
         duration={gameMode.duration}
+        skipCountdown={screen.skipCountdown}
         onSound={muted ? undefined : sound.play}
         onFinish={(result) => {
-          const { best, isNewRecord } = savePersonalBest(
+          const personalBest = savePersonalBest(
             gameMode, gameMode.duration === 'survival' ? result.correctCount : result.score,
           )
           setScreen({
-            name: 'result', mode: gameMode, result, best, isNewRecord,
+            name: 'result', mode: gameMode, result, personalBest,
             playedOnline: playedOnline.current && isOnline(),
           })
         }}
@@ -82,13 +83,12 @@ export function App() {
     return (
       <ResultScreen
         result={screen.result}
-        best={screen.best}
-        isNewRecord={screen.isNewRecord}
+        personalBest={screen.personalBest}
         mode={screen.mode}
         playedOnline={screen.playedOnline}
         online={online}
         onViewRanking={(mode) => setScreen({ name: 'ranking', mode })}
-        onReplay={() => startGame(screen.mode)}
+        onReplay={() => startGame(screen.mode, true)}
         onBack={goBack}
       />
     )

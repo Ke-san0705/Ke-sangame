@@ -18,7 +18,10 @@ const PASS_PENALTY_MS = 3_000
 const PASS_REVEAL_MS = 1_000
 const KEYPAD_ROWS = ['7', '8', '9', 'C', '4', '5', '6', 'pass', '1', '2', '3', 'Enter']
 
-type ReviewQuestion = Pick<Question, 'expression' | 'answer'>
+type ReviewQuestion = Pick<Question, 'expression' | 'answer'> & {
+  outcome: 'miss' | 'pass' | 'timeout'
+  wrongAnswers: string[]
+}
 
 export type GameResult = ReturnType<typeof calculateScore> & {
   correctCount: number
@@ -31,13 +34,14 @@ type GameScreenProps = {
   level: Level
   mode: QuestionMode
   duration: number | 'survival'
+  skipCountdown?: boolean
   onSound?: (cue: SoundCue) => void
   onFinish: (result: GameResult) => void
 }
 
-export function GameScreen({ level, mode, duration, onSound, onFinish }: GameScreenProps) {
+export function GameScreen({ level, mode, duration, skipCountdown = false, onSound, onFinish }: GameScreenProps) {
   const survival = duration === 'survival'
-  const initialTimeMs = (duration === 'survival' ? SURVIVAL_INITIAL_SECONDS : duration) * 1000
+  const initialTimeMs = (survival ? SURVIVAL_INITIAL_SECONDS : duration) * 1000
   const [{ generateQuestion, firstQuestion }] = useState(() => {
     const generateQuestion = createQuestionGenerator()
     return { generateQuestion, firstQuestion: generateQuestion(level, mode) }
@@ -47,12 +51,14 @@ export function GameScreen({ level, mode, duration, onSound, onFinish }: GameScr
   const [showPassAnswer, setShowPassAnswer] = useState(false)
   const passTimeout = useRef<number | undefined>(undefined)
   const reviewQuestions = useRef<ReviewQuestion[]>([])
-  const currentQuestionRecorded = useRef(false)
+  const currentQuestion = useRef(firstQuestion)
+  const wrongAnswers = useRef<string[]>([])
+  const currentQuestionPassed = useRef(false)
   const [counts, setCounts] = useState({ correctCount: 0, incorrectCount: 0, passCount: 0 })
   const latestCounts = useRef(counts)
   const combo = useRef({ streak: 0, max: 0 })
   const { correctCount, incorrectCount, passCount } = counts
-  const [countdown, setCountdown] = useState(START_COUNTDOWN_SECONDS)
+  const [countdown, setCountdown] = useState(skipCountdown ? 0 : START_COUNTDOWN_SECONDS)
   const playing = countdown === 0
   const [remaining, setRemaining] = useState(initialTimeMs)
   const deadline = useRef(0)
@@ -73,15 +79,15 @@ export function GameScreen({ level, mode, duration, onSound, onFinish }: GameScr
     setCounts(next)
   }
 
-  function recordReviewQuestion() {
-    if (currentQuestionRecorded.current) return
-    currentQuestionRecorded.current = true
-    reviewQuestions.current.push({ expression: question.expression, answer: question.answer })
+  function recordReviewQuestion(outcome: ReviewQuestion['outcome']) {
+    const { expression, answer } = currentQuestion.current
+    reviewQuestions.current.push({ expression, answer, outcome, wrongAnswers: wrongAnswers.current })
   }
 
   function finish() {
     if (finished.current) return
     finished.current = true
+    if (!currentQuestionPassed.current) recordReviewQuestion('timeout')
     const finalCounts = latestCounts.current
     const { correctCount } = finalCounts
     onSound?.('timeUp')
@@ -105,8 +111,11 @@ export function GameScreen({ level, mode, duration, onSound, onFinish }: GameScr
 
   function nextQuestion(now: number) {
     questionStartedAt.current = now
-    currentQuestionRecorded.current = false
-    setQuestion(generateQuestion(level, mode))
+    currentQuestionPassed.current = false
+    wrongAnswers.current = []
+    const next = generateQuestion(level, mode)
+    currentQuestion.current = next
+    setQuestion(next)
   }
 
   function handleKey(key: string, submittedAt?: number) {
@@ -121,7 +130,8 @@ export function GameScreen({ level, mode, duration, onSound, onFinish }: GameScr
         return
       case 'pass': {
         recordAnswer('passCount')
-        recordReviewQuestion()
+        currentQuestionPassed.current = true
+        recordReviewQuestion('pass')
         if (!survival) deadline.current -= PASS_PENALTY_MS
         updateRemaining(Math.max(0, deadline.current - now))
         setAnswer('')
@@ -149,11 +159,12 @@ export function GameScreen({ level, mode, duration, onSound, onFinish }: GameScr
             deadline.current += survivalBonusMs(latestCounts.current.correctCount)
             updateRemaining(Math.max(0, deadline.current - now))
           }
+          if (wrongAnswers.current.length > 0) recordReviewQuestion('miss')
           nextQuestion(now)
         } else {
           onSound?.('incorrect')
           recordAnswer('incorrectCount')
-          recordReviewQuestion()
+          wrongAnswers.current.push(answer)
         }
         return
       default:
@@ -188,6 +199,7 @@ export function GameScreen({ level, mode, duration, onSound, onFinish }: GameScr
   })
 
   useEffect(() => {
+    if (skipCountdown) return
     let count = START_COUNTDOWN_SECONDS
     const interval = window.setInterval(() => {
       count -= 1
@@ -195,7 +207,7 @@ export function GameScreen({ level, mode, duration, onSound, onFinish }: GameScr
       if (count === 0) window.clearInterval(interval)
     }, 1_000)
     return () => window.clearInterval(interval)
-  }, [])
+  }, [skipCountdown])
 
   useEffect(() => {
     if (!playing) return
