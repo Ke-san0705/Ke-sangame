@@ -135,6 +135,42 @@ button[aria-pressed="true"],
   font-weight: 700;
 }
 
+@media (min-width: 768px) {
+  .top-screen {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: start;
+    gap: 32px 20px;
+    max-inline-size: 960px;
+  }
+
+  .top-header,
+  .start-button {
+    grid-column: 1 / -1;
+  }
+
+  .operation-options,
+  .level-options,
+  .duration-options,
+  .start-button {
+    margin-block-start: 0;
+  }
+
+  .level-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .level-options button {
+    padding-inline: 8px;
+    text-align: center;
+  }
+
+  .start-button {
+    justify-self: center;
+    max-inline-size: 342px;
+  }
+}
+
 .secondary-screen {
   max-inline-size: 390px;
   margin-inline: auto;
