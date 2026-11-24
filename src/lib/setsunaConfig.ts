@@ -5,6 +5,10 @@ export const SETSUNA = {
   maxFalseStarts: 2,
   question: { additionChance: 0.5, maxOperand: 9, twoDigitMin: 10, maxInputLength: 2 },
   heartbeatIntervalMs: 720,
+  arena: {
+    fighterScale: 0.7,
+    stanceGapPercent: 36.4,
+  },
   finish: {
     stepMs: 80,
     slashMs: 120,
@@ -12,11 +16,11 @@ export const SETSUNA = {
     silenceMs: 200,
     fallMs: 350,
     zoom: 1.1,
-    stepDistance: 5,
-    passDistance: 64,
-    followThroughDistance: 4,
+    stepDistance: 3.5,
+    passDistance: 44.8,
+    followThroughDistance: 2.8,
     fallAngle: 13,
-    setback: 15,
+    setback: 10.5,
     drawFrames: 3,
   },
 } as const
