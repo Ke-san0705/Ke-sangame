@@ -88,3 +88,16 @@ test('HUD・問題・入力欄はカメラの外に固定する', () => {
   expect(screen.getByRole('meter', { name: 'HP' }).textContent).toBe('')
   expect(screen.getByText('討伐数')).toBeTruthy()
 })
+
+test('連続正解で攻撃が進化し、重ねるエフェクトは上限内に収まる', () => {
+  const { game } = play()
+  const generate = createQuestionGenerator()
+  generate(1, 'addition')
+  for (let i = 1; i < 12; i++) {
+    const { answer } = generate(1, 'addition')
+    for (const key of [...answer, 'Enter']) fireEvent.keyDown(window, { key })
+  }
+  expect(screen.getByText('12 COMBO')).toBeTruthy()
+  expect(game.querySelector('[data-attack="shockwave"]')).toBeTruthy()
+  expect(game.querySelectorAll('[data-attack]').length).toBeLessThanOrEqual(3)
+})

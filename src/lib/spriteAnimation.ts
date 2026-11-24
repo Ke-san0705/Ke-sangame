@@ -78,3 +78,7 @@ export function loadSpriteAnimation(json: string): SpriteAnimation {
 
   return { image, cell: { width, height }, grid: { columns, rows }, animations }
 }
+
+export function resolveSpriteClip(definition: SpriteAnimation, key: string, fallback: string) {
+  return definition.animations[key] ?? definition.animations[fallback]
+}

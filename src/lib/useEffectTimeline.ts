@@ -18,6 +18,10 @@ function subscribeToMotion(onChange: () => void) {
   }
 }
 
+export function useReducedEffects() {
+  return useSyncExternalStore(subscribeToMotion, readReducedEffects, readServerSnapshot)
+}
+
 type EffectTimelineOptions = {
   scope: RefObject<HTMLElement | null>
   active: boolean
@@ -30,7 +34,7 @@ export function useEffectTimeline(
   { scope, active, trigger, lowPower }: EffectTimelineOptions,
   setup: (timeline: gsap.core.Timeline, target: HTMLElement) => void,
 ) {
-  const reducedEffects = useSyncExternalStore(subscribeToMotion, readReducedEffects, readServerSnapshot)
+  const reducedEffects = useReducedEffects()
   const enabled = active && !lowPower && !reducedEffects
 
   useGSAP(() => {
