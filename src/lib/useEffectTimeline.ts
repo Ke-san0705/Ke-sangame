@@ -5,11 +5,13 @@ import gsap from 'gsap'
 gsap.registerPlugin(useGSAP)
 
 const motionQueries = ['(prefers-reduced-motion: reduce)', '(update: slow)']
-const readReducedEffects = () => motionQueries.some((query) => window.matchMedia(query).matches)
+const supportsMotionQueries = () => typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+const readReducedEffects = () =>
+  !supportsMotionQueries() || motionQueries.some((query) => window.matchMedia(query).matches)
 const readServerSnapshot = () => true
 
 function subscribeToMotion(onChange: () => void) {
-  const preferences = motionQueries.map((query) => window.matchMedia(query))
+  const preferences = supportsMotionQueries() ? motionQueries.map((query) => window.matchMedia(query)) : []
   preferences.forEach((preference) => preference.addEventListener('change', onChange))
   return () => {
     preferences.forEach((preference) => preference.removeEventListener('change', onChange))

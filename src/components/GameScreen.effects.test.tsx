@@ -6,6 +6,7 @@ import { GameScreen } from './GameScreen'
 
 afterEach(() => {
   cleanup()
+  vi.unstubAllGlobals()
   vi.restoreAllMocks()
   vi.useRealTimers()
 })
@@ -65,4 +66,10 @@ test('実行中に視差効果を減らす設定に切り替えると演出を�
   preference.matches = true
   act(() => preference.dispatchEvent(new Event('change')))
   expect(tweens()).toHaveLength(0)
+})
+
+test('matchMedia がない環境でもゲームを開始できる', () => {
+  vi.stubGlobal('matchMedia', undefined)
+  render(<GameScreen level={1} duration={30} mode="addition" skipCountdown showMonsterBattle onFinish={vi.fn()} />)
+  expect(screen.getByRole('timer').textContent).toBe('30')
 })
