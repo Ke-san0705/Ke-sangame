@@ -1,0 +1,85 @@
+{
+  "image": "enemy-swordsman.png",
+  "cell": {
+    "width": 128,
+    "height": 128
+  },
+  "grid": {
+    "columns": 8,
+    "rows": 6
+  },
+  "animations": {
+    "idle": {
+      "startFrame": 0,
+      "endFrame": 3,
+      "fps": 6,
+      "anchor": {
+        "x": 64,
+        "y": 112
+      }
+    },
+    "walk": {
+      "startFrame": 4,
+      "endFrame": 9,
+      "fps": 9,
+      "anchor": {
+        "x": 64,
+        "y": 112
+      }
+    },
+    "attack": {
+      "startFrame": 10,
+      "endFrame": 14,
+      "fps": 12,
+      "anchor": {
+        "x": 64,
+        "y": 112
+      }
+    },
+    "heavyAttack": {
+      "startFrame": 15,
+      "endFrame": 21,
+      "fps": 12,
+      "anchor": {
+        "x": 64,
+        "y": 112
+      }
+    },
+    "hit": {
+      "startFrame": 22,
+      "endFrame": 24,
+      "fps": 12,
+      "anchor": {
+        "x": 64,
+        "y": 112
+      }
+    },
+    "defeat": {
+      "startFrame": 25,
+      "endFrame": 29,
+      "fps": 8,
+      "anchor": {
+        "x": 64,
+        "y": 112
+      }
+    },
+    "special": {
+      "startFrame": 30,
+      "endFrame": 38,
+      "fps": 13,
+      "anchor": {
+        "x": 64,
+        "y": 112
+      }
+    },
+    "iai": {
+      "startFrame": 39,
+      "endFrame": 45,
+      "fps": 15,
+      "anchor": {
+        "x": 64,
+        "y": 112
+      }
+    }
+  }
+}

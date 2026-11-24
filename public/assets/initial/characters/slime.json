@@ -1,0 +1,76 @@
+{
+  "image": "slime.png",
+  "cell": {
+    "width": 64,
+    "height": 64
+  },
+  "grid": {
+    "columns": 8,
+    "rows": 5
+  },
+  "animations": {
+    "idle": {
+      "startFrame": 0,
+      "endFrame": 3,
+      "fps": 6,
+      "anchor": {
+        "x": 32,
+        "y": 56
+      }
+    },
+    "walk": {
+      "startFrame": 4,
+      "endFrame": 9,
+      "fps": 9,
+      "anchor": {
+        "x": 32,
+        "y": 56
+      }
+    },
+    "attack": {
+      "startFrame": 10,
+      "endFrame": 14,
+      "fps": 12,
+      "anchor": {
+        "x": 32,
+        "y": 56
+      }
+    },
+    "heavyAttack": {
+      "startFrame": 15,
+      "endFrame": 21,
+      "fps": 12,
+      "anchor": {
+        "x": 32,
+        "y": 56
+      }
+    },
+    "hit": {
+      "startFrame": 22,
+      "endFrame": 24,
+      "fps": 12,
+      "anchor": {
+        "x": 32,
+        "y": 56
+      }
+    },
+    "defeat": {
+      "startFrame": 25,
+      "endFrame": 29,
+      "fps": 8,
+      "anchor": {
+        "x": 32,
+        "y": 56
+      }
+    },
+    "special": {
+      "startFrame": 30,
+      "endFrame": 38,
+      "fps": 13,
+      "anchor": {
+        "x": 32,
+        "y": 56
+      }
+    }
+  }
+}
