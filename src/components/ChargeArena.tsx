@@ -1,5 +1,8 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { preload } from 'react-dom'
+import { ENEMY_STAGE } from '../lib/enemyApproachConfig'
+import type { Level } from '../lib/question-generator'
+import { EnemyApproach } from './EnemyApproach'
 import { BattleStage } from './BattleStage'
 import './ChargeArena.css'
 
@@ -10,6 +13,13 @@ const initialMonsters = 6
 const maxMonsters = 66
 const goldenAngle = Math.PI * (3 - Math.sqrt(5))
 
+const lightning = (
+  <g className="charge-lightning">
+    <path d="m61 49-24-13 4 16-26-9m108 1 14-22 8 11 17-17m-12 48 22 11-11 7 26 9" />
+    <path d="m82 40-12-18-4 7-13-15m-6 55-18 8 8 6-21 12" />
+  </g>
+)
+
 export function preloadChargeSprites() {
   for (const src of sprites) preload(src, { as: 'image' })
 }
@@ -17,9 +27,26 @@ export function preloadChargeSprites() {
 export function ChargeArena({ correctCount, overcharged = false, battle }: {
   correctCount: number
   overcharged?: boolean
-  battle?: { lowPower: boolean; foreground: ReactNode }
+  battle?: { lowPower: boolean; foreground: ReactNode; level: Level; combo: number; active: boolean }
 }) {
   const color = correctCount >= 15 ? 'black' : correctCount >= 9 ? 'red' : correctCount >= 4 ? 'yellow' : 'blue'
+  if (battle) {
+    return (
+      <BattleStage className="charge-arena" color={color} overcharged={overcharged}
+        characters={<EnemyApproach level={battle.level} combo={battle.combo} active={battle.active} />}
+        foreground={
+          <>
+            <div className="battle-hero-effects" aria-hidden="true" style={{ left: `${ENEMY_STAGE.heroX * 100}%` }}>
+              {correctCount > 0 && <span key={correctCount} className="charge-shockwave" />}
+              {overcharged && <svg viewBox="0 0 200 120" focusable="false">{lightning}</svg>}
+            </div>
+            {battle.foreground}
+          </>
+        }
+        motion={correctCount > 0 ? { cue: 'hit', trigger: correctCount } : undefined} lowPower={battle.lowPower} />
+    )
+  }
+
   const compression = correctCount / (correctCount + 10)
   const monsterCount = Math.min(maxMonsters, initialMonsters + correctCount)
   const swarmWidth = 92 - 50 * compression
@@ -69,33 +96,12 @@ export function ChargeArena({ correctCount, overcharged = false, battle }: {
         <ellipse className="charge-cannon-core" cx="100" cy="56" rx="38" ry="17" />
         <path className="charge-cannon-rail" d="M91 84h18m-9 10v22" />
         {overcharged && (
-          <g className="charge-lightning">
-            <path d="m61 49-24-13 4 16-26-9m108 1 14-22 8 11 17-17m-12 48 22 11-11 7 26 9" />
-            <path d="m82 40-12-18-4 7-13-15m-6 55-18 8 8 6-21 12" />
-          </g>
+          lightning
         )}
       </svg>
     </div>
   )
 
-  if (battle) {
-    return (
-      <BattleStage className="charge-arena" color={color} overcharged={overcharged} style={arenaStyle}
-        rearEffects={barrier}
-        characters={<>{swarm}{cannon}</>}
-        foreground={
-          <>
-            {correctCount > 0 && (
-              <div className="charge-cannon" aria-hidden="true">
-                <span key={correctCount} className="charge-shockwave" />
-              </div>
-            )}
-            {battle.foreground}
-          </>
-        }
-        motion={correctCount > 0 ? { cue: 'hit', trigger: correctCount } : undefined} lowPower={battle.lowPower} />
-    )
-  }
 
   return (
     <div className="charge-arena" data-color={color} data-overcharged={overcharged} style={arenaStyle} aria-hidden="true">
