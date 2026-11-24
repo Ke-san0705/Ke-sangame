@@ -1,0 +1,9 @@
+{
+  "image": "example.png",
+  "cell": { "width": 128, "height": 128 },
+  "grid": { "columns": 4, "rows": 2 },
+  "animations": {
+    "idle": { "startFrame": 0, "endFrame": 3, "fps": 6, "anchor": { "x": 64, "y": 112 } },
+    "attack": { "startFrame": 4, "endFrame": 7, "fps": 12, "anchor": { "x": 64, "y": 112 } }
+  }
+}
