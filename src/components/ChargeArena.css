@@ -134,6 +134,14 @@
   margin: 0;
 }
 
+.battle-evolution {
+  padding: 0.18em 0.5em;
+  border: 1px solid #ffd98c;
+  border-radius: 0.4em;
+  background: #302247;
+  color: #fff4c8;
+}
+
 .battle-combo {
   color: #d9f8ff;
 }

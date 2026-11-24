@@ -1,5 +1,5 @@
 import { advanceEnemies, createEnemyApproach, type EnemyApproach } from './enemyApproach'
-import { COMBAT_CONFIG, ENEMY_STAGE, ENEMY_TYPES } from './enemyApproachConfig'
+import { ATTACK_STAGES, COMBAT_CONFIG, ENEMY_STAGE, ENEMY_TYPES } from './enemyApproachConfig'
 import type { Level } from './question-generator'
 
 type Combat = EnemyApproach & {
@@ -31,16 +31,19 @@ export function applyCombatAnswer(state: Combat, answer: 'correct' | 'incorrect'
   if (state.phase !== 'playing' || answer === 'pass') return state
   if (answer === 'incorrect') return damageCombat({ ...state, combo: 0 }, COMBAT_CONFIG.incorrectDamage)
 
-  const next = { ...state, combo: state.combo + 1 }
-  const target = state.enemies.reduce<(typeof state.enemies)[number] | undefined>(
-    (closest, enemy) => !closest || enemy.x < closest.x ? enemy : closest, undefined,
+  const combo = state.combo + 1
+  const attack = ATTACK_STAGES.reduce(
+    (reached, stage) => combo >= stage.combo || state.attackStage === stage.stage ? stage : reached,
+    ATTACK_STAGES[0],
   )
-  if (!target) return next
+  const targetIds = new Set(
+    [...state.enemies].sort((a, b) => a.x - b.x).slice(0, attack.targets).map(({ id }) => id),
+  )
+  const enemies = state.enemies
+    .map((enemy) => targetIds.has(enemy.id) ? { ...enemy, hp: enemy.hp - COMBAT_CONFIG.attackDamage } : enemy)
+    .filter((enemy) => enemy.hp > 0)
 
-  const hp = target.hp - COMBAT_CONFIG.attackDamage
-  return hp <= 0
-    ? { ...next, defeated: next.defeated + 1, enemies: state.enemies.filter((enemy) => enemy.id !== target.id) }
-    : { ...next, enemies: state.enemies.map((enemy) => enemy.id === target.id ? { ...enemy, hp } : enemy) }
+  return { ...state, combo, attackStage: attack.stage, enemies, defeated: state.defeated + state.enemies.length - enemies.length }
 }
 
 const fastestEnemy = Math.max(...Object.values(ENEMY_TYPES).map(({ speed }) => speed))

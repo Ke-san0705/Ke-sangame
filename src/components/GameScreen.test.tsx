@@ -567,3 +567,29 @@ test.each([true, false])('誤答後の過充電は討伐でのみ発動し、再
   act(() => vi.advanceTimersByTime(15_000))
   expect(Boolean(warning())).toBe(showMonsterBattle)
 })
+
+test('攻撃が進化したときだけ戦闘領域で形態名を一時表示する', () => {
+  vi.useFakeTimers()
+  vi.spyOn(Math, 'random').mockReturnValue(0.25)
+  const generate = createQuestionGenerator()
+  let question = generate(1, 'addition')
+  render(<GameScreen level={1} mode="addition" duration={30} skipCountdown showMonsterBattle onFinish={vi.fn()} />)
+
+  const correct = () => {
+    for (const key of question.answer) fireEvent.keyDown(window, { key })
+    fireEvent.keyDown(window, { key: 'Enter' })
+    question = generate(1, 'addition')
+  }
+
+  for (let i = 0; i < 4; i++) correct()
+  expect(screen.queryByText(/攻撃進化/)).toBeNull()
+  correct()
+  expect(within(screen.getByRole('status')).getByText('攻撃進化：飛翔斬撃')).toBeTruthy()
+  act(() => vi.advanceTimersByTime(1_500))
+  expect(screen.queryByText(/攻撃進化/)).toBeNull()
+
+  fireEvent.keyDown(window, { key: '0' })
+  fireEvent.keyDown(window, { key: 'Enter' })
+  for (let i = 0; i < 5; i++) correct()
+  expect(screen.queryByText(/攻撃進化/)).toBeNull()
+})
