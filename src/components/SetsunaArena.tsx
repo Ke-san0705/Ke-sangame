@@ -14,19 +14,36 @@ const sheets = {
 const strongEnemySheets = { ...sheets, opponent: loadSpriteAnimation(swordmasterJson) }
 type Fighter = keyof typeof sheets
 const sides = { player: 1, opponent: -1 } as const
+const { phases, spriteClip } = SETSUNA.finish.defeat
+const totalWeight = phases.reduce((total, phase) => total + phase.durationWeight, 0)
+const finalPhase = phases[phases.length - 1]!
+
+function defeatTransform(phase: typeof finalPhase, side: number, dedicatedClip: boolean) {
+  return {
+    '--setsuna-defeat-sink': `${dedicatedClip ? 0 : phase.sinkPercent}cqh`,
+    '--setsuna-defeat-angle': `${dedicatedClip ? 0 : side * phase.angle}deg`,
+    '--setsuna-defeat-height': dedicatedClip ? 1 : phase.heightScale,
+  }
+}
+
+function anchorStyle(sheet: SpriteAnimation, clip: ReturnType<typeof sheathedPose>) {
+  return {
+    '--foot-x': `${clip.anchor.x * 100 / sheet.cell.width}%`,
+    '--foot-y': `${clip.anchor.y * 100 / sheet.cell.height}%`,
+  }
+}
 
 function sheathedPose(sheet: SpriteAnimation) {
   return sheet.animations.sheathed ?? sheet.animations.idle!
 }
 
 function fighterStyle(sheet: SpriteAnimation, pose: 'sheathed' | 'defeat') {
-  const clip = pose === 'sheathed' ? sheathedPose(sheet) : sheet.animations.defeat!
+  const clip = (pose === 'defeat' && sheet.animations[spriteClip]) || sheathedPose(sheet)
   return {
     backgroundImage: `url("${import.meta.env.BASE_URL}assets/initial/characters/${sheet.image}")`,
     backgroundSize: `${sheet.grid.columns * 100}% ${sheet.grid.rows * 100}%`,
     backgroundPosition: spriteFramePosition(sheet, clip.endFrame),
-    '--foot-x': `${clip.anchor.x * 100 / sheet.cell.width}%`,
-    '--foot-y': `${clip.anchor.y * 100 / sheet.cell.height}%`,
+    ...anchorStyle(sheet, clip),
   } as CSSProperties
 }
 
@@ -47,7 +64,7 @@ export function SetsunaArena({ waiting, winner, playing, strongEnemy }: {
     const blade = target.querySelector('.setsuna-slash')!
     const flash = target.querySelector('.setsuna-flash')!
     const direction = sides[winner]
-    const { stepMs, slashMs, hitStopMs, silenceMs, fallMs, zoom, stepDistance, passDistance, followThroughDistance, fallAngle, setback, drawFrames } =
+    const { stepMs, slashMs, hitStopMs, silenceMs, fallMs, zoom, stepDistance, passDistance, followThroughDistance, setback, drawFrames } =
       SETSUNA.finish
 
     const step = stepMs / 1000
@@ -62,7 +79,8 @@ export function SetsunaArena({ waiting, winner, playing, strongEnemy }: {
     const attackerCell = attacker.firstElementChild!
     const defenderCell = defender.firstElementChild!
     const draw = fighters[winner].animations.iai!
-    const defeat = fighters[loser].animations.defeat!
+    const loserSheet = fighters[loser]
+    const defeat = loserSheet.animations[spriteClip]
     const sheathed = sheathedPose(fighters[winner])
     const showDrawFrame = (frame: number, at: number) => {
       timeline.set(attackerCell, { backgroundPosition: spriteFramePosition(fighters[winner], frame) }, at)
@@ -79,9 +97,6 @@ export function SetsunaArena({ waiting, winner, playing, strongEnemy }: {
       }, impact + hitStop)
       .to(flash, { opacity: 0, duration: silence, ease: 'power2.out' }, impact + hitStop)
       .to(blade, { opacity: 0, duration: silence, ease: 'power2.out' }, impact + hitStop)
-      .to(defender, {
-        rotation: -direction * fallAngle, left: `-=${direction * setback}%`, duration: fall, ease: 'power1.in',
-      }, collapse)
       .to(camera, { scale: 1, duration: fall, ease: 'power1.inOut' }, collapse)
 
     for (let index = 0; index < drawFrames; index++) {
@@ -93,9 +108,33 @@ export function SetsunaArena({ waiting, winner, playing, strongEnemy }: {
     }
     showDrawFrame(draw.endFrame, collapse + fall / 2)
     showDrawFrame(sheathed.endFrame, collapse + fall)
-    for (let frame = defeat.startFrame; frame <= defeat.endFrame; frame++) {
-      const progress = (frame - defeat.startFrame) / (defeat.endFrame - defeat.startFrame)
-      timeline.set(defenderCell, { backgroundPosition: spriteFramePosition(fighters[loser], frame) }, collapse + fall * progress)
+    // The loser starts at impact while the winner finishes the existing sequence.
+    const defeatDuration = hitStop + silence + fall
+    timeline.set(defender, {
+      '--setsuna-defeat-sink': '0cqh',
+      '--setsuna-defeat-angle': '0deg',
+      '--setsuna-defeat-height': 1,
+    }, impact)
+    let elapsedWeight = 0
+    let setbackProgress = 0
+    for (const phase of phases) {
+      timeline.to(defender, {
+        ...defeatTransform(phase, sides[loser], Boolean(defeat)),
+        left: `+=${sides[loser] * setback * (phase.setbackProgress - setbackProgress)}%`,
+        duration: defeatDuration * phase.durationWeight / totalWeight,
+        ease: phase.ease,
+      }, impact + defeatDuration * elapsedWeight / totalWeight)
+      elapsedWeight += phase.durationWeight
+      setbackProgress = phase.setbackProgress
+    }
+    if (defeat) {
+      timeline.set(defenderCell, anchorStyle(loserSheet, defeat), impact)
+      const frameCount = defeat.endFrame - defeat.startFrame + 1
+      for (let index = 0; index < frameCount; index++) {
+        timeline.set(defenderCell, {
+          backgroundPosition: spriteFramePosition(loserSheet, defeat.startFrame + index),
+        }, impact + defeatDuration * index / frameCount)
+      }
     }
   })
 
@@ -104,8 +143,7 @@ export function SetsunaArena({ waiting, winner, playing, strongEnemy }: {
     '--setsuna-fighter-scale': SETSUNA.arena.fighterScale,
     '--setsuna-half-gap': `${SETSUNA.arena.stanceGapPercent / 2}%`,
     '--setsuna-pass': `${SETSUNA.finish.passDistance}%`,
-    '--setsuna-setback': `${SETSUNA.finish.setback}%`,
-    '--setsuna-fall': `${SETSUNA.finish.fallAngle}deg`,
+    '--setsuna-setback': `${SETSUNA.finish.setback * finalPhase.setbackProgress}%`,
   } as CSSProperties
   return (
     <div className="setsuna-stage" ref={arena} data-duel-winner={winner} data-waiting={waiting} data-finished={finished} style={style}>
@@ -113,12 +151,16 @@ export function SetsunaArena({ waiting, winner, playing, strongEnemy }: {
         key={finished ? 'result' : 'duel'}
         className="setsuna-arena"
         rearEffects={<div className="setsuna-wind" aria-hidden="true"><i /><i /><i /></div>}
-        characters={(Object.keys(fighters) as Fighter[]).map((fighter) => (
-          <div className="setsuna-fighter" key={fighter} data-fighter={fighter}>
-            <div className="setsuna-cell" style={fighterStyle(fighters[fighter],
-              finished && fighter !== winner ? 'defeat' : 'sheathed')} aria-hidden="true" />
-          </div>
-        ))}
+        characters={(Object.keys(fighters) as Fighter[]).map((fighter) => {
+          const sheet = fighters[fighter]
+          const fallen = finished && fighter !== winner
+          return (
+            <div className="setsuna-fighter" key={fighter} data-fighter={fighter}
+              style={fallen ? defeatTransform(finalPhase, sides[fighter], Boolean(sheet.animations[spriteClip])) as CSSProperties : undefined}>
+              <div className="setsuna-cell" style={fighterStyle(sheet, fallen ? 'defeat' : 'sheathed')} aria-hidden="true" />
+            </div>
+          )
+        })}
         foreground={<><div className="setsuna-flash" aria-hidden="true" /><div className="setsuna-slash" aria-hidden="true" /></>}
       />
     </div>
