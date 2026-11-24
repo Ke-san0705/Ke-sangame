@@ -51,7 +51,6 @@
 
 .release-blade,
 .release-slash,
-.release-beam,
 .release-burst,
 .release-ring,
 .release-spark,
@@ -82,19 +81,6 @@
   border-radius: 50%;
   filter: drop-shadow(0 0 0.9rem #fff) drop-shadow(0 0 2rem #ef9c4e);
   animation: release-slash var(--release-phase-ms) ease-out both;
-}
-
-.release-beam {
-  left: var(--release-sword-x);
-  right: -8%;
-  top: var(--release-sword-y);
-  height: calc(24vmin * var(--release-reach));
-  translate: 0 -50%;
-  rotate: -8deg;
-  transform-origin: left center;
-  clip-path: polygon(0 45%, 42% 28%, 100% 0, 100% 100%, 42% 70%, 0 55%);
-  background: linear-gradient(0deg, #d78243, var(--release-color) 36%, white 50%, var(--release-color) 64%, #d78243);
-  animation: release-beam var(--release-phase-ms) ease-out both;
 }
 
 .release-burst,
@@ -245,12 +231,6 @@
   25% { opacity: var(--release-glow); }
   70% { opacity: var(--release-glow); transform: scaleX(1); }
   100% { opacity: 0.12; transform: scaleX(1); }
-}
-
-@keyframes release-beam {
-  0% { opacity: 0.15; transform: scaleX(0.1) scaleY(0.3); }
-  28% { opacity: var(--release-glow); transform: scale(1); }
-  100% { opacity: 0; transform: scaleY(0.16); }
 }
 
 @keyframes release-burst {

@@ -30,12 +30,12 @@ function Stroke({ shape, simple }: { shape: AttackShape; simple: boolean }) {
           <path className="attack-sparks" d="m79-48 4-9m106 84 9 5m200-80 9-8m59 75 16 4" />
         </>}
       </>
-    case 'cannon':
+    case 'strongShockwave':
       return <>
-        {!simple && <path className="attack-sparks" d="M30-53 630-93M91-39 708-59M14 43 660 88M139 36 705 55" />}
-        <path className="attack-trail" d="M0 0Q168-76 710-38V38Q168 76 0 0Z" />
-        <path fill="currentColor" d="M0 0Q148-42 710-23V23Q148 42 0 0Z" />
-        <path className="attack-core" d="M0 0Q148-22 710-10V10Q148 22 0 0Z" />
+        <path className="attack-trail" d="M0 28Q145-120 420-83Q490-74 560-26Q323-107 0 28Z" />
+        <path className="attack-trail" d="M0 53Q175-50 416-34Q494-27 560 22Q317-54 0 53Z" />
+        <path className="attack-sparks" d="M0 28Q283-158 560-26M0 53Q303-102 560 22" />
+        {!simple && <path className="attack-lightning" d="m97-34 37-38 20 18 53-47m52 89 39-36 32 15 49-27m44-35 36-40m46 146 41 2" />}
       </>
   }
 }
@@ -47,10 +47,9 @@ export function AttackEffect({ attack, simple, onComplete }: {
 }) {
   const scope = useRef<SVGSVGElement>(null)
   const profile = attackEffectForStage(attack.stage)
-  const { shape, reach, color, travel, duration } = profile
+  const { shape, color, travel, duration } = profile
   const slashX = attack.targets[0] ? screenX(attack.targets[0].x) : config.defaultSlashX
   const originX = shape === 'slash' ? slashX : heroX
-  const stronger = config.strongStageIds.includes(attack.stage)
 
   useGSAP(() => {
     const target = scope.current
@@ -89,9 +88,7 @@ export function AttackEffect({ attack, simple, onComplete }: {
       style={{ color }} viewBox={`0 0 ${config.width} ${config.height}`} aria-hidden="true">
       <g transform={`translate(${originX} ${config.baseline})`}>
         <g className="attack-stroke">
-          <g transform={`scale(${stronger ? (reach + config.impact.travel) / reach : 1} ${stronger ? config.strongHeightScale : 1})`}>
-            <Stroke shape={shape} simple={simple} />
-          </g>
+          <Stroke shape={shape} simple={simple} />
         </g>
       </g>
       {!simple && attack.targets.map((enemy) => (

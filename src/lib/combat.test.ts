@@ -26,9 +26,9 @@ describe('討伐のダメージと勝敗', () => {
 
   it.each([
     [0, 1, 1], [3, 1, 1], [4, 2, 2], [8, 2, 2], [9, 3, 4], [18, 3, 4],
-    [19, 4, 8], [28, 4, 8], [29, 5, 16], [48, 5, 16], [49, 6, 32], [50, 6, 32],
+    [19, 4, 8], [28, 4, 8], [29, 4, 8], [48, 4, 8], [49, 4, 8], [50, 4, 8], [99, 4, 8],
   ])('コンボ %i からの正解で段階 %i、対象数 %i になる', (combo, attackStage, targetCount) => {
-    const enemies = Array.from({ length: 33 }, (_, id) => ({
+    const enemies = Array.from({ length: 10 }, (_, id) => ({
       id, type: 'slime' as const, x: 1 - id / 1000, hp: 1,
     }))
     const next = applyCombatAnswer({ ...createCombat(), combo, enemies }, 'correct')

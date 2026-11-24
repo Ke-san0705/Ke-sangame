@@ -42,9 +42,7 @@ export const ATTACK_STAGES = [
   { combo: 0, stage: 1, targets: 1, name: '通常斬撃', effect: 'slash' },
   { combo: 5, stage: 2, targets: 2, name: '飛翔斬撃', effect: 'flying' },
   { combo: 10, stage: 3, targets: 4, name: '衝撃波・弱', effect: 'shockwave' },
-  { combo: 20, stage: 4, targets: 8, name: '衝撃波・強', effect: 'shockwave' },
-  { combo: 30, stage: 5, targets: 16, name: 'エネルギー砲・弱', effect: 'cannon' },
-  { combo: 50, stage: 6, targets: 32, name: 'エネルギー砲・強', effect: 'cannon' },
+  { combo: 20, stage: 4, targets: 8, name: '衝撃波・強', effect: 'strongShockwave' },
 ] as const
 
 export const COMBAT_CONFIG = {

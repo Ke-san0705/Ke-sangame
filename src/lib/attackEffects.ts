@@ -3,12 +3,12 @@ import type { Enemy } from './enemyApproach'
 import type { SoundCue } from './soundEffects'
 
 const profiles = {
-  slash: { color: '#bfdbfe', reach: 130, duration: 0.38, travel: 40, sound: 'slash' },
-  flying: { color: '#38bdf8', reach: 340, duration: 0.53, travel: 700, sound: 'flying' },
-  shockwave: { color: '#2563eb', reach: 520, duration: 0.5, travel: 120, sound: 'shockwave' },
-  cannon: { color: '#67e8f9', reach: 710, duration: 0.57, travel: 0, sound: 'cannon' },
+  slash: { color: '#bfdbfe', duration: 0.38, travel: 40, sound: 'slash' },
+  flying: { color: '#38bdf8', duration: 0.53, travel: 700, sound: 'flying' },
+  shockwave: { color: '#2563eb', duration: 0.5, travel: 120, sound: 'shockwave' },
+  strongShockwave: { color: '#c084fc', duration: 0.55, travel: 145, sound: 'strongShockwave' },
 } as const satisfies Record<string, {
-  color: string; reach: number; duration: number; travel: number; sound: SoundCue
+  color: string; duration: number; travel: number; sound: SoundCue
 }>
 
 export type AttackShape = keyof typeof profiles
@@ -24,8 +24,6 @@ export const ATTACK_EFFECTS = {
   defaultSlashX: 215,
   flyingTipX: 75,
   flyingTravelDuration: 0.23,
-  strongHeightScale: 1.3,
-  strongStageIds: [4, 6],
   windup: 0.055,
   shortDuration: 0.21,
   hero: { windupX: -4, strikeX: 13, angle: 6 },
