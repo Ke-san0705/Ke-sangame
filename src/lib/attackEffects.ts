@@ -1,4 +1,4 @@
-import { ATTACK_STAGES } from './enemyApproachConfig'
+import { ATTACK_STAGES, COMBO_SPECIAL } from './enemyApproachConfig'
 import type { Enemy } from './enemyApproach'
 import type { SoundCue } from './soundEffects'
 
@@ -11,7 +11,7 @@ const profiles = {
   color: string; reach: number; duration: number; travel: number; sound: SoundCue
 }>
 
-export type AttackShape = keyof typeof profiles
+export type AttackShape = keyof typeof profiles | 'comboSpecial'
 
 export const ATTACK_EFFECTS = {
   overlap: 'compose' as 'compose' | 'replace',
@@ -42,10 +42,19 @@ export function attackEffectForStage(stage: number) {
   return { shape, ...profiles[shape] }
 }
 
+export function attackEffectForVisual(attack: AttackVisual) {
+  if (!attack.special) return attackEffectForStage(attack.stage)
+  return {
+    shape: 'comboSpecial' as const, color: '#f59e0b', reach: COMBO_SPECIAL.range * ATTACK_EFFECTS.width,
+    duration: 0.55, travel: 0,
+  }
+}
+
 export type AttackVisual = {
   id: number
   stage: number
   targets: readonly Enemy[]
+  special?: { healed: number }
 }
 
 export function queueAttackVisual(current: readonly AttackVisual[], attack: AttackVisual) {

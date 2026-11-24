@@ -274,3 +274,12 @@
   image-rendering: pixelated;
   filter: drop-shadow(0 3px 4px #07091b);
 }
+
+.attack-heal {
+  fill: currentColor;
+  stroke: #241500;
+  stroke-width: 4px;
+  paint-order: stroke;
+  font-size: 25px;
+  font-weight: 800;
+}

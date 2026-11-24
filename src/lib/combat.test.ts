@@ -29,7 +29,7 @@ describe('討伐のダメージと勝敗', () => {
     [19, 4, 8], [28, 4, 8], [29, 5, 16], [48, 5, 16], [49, 6, 32], [50, 6, 32],
   ])('コンボ %i からの正解で段階 %i、対象数 %i になる', (combo, attackStage, targetCount) => {
     const enemies = Array.from({ length: 33 }, (_, id) => ({
-      id, type: 'slime' as const, x: 1 - id / 100, hp: 1,
+      id, type: 'slime' as const, x: 1 - id / 1000, hp: 1,
     }))
     const next = applyCombatAnswer({ ...createCombat(), combo, enemies }, 'correct')
     expect(next).toMatchObject({ combo: combo + 1, attackStage, defeated: targetCount })
@@ -72,5 +72,44 @@ describe('討伐のダメージと勝敗', () => {
     expect(finishCombat(defeated)).toMatchObject({ hp: 0, phase: 'defeat' })
     expect(damageCombat(state, 1000)).toMatchObject({ hp: 0, phase: 'defeat' })
     expect(finishCombat(createCombat()).phase).toBe('special')
+  })
+})
+
+describe('コンボ必殺技', () => {
+  it('10と20コンボで一度ずつ回復し、最大HPを超えない', () => {
+    let state = { ...createCombat(), hp: 77, combo: 8 }
+    state = applyCombatAnswer(state, 'correct')
+    expect(state.hp).toBe(77)
+    state = applyCombatAnswer(state, 'correct')
+    expect(state.hp).toBe(87)
+    expect(applyCombatAnswer(state, 'pass')).toBe(state)
+    for (let i = 0; i < 9; i++) state = applyCombatAnswer(state, 'correct')
+    expect(state.hp).toBe(87)
+    state = applyCombatAnswer(state, 'correct')
+    expect(state.hp).toBe(97)
+    expect(applyCombatAnswer({ ...state, combo: 29 }, 'correct').hp).toBe(100)
+  })
+
+  it('通常攻撃に加え、範囲内の敵にだけ必殺技のダメージを与える', () => {
+    const state = { ...createCombat(), combo: 9, enemies: [
+      { id: 0, type: 'golem' as const, x: 0.4, hp: 5 },
+      { id: 1, type: 'golem' as const, x: 0.99, hp: 5 },
+    ] }
+    const next = applyCombatAnswer(state, 'correct')
+    expect(next.enemies.map(({ hp }) => hp)).toEqual([1, 4])
+  })
+
+  it('範囲内の近い敵から対象上限まで攻撃する', () => {
+    const enemies = Array.from({ length: 10 }, (_, id) => ({
+      id, type: 'golem' as const, x: 0.8 - id * 0.05, hp: 5,
+    }))
+    const next = applyCombatAnswer({ ...createCombat(), combo: 9, enemies }, 'correct')
+    expect(next.enemies.map(({ hp }) => hp)).toEqual([5, 5, 2, 2, 2, 2, 1, 1, 1, 1])
+  })
+
+  it('誤答で途切れた後も、次の10コンボで発動する', () => {
+    let state = applyCombatAnswer({ ...createCombat(), hp: 70, combo: 10 }, 'incorrect')
+    for (let i = 0; i < 10; i++) state = applyCombatAnswer(state, 'correct')
+    expect(state).toMatchObject({ combo: 10, hp: 70 })
   })
 })
