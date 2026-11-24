@@ -16,12 +16,13 @@ function motionPreference(query: string) {
   return Object.assign(preference, { matches: false, media: query })
 }
 
-function play({ lowPower = false, reduced = false } = {}) {
+function play({ lowPower = false, reduced = false, slow = false } = {}) {
   vi.useFakeTimers()
   vi.spyOn(Math, 'random').mockReturnValue(0.25)
   const preference = motionPreference('(prefers-reduced-motion: reduce)')
   const slowDisplay = motionPreference('(update: slow)')
   preference.matches = reduced
+  slowDisplay.matches = slow
   vi.spyOn(window, 'matchMedia').mockImplementation((query) =>
     (query === preference.media ? preference : slowDisplay) as MediaQueryList,
   )
@@ -55,10 +56,21 @@ test('解放画面に移ると戦闘のタイムラインと入力処理を破�
   expect(onFinish).not.toHaveBeenCalled()
 })
 
-test.each([{ lowPower: true }, { reduced: true }])('演出を抑制しても正解を判定する (%j)', (options) => {
-  const { tweens } = play(options)
+test.each([{ lowPower: true }, { reduced: true }, { slow: true }])('演出を抑制しても正解を判定する (%j)', (options) => {
+  const { tweens, game, onFinish } = play(options)
   expect(tweens()).toHaveLength(0)
+  expect((game.querySelector('.attack-framing') as HTMLElement).style.getPropertyValue('--attack-frame')).toBe('1')
   expect(screen.getByText('CRITICAL CHARGE!')).toBeTruthy()
+
+  act(() => vi.advanceTimersByTime(30_050))
+  act(() => vi.advanceTimersByTime(1_300))
+  const release = screen.getByRole('main', { name: '解放' })
+  expect(release.getAttribute('data-phase')).toBe('blast')
+  expect(release.getAttribute('data-reduced')).toBe('true')
+  expect(release.querySelectorAll('.release-spark')).toHaveLength(0)
+  fireEvent.click(screen.getByRole('button', { name: 'スキップ' }))
+  expect(onFinish).toHaveBeenCalledOnce()
+  expect(onFinish.mock.calls[0][0]).toMatchObject({ correctCount: 1, charge: { power: 23 } })
 })
 
 test('実行中に視差効果を減らす設定に切り替えると演出を破棄する', () => {
@@ -123,4 +135,32 @@ test('10コンボの正解入力でHPが回復し、金色の必殺技を一度�
   expect(screen.getByText('+10 HP')).toBeTruthy()
   fireEvent.keyDown(window, { key: 'Enter' })
   expect(game.querySelectorAll('[data-attack="comboSpecial"]')).toHaveLength(1)
+})
+
+test('解放の収束と爆発で粒子スロットを再利用する', () => {
+  play()
+  act(() => vi.advanceTimersByTime(30_050))
+  const scene = screen.getByRole('main', { name: '解放' })
+  act(() => vi.advanceTimersByTime(400))
+  const sparks = [...scene.querySelectorAll('.release-spark')]
+  expect(sparks).toHaveLength(16)
+  act(() => vi.advanceTimersByTime(900))
+  expect(scene.getAttribute('data-phase')).toBe('blast')
+  const blastSparks = [...scene.querySelectorAll('.release-spark')]
+  expect(blastSparks).toHaveLength(sparks.length)
+  expect(blastSparks.every((spark, index) => spark === sparks[index])).toBe(true)
+})
+
+test('敵が消えた後に次の敵が同じ描画スロットを使う', () => {
+  const { game } = play()
+  act(() => vi.advanceTimersByTime(2_500))
+  const sprite = game.querySelector('.battle-enemy')!
+  expect(sprite.getAttribute('data-enemy')).toBe('slime')
+  act(() => vi.advanceTimersByTime(2_000))
+  const generate = createQuestionGenerator()
+  generate(1, 'addition')
+  const { answer } = generate(1, 'addition')
+  for (const key of [...answer, 'Enter']) fireEvent.keyDown(window, { key })
+  expect(sprite.getAttribute('data-enemy')).toBe('goblin')
+  expect(game.querySelector('.battle-enemy')).toBe(sprite)
 })

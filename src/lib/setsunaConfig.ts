@@ -3,7 +3,7 @@ export const SETSUNA = {
   cpu: { initialMs: 1_500, fasterPerWinMs: 75, minMs: 650 },
   betweenRoundsMs: 1_250,
   maxFalseStarts: 2,
-  question: { maxOperand: 9, twoDigitMin: 10, maxInputLength: 2 },
+  question: { additionChance: 0.5, maxOperand: 9, twoDigitMin: 10, maxInputLength: 2 },
   heartbeatIntervalMs: 720,
   finish: {
     stepMs: 80,

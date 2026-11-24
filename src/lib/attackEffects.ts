@@ -17,6 +17,7 @@ export const ATTACK_EFFECTS = {
   overlap: 'compose' as 'compose' | 'replace',
   maxLayers: 3,
   maxImpacts: 8,
+  special: { color: '#f59e0b', duration: 0.55, travel: 0 },
   auraPerAnswer: 0.045,
   auraMin: 0.21,
   auraReducedMax: 0.36,
@@ -45,8 +46,9 @@ export function attackEffectForStage(stage: number) {
 export function attackEffectForVisual(attack: AttackVisual) {
   if (!attack.special) return attackEffectForStage(attack.stage)
   return {
-    shape: 'comboSpecial' as const, color: '#f59e0b', reach: COMBO_SPECIAL.range * ATTACK_EFFECTS.width,
-    duration: 0.55, travel: 0,
+    shape: 'comboSpecial' as const,
+    reach: COMBO_SPECIAL.range * ATTACK_EFFECTS.width,
+    ...ATTACK_EFFECTS.special,
   }
 }
 

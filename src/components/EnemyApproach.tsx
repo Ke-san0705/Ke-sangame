@@ -3,10 +3,11 @@ import samuraiJson from '../../public/assets/initial/characters/samurai.json?raw
 import { useEffectTimeline } from '../lib/useEffectTimeline'
 import { loadSpriteAnimation, resolveSpriteClip, spriteFramePosition } from '../lib/spriteAnimation'
 import { ATTACK_EFFECTS, attackEffectForStage } from '../lib/attackEffects'
-import { ENEMY_STAGE, ENEMY_TYPES } from '../lib/enemyApproachConfig'
+import { ENEMY_STAGE, ENEMY_TYPES, MAX_ENEMY_SPRITES } from '../lib/enemyApproachConfig'
 import type { Enemy } from '../lib/enemyApproach'
 
 const sprite = (name: string) => `${import.meta.env.BASE_URL}monsters/${name}.png`
+const spriteSlots = Array.from({ length: MAX_ENEMY_SPRITES }, (_, slot) => slot)
 const sheet = loadSpriteAnimation(samuraiJson)
 const idle = resolveSpriteClip(sheet, 'idle', 'attack')
 const idlePosition = spriteFramePosition(sheet, idle?.startFrame ?? 0)
@@ -49,10 +50,14 @@ export function EnemyApproach({ enemies, attackId, stage, lowPower }: {
           '--hero-anchor-y': `${(idle?.anchor.y ?? sheet.cell.height) * 100 / sheet.cell.height}%`,
         } as CSSProperties} />
       </div>
-      {enemies.map((enemy) => (
-        <img key={enemy.id} className="battle-enemy" data-enemy={enemy.type}
-          src={sprite(ENEMY_TYPES[enemy.type].sprite)} alt="" style={{ left: `${enemy.x * 100}%` }} />
-      ))}
+      {spriteSlots.map((slot) => {
+        const enemy = enemies[slot]
+        if (!enemy) return <img key={slot} hidden alt="" />
+        return (
+          <img key={slot} className="battle-enemy" data-enemy={enemy.type}
+            src={sprite(ENEMY_TYPES[enemy.type].sprite)} alt="" style={{ left: `${enemy.x * 100}%` }} />
+        )
+      })}
     </div>
   )
 }

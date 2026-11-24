@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { preload } from 'react-dom'
+import { CHARGE_COLORS } from '../lib/huntConfig'
 import { ENEMY_STAGE } from '../lib/enemyApproachConfig'
 import type { Enemy } from '../lib/enemyApproach'
 import { EnemyApproach } from './EnemyApproach'
@@ -33,7 +34,7 @@ export function ChargeArena({ correctCount, overcharged = false, battle }: {
   battle?: { lowPower: boolean; foreground: ReactNode; enemies: readonly Enemy[]; attacks: readonly AttackVisual[]; onAttackComplete: (id: number, replace: boolean) => void; stage: number; motion?: BattleMotion }
 }) {
   const reduced = useReducedEffects()
-  const color = correctCount >= 15 ? 'black' : correctCount >= 9 ? 'red' : correctCount >= 4 ? 'yellow' : 'blue'
+  const color = CHARGE_COLORS.find(({ fromCorrect }) => correctCount >= fromCorrect)?.color ?? 'blue'
   if (battle) {
     const simple = reduced || battle.lowPower
     const aura = Math.min(

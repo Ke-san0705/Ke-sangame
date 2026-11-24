@@ -75,7 +75,6 @@ export function ReleaseSequence({ release, enemies, lowPower, onSound, onComplet
     '--release-phase-ms': `${duration}ms`,
   } as CSSProperties
 
-  const streaks = phase.phase === 'gather' || phase.phase === 'blast'
   const { angleStep, minDistance, distanceStep, distanceVariants, delayStepMs, delayVariants } = RELEASE.particles
 
   return (
@@ -95,14 +94,14 @@ export function ReleaseSequence({ release, enemies, lowPower, onSound, onComplet
               <div className="release-ring" />
             </>
           )}
-          {streaks && !reduced && Array.from({ length: profile.sparks }, (_, index) => (
-            <i className="release-spark" key={index} style={{
-              '--spark-angle': `${index * angleStep}deg`,
-              '--spark-distance': `${minDistance + (index % distanceVariants) * distanceStep}vmin`,
-              '--spark-delay': `${(index % delayVariants) * delayStepMs}ms`,
-            } as CSSProperties} />
-          ))}
         </div>
+        {!reduced && Array.from({ length: profile.sparks }, (_, index) => (
+          <i className="release-spark" key={index} style={{
+            '--spark-angle': `${index * angleStep}deg`,
+            '--spark-distance': `${minDistance + (index % distanceVariants) * distanceStep}vmin`,
+            '--spark-delay': `${(index % delayVariants) * delayStepMs}ms`,
+          } as CSSProperties} />
+        ))}
       </div>
       {phase.phase !== 'blackout' && (
         <div className="release-status" role="status">
