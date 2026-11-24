@@ -17,6 +17,8 @@ type TopScreenProps = {
   onPresentationChange: (presentation: GamePresentation) => void
   volume: number
   onVolumeChange: (volume: number) => void
+  autoConfirm: boolean
+  onAutoConfirmChange: (enabled: boolean) => void
   muted: boolean
   onToggleMute: () => void
   onModeChange: (mode: PlayMode) => void
@@ -32,7 +34,7 @@ const presentationKeys = Object.keys(presentations) as GamePresentation[]
 
 export function TopScreen({
   mode, replayRecords, presentation, onPresentationChange, setsunaDifficulty, onSetsunaDifficultyChange,
-  volume, onVolumeChange, muted, onToggleMute, onModeChange, onStart, onRanking, onSetsunaRematch,
+  autoConfirm, onAutoConfirmChange, volume, onVolumeChange, muted, onToggleMute, onModeChange, onStart, onRanking, onSetsunaRematch,
 }: TopScreenProps) {
   const { min, max, step } = SOUND_CONFIG.volumeControl
   const setsuna = presentation === 'setsuna' ? {
@@ -55,6 +57,10 @@ export function TopScreen({
           </label>
           <button type="button" className="ranking-button" onClick={onRanking}>ランキング</button>
         </div>
+        <button type="button" className="auto-confirm-button" aria-pressed={autoConfirm}
+          onClick={() => onAutoConfirmChange(!autoConfirm)}>
+          自動で確定する<span aria-hidden="true">{autoConfirm ? ' ON' : ' OFF'}</span>
+        </button>
         <h1>計算無双</h1>
         <div className="presentation-options" role="group" aria-label="ゲームモード">
           {presentationKeys.map((selection) => (

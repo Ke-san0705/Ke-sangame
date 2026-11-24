@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { readAutoConfirm, saveAutoConfirm } from './lib/autoConfirm'
 import { GameScreen, type GameResult } from './components/GameScreen'
 import { RankingScreen } from './components/RankingScreen'
 import { ResultScreen } from './components/ResultScreen'
@@ -42,6 +43,7 @@ function subscribeOnline(onChange: () => void) {
 const isOnline = () => navigator.onLine
 
 export function App() {
+  const [autoConfirm, setAutoConfirm] = useState(readAutoConfirm)
   const [muted, setMuted] = useState(readMuted)
   const [volume, setVolume] = useState(readVolume)
   const [sound] = useState(() => createSoundEffects(volume))
@@ -79,6 +81,7 @@ export function App() {
         onBack={goBack}
         rematch={screen.rematch}
         onReplay={() => startSetsuna(screen.attempt + 1, screen.rematch)}
+        autoConfirm={autoConfirm}
         onSound={muted ? undefined : sound.play}
       />
     )
@@ -94,6 +97,7 @@ export function App() {
         duration={gameMode.duration}
         skipCountdown={screen.skipCountdown}
         bestCurve={screen.bestCurve}
+        autoConfirm={autoConfirm}
         onSound={muted ? undefined : sound.play}
         onFinish={(result) => {
           const personalBest = savePersonalBest(
@@ -148,6 +152,11 @@ export function App() {
         setVolume(value)
         sound.setVolume(value)
         saveVolume(value)
+      }}
+      autoConfirm={autoConfirm}
+      onAutoConfirmChange={(enabled) => {
+        setAutoConfirm(enabled)
+        saveAutoConfirm(enabled)
       }}
       muted={muted}
       onToggleMute={() => {

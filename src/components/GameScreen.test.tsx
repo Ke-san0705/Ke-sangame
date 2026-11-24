@@ -647,3 +647,22 @@ test('討伐の被弾・爆発・回復音を鳴らし、消音時も判定と�
   expect(onSound).not.toHaveBeenCalledWith('incorrect')
   expect(run()).toEqual(audible)
 })
+
+test.each([
+  { level: 2, answer: '0.2', automatic: true },
+  { level: 3, answer: '-0.2', automatic: false },
+] as const)('自動確定ONで $answer を入力する', ({ level, answer, automatic }) => {
+  vi.useFakeTimers()
+  vi.spyOn(Math, 'random').mockReturnValue(0)
+  expect(createQuestionGenerator()(level, 'addition').answer).toBe(answer)
+  render(<GameScreen level={level} mode="addition" duration={30} skipCountdown autoConfirm onFinish={vi.fn()} />)
+  const input = (key: string) => fireEvent.keyDown(window, { key })
+  for (const key of answer.slice(0, -1)) input(key)
+  expect(screen.getByText('正解 0')).toBeTruthy()
+  input(answer.slice(-1))
+  if (!automatic) {
+    expect(screen.getByText('正解 0')).toBeTruthy()
+    input('Enter')
+  }
+  expect(screen.getByText('正解 1')).toBeTruthy()
+})

@@ -1,4 +1,5 @@
 import { useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from 'react'
+import { DEFAULT_AUTO_CONFIRM, matchesAnswerDigitCount } from '../lib/autoConfirm'
 import { createQuestionGenerator, isCorrectAnswer } from '../lib/question-generator'
 import type { Level, Question, QuestionMode } from '../lib/question-generator'
 import { calculateCharge } from '../lib/charge'
@@ -48,6 +49,7 @@ type GameScreenProps = {
   level: Level
   mode: QuestionMode
   duration: number | 'survival'
+  autoConfirm?: boolean
   skipCountdown?: boolean
   showMonsterBattle?: boolean
   lowPower?: boolean
@@ -57,7 +59,8 @@ type GameScreenProps = {
 }
 
 export function GameScreen({
-  level, mode, duration, skipCountdown = false, showMonsterBattle = false, lowPower = false, bestCurve, onSound, onFinish,
+  level, mode, duration, skipCountdown = false, showMonsterBattle = false, lowPower = false,
+  autoConfirm = DEFAULT_AUTO_CONFIRM, bestCurve, onSound, onFinish,
 }: GameScreenProps) {
   const survival = duration === 'survival'
   const battleSurvival = survival && showMonsterBattle
@@ -248,11 +251,18 @@ export function GameScreen({
     const answerTime = eventTime ?? now
     if (answerTime < questionStartedAt.current || answerTime > deadline.current) return
     if (key === 'pass' && now >= deadline.current) return
-    if (key === 'pass' || key === 'Enter') advanceBattle(Math.min(answerTime, deadline.current))
+    const bufferedAnswer = latestAnswer.current
+    const digit = /^\d$/.test(key)
+    const acceptsKey = digit
+      || (key === '.' && acceptsDecimal && !bufferedAnswer.includes('.'))
+      || (key === '-' && acceptsNegative && bufferedAnswer === '')
+    const answer = acceptsKey ? bufferedAnswer + key : bufferedAnswer
+    const submit = key === 'Enter'
+      || (autoConfirm && digit && matchesAnswerDigitCount(answer, currentQuestion.current.answer))
+    if (key === 'pass' || submit) advanceBattle(Math.min(answerTime, deadline.current))
     if (finished.current) return
-    const answer = latestAnswer.current
 
-    switch (key) {
+    switch (submit ? 'Enter' : key) {
       case 'C':
         updateAnswer('')
         return
@@ -327,11 +337,7 @@ export function GameScreen({
         }
         return
       default:
-        if (/^\d$/.test(key)
-          || (key === '.' && acceptsDecimal && !answer.includes('.'))
-          || (key === '-' && acceptsNegative && answer === '')) {
-          updateAnswer(answer + key)
-        }
+        if (acceptsKey) updateAnswer(answer)
     }
   }
 
@@ -528,7 +534,7 @@ export function GameScreen({
       />
       <GameKeypad keys={keypad} disabled={showPassAnswer} onKey={handleKey} />
       <div className="game-shortcuts">
-        <span>Enter：決定</span>
+        <span>{autoConfirm && !question.answer.startsWith('-') ? '桁数が合うと確定' : 'Enter：決定'}</span>
         <span>Backspace：クリア</span>
         <button type="button" disabled={showPassAnswer} onClick={() => handleKey('pass')}>Tab：パス</button>
       </div>
