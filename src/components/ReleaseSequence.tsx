@@ -84,16 +84,18 @@ export function ReleaseSequence({ power, correctCount, overcharged, onComplete }
   return (
     <main className="release-scene" data-phase={phase.name} data-tier={tier}
       style={style} aria-label="解放">
-      <div className="release-world" aria-hidden="true">
-        <div className="release-land" />
-        <div className="release-orbit">
-          <div className="release-planet" />
-          <div className="release-moon" />
-          <div className="release-constellation" />
+      <div className="release-visuals" aria-hidden="true">
+        <div className="release-world" aria-hidden="true">
+          <div className="release-land" />
+          <div className="release-orbit">
+            <div className="release-planet" />
+            <div className="release-moon" />
+            <div className="release-constellation" />
+          </div>
         </div>
+        <ChargeArena correctCount={correctCount} />
+        {fired && <div className="release-beam" aria-hidden="true" />}
       </div>
-      <ChargeArena correctCount={correctCount} />
-      {fired && <div className="release-beam" aria-hidden="true" />}
       <div className="release-hud">
         <div className="release-status" role="status">
           {!fired && <strong>CHARGE COMPLETE</strong>}

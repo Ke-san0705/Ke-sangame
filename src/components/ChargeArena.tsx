@@ -1,5 +1,6 @@
-import type { CSSProperties } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import { preload } from 'react-dom'
+import { BattleStage } from './BattleStage'
 import './ChargeArena.css'
 
 const spriteNames = ['slime', 'mushroom', 'tiger-cub', 'baby-dragon', 'goblin', 'wolf', 'treant', 'wood-golem',
@@ -13,7 +14,11 @@ export function preloadChargeSprites() {
   for (const src of sprites) preload(src, { as: 'image' })
 }
 
-export function ChargeArena({ correctCount, overcharged = false }: { correctCount: number; overcharged?: boolean }) {
+export function ChargeArena({ correctCount, overcharged = false, battle }: {
+  correctCount: number
+  overcharged?: boolean
+  battle?: { lowPower: boolean; foreground: ReactNode }
+}) {
   const color = correctCount >= 15 ? 'black' : correctCount >= 9 ? 'red' : correctCount >= 4 ? 'yellow' : 'blue'
   const compression = correctCount / (correctCount + 10)
   const monsterCount = Math.min(maxMonsters, initialMonsters + correctCount)
@@ -25,52 +30,78 @@ export function ChargeArena({ correctCount, overcharged = false }: { correctCoun
     '--swarm-height': `${swarmHeight}%`,
   } as CSSProperties
 
+  const swarm = (
+    <div className="charge-swarm" aria-hidden="true">
+      {Array.from({ length: monsterCount }, (_, index) => {
+        const angle = index * goldenAngle
+        const radius = Math.sqrt((index + 0.5) / monsterCount) * 48
+        const horizontal = Math.cos(angle) * radius
+        const depth = Math.sin(angle) * radius
+        return (
+          <img
+            key={index}
+            src={sprites[index % sprites.length]}
+            alt=""
+            decoding="async"
+            style={{
+              '--release-flight-x': `${Math.cos(angle) * 43}vw`,
+              '--release-flight-y': `${-80 - Math.abs(Math.sin(angle)) * 24}dvh`,
+              '--release-start-x': `${horizontal * swarmWidth / 100}vw`,
+              '--release-start-y': `${depth * swarmHeight / 100}dvh`,
+              left: `${50 + horizontal}%`,
+              top: `${50 + depth}%`,
+              zIndex: Math.round(50 + depth),
+            } as CSSProperties}
+          />
+        )
+      })}
+    </div>
+  )
+  const barrier = <div className="charge-barrier" aria-hidden="true" />
+  const cannon = (
+    <div className="charge-cannon" aria-hidden="true">
+      <svg viewBox="0 0 200 150" focusable="false">
+        <path className="charge-cannon-mount" d="M67 90h66l20 53H47z" />
+        <path className="charge-cannon-body" d="M57 57h86l-10 56-18 17H85l-18-17z" />
+        <path className="charge-cannon-rail" d="m67 65 10 42 12 12m44-54-10 42-12 12" />
+        <ellipse className="charge-cannon-rim" cx="100" cy="60" rx="63" ry="34" />
+        <ellipse className="charge-cannon-field" cx="100" cy="57" rx="53" ry="26" />
+        <ellipse className="charge-cannon-core" cx="100" cy="56" rx="38" ry="17" />
+        <path className="charge-cannon-rail" d="M91 84h18m-9 10v22" />
+        {overcharged && (
+          <g className="charge-lightning">
+            <path d="m61 49-24-13 4 16-26-9m108 1 14-22 8 11 17-17m-12 48 22 11-11 7 26 9" />
+            <path d="m82 40-12-18-4 7-13-15m-6 55-18 8 8 6-21 12" />
+          </g>
+        )}
+      </svg>
+    </div>
+  )
+
+  if (battle) {
+    return (
+      <BattleStage className="charge-arena" color={color} overcharged={overcharged} style={arenaStyle}
+        rearEffects={barrier}
+        characters={<>{swarm}{cannon}</>}
+        foreground={
+          <>
+            {correctCount > 0 && (
+              <div className="charge-cannon" aria-hidden="true">
+                <span key={correctCount} className="charge-shockwave" />
+              </div>
+            )}
+            {battle.foreground}
+          </>
+        }
+        motion={correctCount > 0 ? { cue: 'hit', trigger: correctCount } : undefined} lowPower={battle.lowPower} />
+    )
+  }
+
   return (
     <div className="charge-arena" data-color={color} data-overcharged={overcharged} style={arenaStyle} aria-hidden="true">
-      <div className="charge-swarm">
-        {Array.from({ length: monsterCount }, (_, index) => {
-          const angle = index * goldenAngle
-          const radius = Math.sqrt((index + 0.5) / monsterCount) * 48
-          const horizontal = Math.cos(angle) * radius
-          const depth = Math.sin(angle) * radius
-          return (
-            <img
-              key={index}
-              src={sprites[index % sprites.length]}
-              alt=""
-              decoding="async"
-              style={{
-                '--release-flight-x': `${Math.cos(angle) * 43}vw`,
-                '--release-flight-y': `${-80 - Math.abs(Math.sin(angle)) * 24}dvh`,
-                '--release-start-x': `${horizontal * swarmWidth / 100}vw`,
-                '--release-start-y': `${depth * swarmHeight / 100}dvh`,
-                left: `${50 + horizontal}%`,
-                top: `${50 + depth}%`,
-                zIndex: Math.round(50 + depth),
-              } as CSSProperties}
-            />
-          )
-        })}
-      </div>
-      <div className="charge-barrier" />
-      <div className="charge-cannon">
-        {correctCount > 0 && <span key={correctCount} className="charge-shockwave" />}
-        <svg viewBox="0 0 200 150" focusable="false">
-          <path className="charge-cannon-mount" d="M67 90h66l20 53H47z" />
-          <path className="charge-cannon-body" d="M57 57h86l-10 56-18 17H85l-18-17z" />
-          <path className="charge-cannon-rail" d="m67 65 10 42 12 12m44-54-10 42-12 12" />
-          <ellipse className="charge-cannon-rim" cx="100" cy="60" rx="63" ry="34" />
-          <ellipse className="charge-cannon-field" cx="100" cy="57" rx="53" ry="26" />
-          <ellipse className="charge-cannon-core" cx="100" cy="56" rx="38" ry="17" />
-          <path className="charge-cannon-rail" d="M91 84h18m-9 10v22" />
-          {overcharged && (
-            <g className="charge-lightning">
-              <path d="m61 49-24-13 4 16-26-9m108 1 14-22 8 11 17-17m-12 48 22 11-11 7 26 9" />
-              <path d="m82 40-12-18-4 7-13-15m-6 55-18 8 8 6-21 12" />
-            </g>
-          )}
-        </svg>
-      </div>
+      {swarm}
+      {barrier}
+      {cannon}
     </div>
   )
 }

@@ -5,13 +5,11 @@ import { calculateCharge } from '../lib/charge'
 import type { ChargeResult } from '../lib/charge'
 import type { ReleaseResult } from '../lib/release'
 import { calculateScore } from '../lib/score'
-import { useEffectTimeline } from '../lib/useEffectTimeline'
+import { BATTLE_FEEDBACK, CHARGE_HUD } from '../lib/battleUi'
 import type { SoundCue } from '../lib/soundEffects'
 import { ChargeArena, preloadChargeSprites } from './ChargeArena'
 import { ReleaseSequence } from './ReleaseSequence'
 import { GameKeypad, gameKey, keypadRows } from './GameKeypad'
-
-const CORRECT_SHAKE = { offsets: [0, -3, 3, -2, 0], durationSeconds: 0.18 }
 
 const FINAL_INPUT_DRAIN_MS = 50
 const START_COUNTDOWN_SECONDS = 3
@@ -83,7 +81,8 @@ export function GameScreen({
   const latestCounts = useRef(counts)
   const [criticalAnswer, setCriticalAnswer] = useState<number>()
   const criticalTimeout = useRef<number | undefined>(undefined)
-  const gameScreen = useRef<HTMLElement>(null)
+  const [comboNotice, setComboNotice] = useState<number>()
+  const comboTimeout = useRef<number | undefined>(undefined)
   const { correctCount, incorrectCount, passCount } = counts
   const [countdown, setCountdown] = useState(skipCountdown ? 0 : START_COUNTDOWN_SECONDS)
   const [pendingRelease, setPendingRelease] = useState<{ result: GameResult; overcharged: boolean }>()
@@ -125,6 +124,13 @@ export function GameScreen({
     }
     latestCounts.current = next
     setCounts(next)
+    if (showMonsterBattle) {
+      window.clearTimeout(comboTimeout.current)
+      setComboNotice(combo >= BATTLE_FEEDBACK.comboMinimum ? combo : undefined)
+      if (combo >= BATTLE_FEEDBACK.comboMinimum) {
+        comboTimeout.current = window.setTimeout(() => setComboNotice(undefined), BATTLE_FEEDBACK.comboDurationMs)
+      }
+    }
   }
 
   function recordReviewQuestion(outcome: ReviewQuestion['outcome']) {
@@ -341,6 +347,7 @@ export function GameScreen({
       window.clearTimeout(passTimeout.current)
       window.clearTimeout(timeBonusTimeout.current)
       window.clearTimeout(criticalTimeout.current)
+      window.clearTimeout(comboTimeout.current)
       window.clearTimeout(missOverchargeTimeout.current)
       window.removeEventListener('keydown', onKeyDown)
     }
@@ -349,22 +356,6 @@ export function GameScreen({
   useEffect(() => {
     if (showMonsterBattle) preloadChargeSprites()
   }, [showMonsterBattle])
-
-  useEffectTimeline({
-    scope: gameScreen,
-    active: playing && showMonsterBattle && correctCount > 0,
-    trigger: correctCount,
-    lowPower,
-  }, (timeline, target) => {
-    timeline.to(target, {
-      keyframes: {
-        x: CORRECT_SHAKE.offsets,
-        easeEach: 'none',
-      },
-      duration: CORRECT_SHAKE.durationSeconds,
-      ease: 'none',
-    })
-  })
 
   if (pendingRelease?.result.charge) {
     return (
@@ -394,51 +385,80 @@ export function GameScreen({
   if (acceptsDecimal) keypad.push('.')
 
   return (
-    <main ref={gameScreen} className={showMonsterBattle ? 'game-screen game-screen-charge' : 'game-screen'} aria-label="ゲーム">
-      <header className="game-hud">
-        <div className="game-timer-bar" data-recovery={battleSurvival} aria-hidden="true">
-          <div
-            className="game-timer-fill"
-            data-time={remainingSeconds <= TIMER_WARNING_SECONDS ? 'low' : 'normal'}
-            style={{ width: `${percentage}%` }}
-          >
-            {timeBonus && <span key={timeBonus.answerCount} className="game-timer-recovery" />}
-          </div>
-        </div>
-        <div className="game-status">
-          <div className="game-time">
-            <strong className="game-stat-value" role="timer" aria-label="残り時間">
+    <main className={showMonsterBattle ? 'game-screen game-screen-charge battle-screen' : 'game-screen'} aria-label="ゲーム">
+      {showMonsterBattle ? (
+        <header className="battle-hud">
+          <div className="battle-stat game-time">
+            <span>残り時間</span>
+            <strong
+              role="timer"
+              aria-label="残り時間"
+              data-time={remainingSeconds <= TIMER_WARNING_SECONDS ? 'low' : 'normal'}
+            >
               {remainingSeconds}
             </strong>
-            {battleSurvival && (
-              <span role="status" className="game-time-bonus">
-                {timeBonus && <span key={timeBonus.answerCount}>＋{timeBonus.seconds}秒</span>}
+            <span role="status" className="game-time-bonus">
+              {timeBonus && <span key={timeBonus.answerCount}>＋{timeBonus.seconds}秒</span>}
+            </span>
+          </div>
+          <div className="battle-stat battle-health">
+            <span>HP</span>
+            <meter aria-label="HP" value={CHARGE_HUD.health} />
+          </div>
+          <div className="battle-stat">
+            <span>討伐数</span>
+            <strong>{CHARGE_HUD.defeated}</strong>
+          </div>
+        </header>
+      ) : (
+        <header className="game-hud">
+          <div className="game-timer-bar" aria-hidden="true">
+            <div
+              className="game-timer-fill"
+              data-time={remainingSeconds <= TIMER_WARNING_SECONDS ? 'low' : 'normal'}
+              style={{ width: `${percentage}%` }}
+            />
+          </div>
+          <div className="game-status">
+            <div className="game-time">
+              <strong className="game-stat-value" role="timer" aria-label="残り時間">
+                {remainingSeconds}
+              </strong>
+            </div>
+            <div className="game-score" role="group" aria-label="暫定スコア">
+              <span className="game-stat-label" aria-hidden="true">スコア（暫定）</span>
+              <strong className="game-stat-value">{score.toLocaleString('ja-JP')}</strong>
+            </div>
+            <span className="game-correct">正解 {correctCount}</span>
+            <span
+              key={incorrectCount}
+              className={incorrectCount > 0 ? 'game-misses game-feedback-pop' : 'game-misses'}
+            >
+              ミス {incorrectCount + passCount}
+            </span>
+            {paceDifference !== undefined && (
+              <span className="game-pace">
+                {`ベスト比 ${paceDifference > 0 ? '+' : paceDifference < 0 ? '−' : ''}${Math.abs(paceDifference)}問`}
               </span>
             )}
           </div>
-          <div className="game-score" role="group" aria-label="暫定スコア">
-            <span className="game-stat-label" aria-hidden="true">スコア（暫定）</span>
-            <strong className="game-stat-value">{score.toLocaleString('ja-JP')}</strong>
-          </div>
-          <span className="game-correct">正解 {correctCount}</span>
-          <span
-            key={incorrectCount}
-            className={incorrectCount > 0 ? 'game-misses game-feedback-pop' : 'game-misses'}
-          >
-            ミス {incorrectCount + passCount}
-          </span>
-          {paceDifference !== undefined && (
-            <span className="game-pace">
-              {`ベスト比 ${paceDifference > 0 ? '+' : paceDifference < 0 ? '−' : ''}${Math.abs(paceDifference)}問`}
-            </span>
-          )}
-        </div>
-        {showMonsterBattle && (
-          <div className="game-overcharge-status" role="status">
-            {overchargeActive && <strong className="game-overcharge-warning">危険！過充電</strong>}
-          </div>
-        )}
-      </header>
+        </header>
+      )}
+      {showMonsterBattle && (
+        <ChargeArena correctCount={correctCount} overcharged={overchargeActive} battle={{
+          lowPower,
+          foreground: (
+            <>
+              {criticalAnswer !== undefined && <div key={criticalAnswer} className="charge-flash" aria-hidden="true" />}
+              <div className="battle-feedback" role="status">
+                {overchargeActive && <strong className="game-overcharge-warning">危険！過充電</strong>}
+                {comboNotice !== undefined && <strong key={correctCount} className="battle-combo">{comboNotice} COMBO</strong>}
+                {criticalAnswer !== undefined && <strong key={`critical-${criticalAnswer}`} className="charge-critical-status">CRITICAL CHARGE!</strong>}
+              </div>
+            </>
+          ),
+        }} />
+      )}
       <GameProblem
         expression={question.expression}
         answer={(showPassAnswer ? question.answer : answer).replace('-', '−')}
@@ -450,17 +470,6 @@ export function GameScreen({
         <span>Backspace：クリア</span>
         <button type="button" disabled={showPassAnswer} onClick={() => handleKey('pass')}>Tab：パス</button>
       </div>
-      {showMonsterBattle && (
-        <>
-          <ChargeArena correctCount={correctCount} overcharged={overchargeActive} />
-          <div className="charge-critical-status" role="status">
-            {criticalAnswer !== undefined && <strong key={criticalAnswer}>CRITICAL CHARGE!</strong>}
-          </div>
-          {criticalAnswer !== undefined && (
-            <div key={criticalAnswer} className="charge-flash" aria-hidden="true" />
-          )}
-        </>
-      )}
     </main>
   )
 }

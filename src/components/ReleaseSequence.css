@@ -11,10 +11,36 @@
   color: #fff;
 }
 
-.release-scene .charge-arena,
-.release-world,
+.release-visuals,
 .release-hud {
   grid-area: 1 / 1;
+}
+
+.release-visuals {
+  position: relative;
+  display: grid;
+}
+
+.release-scene:is([data-phase="ready"], [data-phase="meter"]) {
+  --release-control-space: 11rem;
+  --battle-ratio: calc(16 / 9);
+  align-content: center;
+  justify-items: center;
+  padding-inline: 12px;
+}
+
+.release-scene:is([data-phase="ready"], [data-phase="meter"]) .release-visuals {
+  inline-size: min(100%, 58rem, calc((100dvh - var(--release-control-space)) * var(--battle-ratio)));
+  aspect-ratio: var(--battle-ratio);
+  overflow: hidden;
+  border: 1px solid #34446b;
+  border-radius: 14px;
+}
+
+.release-scene:is([data-phase="ready"], [data-phase="meter"]) .release-hud {
+  grid-area: 2 / 1;
+  inline-size: min(100%, 30rem);
+  box-sizing: border-box;
 }
 
 .release-scene .charge-arena {
@@ -39,7 +65,6 @@
   max-block-size: 37%;
 }
 
-.release-scene .charge-shockwave,
 .release-scene[data-phase="aftermath"] .charge-barrier {
   display: none;
 }

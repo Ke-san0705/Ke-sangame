@@ -71,7 +71,7 @@ test.each(['計算モード', 'モンスター討伐モード'])('%sで任意の
     fireEvent.keyDown(window, { key: 'Enter' })
   }
   if (presentation === 'モンスター討伐モード') {
-    expect(screen.getByText('正解 11')).toBeTruthy()
+    expect(screen.getByText('11 COMBO')).toBeTruthy()
   }
   finish()
   if (presentation === 'モンスター討伐モード') {
