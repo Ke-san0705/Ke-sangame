@@ -68,6 +68,8 @@ test.each([{ lowPower: true }, { reduced: true }, { slow: true }])('演出を抑
   act(() => vi.advanceTimersByTime(1_300))
   const release = screen.getByRole('main', { name: '解放' })
   expect(release.getAttribute('data-phase')).toBe('blast')
+  expect(release.querySelector('.release-beam')).toBeNull()
+  expect(release.querySelector('.release-ring')).toBeTruthy()
   expect(release.getAttribute('data-reduced')).toBe('true')
   expect(release.querySelectorAll('.release-spark')).toHaveLength(0)
   fireEvent.click(screen.getByRole('button', { name: 'スキップ' }))
@@ -107,13 +109,15 @@ test('連続正解で攻撃が進化し、重ねるエフェクトは上限内�
   const { game } = play()
   const generate = createQuestionGenerator()
   generate(1, 'addition')
-  for (let i = 1; i < 12; i++) {
+  for (let i = 1; i < 52; i++) {
     const { answer } = generate(1, 'addition')
     for (const key of [...answer, 'Enter']) fireEvent.keyDown(window, { key })
   }
-  expect(screen.getByText('12 COMBO')).toBeTruthy()
-  expect(game.querySelector('[data-attack="shockwave"]')).toBeTruthy()
-  expect(game.querySelectorAll('[data-attack]').length).toBeLessThanOrEqual(3)
+  expect(screen.getByText('52 COMBO')).toBeTruthy()
+  const attacks = Array.from(game.querySelectorAll('[data-attack]'))
+  expect(attacks.length).toBeGreaterThan(0)
+  expect(attacks.length).toBeLessThanOrEqual(3)
+  expect(new Set(attacks.map((attack) => attack.getAttribute('data-attack')))).toEqual(new Set(['strongShockwave']))
 })
 
 

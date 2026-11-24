@@ -89,7 +89,6 @@ export function ReleaseSequence({ release, enemies, lowPower, onSound, onComplet
           {phase.phase === 'slash' && <div className="release-slash" />}
           {phase.phase === 'blast' && (
             <>
-              <div className="release-beam" />
               <div className="release-burst" />
               <div className="release-ring" />
             </>
