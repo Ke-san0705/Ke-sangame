@@ -27,6 +27,10 @@ export function damageCombat(state: Combat, damage: number): Combat {
   return { ...state, hp, phase: hp === 0 ? 'defeat' : 'playing' }
 }
 
+export function selectAttackTargets(enemies: Combat['enemies'], limit: number) {
+  return [...enemies].sort((a, b) => a.x - b.x).slice(0, limit)
+}
+
 export function applyCombatAnswer(state: Combat, answer: 'correct' | 'incorrect' | 'pass'): Combat {
   if (state.phase !== 'playing' || answer === 'pass') return state
   if (answer === 'incorrect') return damageCombat({ ...state, combo: 0 }, COMBAT_CONFIG.incorrectDamage)
@@ -37,7 +41,7 @@ export function applyCombatAnswer(state: Combat, answer: 'correct' | 'incorrect'
     ATTACK_STAGES[0],
   )
   const targetIds = new Set(
-    [...state.enemies].sort((a, b) => a.x - b.x).slice(0, attack.targets).map(({ id }) => id),
+    selectAttackTargets(state.enemies, attack.targets).map(({ id }) => id),
   )
   const enemies = state.enemies
     .map((enemy) => targetIds.has(enemy.id) ? { ...enemy, hp: enemy.hp - COMBAT_CONFIG.attackDamage } : enemy)

@@ -3,7 +3,10 @@ import { preload } from 'react-dom'
 import { ENEMY_STAGE } from '../lib/enemyApproachConfig'
 import type { Enemy } from '../lib/enemyApproach'
 import { EnemyApproach } from './EnemyApproach'
-import { BattleStage } from './BattleStage'
+import { BattleStage, type BattleMotion } from './BattleStage'
+import { AttackEffect } from './AttackEffects'
+import { ATTACK_EFFECTS, type AttackVisual } from '../lib/attackEffects'
+import { useReducedEffects } from '../lib/useEffectTimeline'
 import './ChargeArena.css'
 
 const spriteNames = ['slime', 'mushroom', 'tiger-cub', 'baby-dragon', 'goblin', 'wolf', 'treant', 'wood-golem',
@@ -27,23 +30,37 @@ export function preloadChargeSprites() {
 export function ChargeArena({ correctCount, overcharged = false, battle }: {
   correctCount: number
   overcharged?: boolean
-  battle?: { lowPower: boolean; foreground: ReactNode; enemies: readonly Enemy[] }
+  battle?: { lowPower: boolean; foreground: ReactNode; enemies: readonly Enemy[]; attacks: readonly AttackVisual[]; onAttackComplete: (id: number, replace: boolean) => void; stage: number; motion?: BattleMotion }
 }) {
+  const reduced = useReducedEffects()
   const color = correctCount >= 15 ? 'black' : correctCount >= 9 ? 'red' : correctCount >= 4 ? 'yellow' : 'blue'
   if (battle) {
+    const simple = reduced || battle.lowPower
+    const aura = Math.min(
+      simple ? ATTACK_EFFECTS.auraReducedMax : ATTACK_EFFECTS.auraMax,
+      ATTACK_EFFECTS.auraMin + correctCount * ATTACK_EFFECTS.auraPerAnswer,
+    )
+    const auraStyle = { left: `${ENEMY_STAGE.heroX * 100}%`, '--aura-opacity': aura } as CSSProperties
+    const frame = simple ? 1 : (ATTACK_EFFECTS.frameScales[battle.stage - 1] ?? 1)
     return (
       <BattleStage className="charge-arena" color={color} overcharged={overcharged}
-        characters={<EnemyApproach enemies={battle.enemies} />}
+        framing={{ '--attack-frame': frame } as CSSProperties}
+        rearEffects={
+          <div className="battle-hero-effects" aria-hidden="true" style={auraStyle}>
+            <span className="battle-hero-aura" />
+            {overcharged && !simple && <svg viewBox="0 0 200 120" focusable="false">{lightning}</svg>}
+          </div>
+        }
+        characters={<EnemyApproach enemies={battle.enemies} attackId={correctCount} stage={battle.stage} lowPower={simple} />}
         foreground={
           <>
-            <div className="battle-hero-effects" aria-hidden="true" style={{ left: `${ENEMY_STAGE.heroX * 100}%` }}>
-              {correctCount > 0 && <span key={correctCount} className="charge-shockwave" />}
-              {overcharged && <svg viewBox="0 0 200 120" focusable="false">{lightning}</svg>}
-            </div>
+            {(simple ? battle.attacks.slice(-1) : battle.attacks).map((attack) => (
+              <AttackEffect key={attack.id} attack={attack} simple={simple} onComplete={battle.onAttackComplete} />
+            ))}
             {battle.foreground}
           </>
         }
-        motion={correctCount > 0 ? { cue: 'hit', trigger: correctCount } : undefined} lowPower={battle.lowPower} />
+        motion={battle.motion} lowPower={simple} />
     )
   }
 

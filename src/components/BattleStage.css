@@ -44,6 +44,12 @@ main.battle-screen {
   inset: 0;
 }
 
+.attack-framing {
+  position: absolute;
+  inset: 0;
+  scale: var(--attack-frame, 1);
+}
+
 .battle-layer {
   isolation: isolate;
 }

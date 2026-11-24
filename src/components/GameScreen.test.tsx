@@ -209,7 +209,7 @@ test.each([
     dispatchKey('Enter', deadline + (beforeDeadline ? -1 : 1))
   })
   if (showMonsterBattle) {
-    expect(Boolean(document.querySelector('.charge-shockwave'))).toBe(beforeDeadline)
+    expect(Boolean(document.querySelector('[data-attack="slash"]'))).toBe(beforeDeadline)
   } else {
     expect(screen.getByText(beforeDeadline ? '正解 1' : '正解 0')).toBeTruthy()
   }
@@ -370,17 +370,16 @@ test('討伐のチャージ・復習・時間切れの引き渡し', () => {
   submit(question.answer)
   expect(screen.queryByText('CRITICAL CHARGE!')).toBeNull()
   expect(enemyCount()).toBe(approachingEnemies - 1)
-  const firstRing = arena.querySelector('.charge-shockwave')
+  const firstRing = [...arena.querySelectorAll('[data-attack="slash"]')].at(-1)
   expect(firstRing).not.toBeNull()
 
   act(() => vi.advanceTimersByTime(3_000))
   submit(question.answer)
   expect(screen.getByText('CRITICAL CHARGE!')).toBeTruthy()
-  expect(container.querySelector('.charge-flash')).not.toBeNull()
-  expect(arena.querySelector('.charge-shockwave')).not.toBe(firstRing)
+  expect([...arena.querySelectorAll('[data-attack="slash"]')].at(-1)).not.toBe(firstRing)
   expect(screen.getByText(question.expression + ' =')).toBeTruthy()
-  expect(onSound).toHaveBeenCalledWith('correct', 1)
-  expect(onSound).toHaveBeenCalledWith('correct', 2)
+  expect(onSound).toHaveBeenCalledWith('slash', 1)
+  expect(onSound).toHaveBeenCalledWith('slash', 2)
 
   act(() => vi.advanceTimersByTime(650))
   expect(screen.queryByText('CRITICAL CHARGE!')).toBeNull()
@@ -474,7 +473,7 @@ test('パス中も敵が進み、次の正解で討伐コンボを引き継ぐ',
   expect(screen.getByText('HP', { exact: true })).toBeTruthy()
   expect(screen.getByRole('meter', { name: 'HP' }).getAttribute('value')).toBe('100')
   submit(generate(1, 'addition').answer)
-  expect(onSound).toHaveBeenCalledWith('correct', 2)
+  expect(onSound).toHaveBeenCalledWith('slash', 2)
 })
 
 test('制限時間ちょうどの誤答でHPがゼロになると敗北する', () => {

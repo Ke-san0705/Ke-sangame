@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, test } from 'vitest'
 import exampleJson from './fixtures/sprite-animation.example.json?raw'
-import { loadSpriteAnimation } from './spriteAnimation'
+import { loadSpriteAnimation, resolveSpriteClip } from './spriteAnimation'
 
 describe('loadSpriteAnimation', () => {
   it('reads the sheet grid, inclusive frame ranges, FPS and cell-local anchors from JSON', () => {
@@ -68,4 +68,11 @@ describe('loadSpriteAnimation', () => {
 
     expect(() => loadSpriteAnimation(JSON.stringify(data))).toThrow('animations.attack.' + field)
   })
+})
+
+test('未定義の攻撃クリップは通常攻撃に戻り、フォールバックもなければ描画を省略する', () => {
+  const definition = loadSpriteAnimation(exampleJson)
+  expect(resolveSpriteClip(definition, 'iai', 'attack')).toBe(definition.animations.attack)
+  expect(resolveSpriteClip(definition, 'iai', 'heavyAttack')).toBeUndefined()
+  expect(resolveSpriteClip(definition, 'constructor', 'attack')).toBe(definition.animations.attack)
 })

@@ -6,8 +6,10 @@ import type { ChargeResult } from '../lib/charge'
 import type { ReleaseResult } from '../lib/release'
 import { calculateScore } from '../lib/score'
 import { BATTLE_FEEDBACK } from '../lib/battleUi'
-import { advanceCombat, applyCombatAnswer, createCombat, finishCombat } from '../lib/combat'
+import { advanceCombat, applyCombatAnswer, createCombat, finishCombat, selectAttackTargets } from '../lib/combat'
 import { ATTACK_STAGES, COMBAT_CONFIG, ENEMY_STAGE } from '../lib/enemyApproachConfig'
+import { ATTACK_EFFECTS, attackEffectForStage, queueAttackVisual, type AttackVisual } from '../lib/attackEffects'
+import type { BattleMotion } from './BattleStage'
 import type { SoundCue } from '../lib/soundEffects'
 import { ChargeArena, preloadChargeSprites } from './ChargeArena'
 import { ReleaseSequence } from './ReleaseSequence'
@@ -86,6 +88,9 @@ export function GameScreen({
   const latestCounts = useRef(counts)
   const [criticalAnswer, setCriticalAnswer] = useState<number>()
   const criticalTimeout = useRef<number | undefined>(undefined)
+  const [attacks, setAttacks] = useState<readonly AttackVisual[]>([])
+  const [battleMotion, setBattleMotion] = useState<BattleMotion>()
+  const motionId = useRef(0)
   const [attackEvolution, setAttackEvolution] = useState<string>()
   const evolutionTimeout = useRef<number | undefined>(undefined)
   const [comboNotice, setComboNotice] = useState<number>()
@@ -111,6 +116,10 @@ export function GameScreen({
   const acceptsDecimal = level >= 2
   const acceptsNegative = level >= 3
 
+  function completeAttack(id: number, replace: boolean) {
+    setAttacks((current) => current.filter((attack) => replace ? attack.id > id : attack.id !== id))
+  }
+
   function updateAnswer(value: string) {
     latestAnswer.current = value
     setAnswer(value)
@@ -118,6 +127,9 @@ export function GameScreen({
 
   function updateCombat(next: typeof combat) {
     if (latestCombat.current === next) return
+    if (next.hp < latestCombat.current.hp) {
+      setBattleMotion({ cue: 'hit', trigger: ++motionId.current })
+    }
     latestCombat.current = next
     setCombat(next)
   }
@@ -146,7 +158,18 @@ export function GameScreen({
       const previous = latestCombat.current
       const battle = applyCombatAnswer(previous, kind === 'correctCount' ? 'correct' : 'incorrect')
       updateCombat(battle)
-      if (battle.attackStage > previous.attackStage) {
+      const evolved = battle.attackStage > previous.attackStage
+      if (kind === 'correctCount') {
+        const stage = ATTACK_STAGES.find(({ stage }) => stage === battle.attackStage) ?? ATTACK_STAGES[0]
+        const targets = selectAttackTargets(previous.enemies, Math.min(stage.targets, ATTACK_EFFECTS.maxImpacts))
+        const attack = { id: next.correctCount, stage: stage.stage, targets }
+        setAttacks((current) => queueAttackVisual(current, attack))
+        const profile = attackEffectForStage(stage.stage)
+        const cue = evolved ? 'evolution' : critical ? 'hit' : profile.shape === 'shockwave' ? 'shockwave' : undefined
+        setBattleMotion(cue ? { cue, trigger: ++motionId.current } : undefined)
+        onSound?.(profile.sound, battle.combo)
+      }
+      if (evolved) {
         window.clearTimeout(evolutionTimeout.current)
         setAttackEvolution(ATTACK_STAGES.find(({ stage }) => stage === battle.attackStage)?.name)
         evolutionTimeout.current = window.setTimeout(() => setAttackEvolution(undefined), BATTLE_FEEDBACK.evolutionDurationMs)
@@ -270,7 +293,7 @@ export function GameScreen({
               criticalTimeout.current = window.setTimeout(() => setCriticalAnswer(undefined), CRITICAL_NOTICE_MS)
             }
           }
-          onSound?.('correct', showMonsterBattle ? latestCombat.current.combo : latestCounts.current.combo)
+          if (!showMonsterBattle) onSound?.('correct', latestCounts.current.combo)
           if (survival && !battleSurvival) {
             deadline.current += survivalBonusMs(latestCounts.current.correctCount)
             updateRemaining(Math.max(0, deadline.current - now))
@@ -479,9 +502,12 @@ export function GameScreen({
         <ChargeArena correctCount={correctCount} overcharged={overchargeActive} battle={{
           lowPower,
           enemies: combat.enemies,
+          attacks,
+          onAttackComplete: completeAttack,
+          stage: combat.attackStage,
+          motion: battleMotion,
           foreground: (
             <>
-              {criticalAnswer !== undefined && <div key={criticalAnswer} className="charge-flash" aria-hidden="true" />}
               <div className="battle-feedback" role="status">
                 {overchargeActive && <strong className="game-overcharge-warning">危険！過充電</strong>}
                 {attackEvolution && <strong className="battle-evolution">攻撃進化：{attackEvolution}</strong>}
