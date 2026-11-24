@@ -1,3 +1,5 @@
+import setsunaDefeat from './setsunaDefeat.json'
+
 export const SETSUNA = {
   wait: { minMs: 1_500, maxMs: 4_000 },
   cpu: { initialMs: 1_500, fasterPerWinMs: 75, minMs: 650 },
@@ -19,7 +21,7 @@ export const SETSUNA = {
     stepDistance: 3.5,
     passDistance: 44.8,
     followThroughDistance: 2.8,
-    fallAngle: 13,
+    defeat: setsunaDefeat,
     setback: 10.5,
     drawFrames: 3,
   },

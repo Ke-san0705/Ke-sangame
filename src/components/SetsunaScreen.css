@@ -66,6 +66,8 @@
   --fighter-home: calc(50% - var(--facing) * var(--setsuna-half-gap));
   left: var(--fighter-home);
   transform-origin: center;
+  translate: 0 var(--setsuna-defeat-sink, 0px);
+  rotate: var(--setsuna-defeat-angle, 0deg);
 }
 
 .setsuna-fighter[data-fighter="player"] { --facing: 1; }
@@ -76,7 +78,7 @@
   inline-size: calc(108cqh * var(--setsuna-fighter-scale));
   aspect-ratio: 1;
   translate: calc(-1 * var(--foot-x)) calc(-1 * var(--foot-y));
-  scale: var(--facing) 1;
+  scale: var(--facing) var(--setsuna-defeat-height, 1);
   transform-origin: var(--foot-x) var(--foot-y);
   image-rendering: pixelated;
   filter: drop-shadow(0 3px 2px #18162285);
@@ -127,7 +129,6 @@
 .setsuna-stage[data-finished="true"][data-duel-winner="player"] [data-fighter="opponent"],
 .setsuna-stage[data-finished="true"][data-duel-winner="opponent"] [data-fighter="player"] {
   left: calc(var(--fighter-home) + var(--facing) * var(--setsuna-setback));
-  rotate: calc(var(--facing) * var(--setsuna-fall));
 }
 
 .setsuna-flash {

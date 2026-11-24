@@ -1,0 +1,8 @@
+{
+  "spriteClip": "setsunaDefeat",
+  "phases": [
+    { "durationWeight": 200, "sinkPercent": 3, "heightScale": 0.73, "angle": 0, "setbackProgress": 0, "ease": "power2.in" },
+    { "durationWeight": 200, "sinkPercent": 5, "heightScale": 0.73, "angle": 28, "setbackProgress": 0.25, "ease": "power1.in" },
+    { "durationWeight": 300, "sinkPercent": 7, "heightScale": 0.9, "angle": 83, "setbackProgress": 1, "ease": "power2.in" }
+  ]
+}
