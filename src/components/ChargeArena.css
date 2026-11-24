@@ -1,40 +1,3 @@
-.game-screen-charge {
-  --charge-panel: #121d36;
-  background: #090e20;
-}
-
-.game-screen-charge .game-hud {
-  background: #10182d;
-}
-
-.game-screen-charge .game-problem {
-  flex: none;
-  min-block-size: 92px;
-  margin-inline: clamp(12px, 4vw, 32px);
-  background: var(--charge-panel);
-  --game-expression-size: clamp(1.55rem, 7vw, 3.75rem);
-  --game-answer-size: var(--game-expression-size);
-}
-
-.game-screen-charge .game-keypad {
-  grid-auto-rows: clamp(44px, 6dvh, 56px);
-  gap: 5px 8px;
-  margin-block: 0;
-  padding: 8px 16px;
-}
-
-.game-screen-charge .game-shortcuts {
-  margin-block: 8px;
-}
-
-.game-screen-charge .game-status {
-  margin-block: 4px 6px;
-}
-
-.game-screen-charge .game-timer-bar {
-  block-size: 8px;
-}
-
 .charge-arena {
   --charge-light: #54dfff;
   --charge-core: #c5f7ff;
@@ -155,20 +118,46 @@
   stroke-width: 2;
 }
 
-.charge-critical-status {
-  pointer-events: none;
+.battle-feedback {
+  position: absolute;
+  inset: 7% 6% auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  color: #fff4b9;
+  font-size: clamp(0.75rem, 4cqh, 1.25rem);
+  text-shadow: 0 2px 4px #090e20;
 }
 
-.charge-critical-status strong {
-  position: fixed;
-  z-index: 3;
-  inset-block-start: 58%;
-  inset-inline: 0;
-  color: #fff4b9;
-  text-align: center;
-  text-shadow: 0 2px 4px #090e20, 0 0 12px #ffa62d;
-  font-size: clamp(1.4rem, 6vw, 3rem);
-  font-weight: 900;
+.battle-feedback .game-overcharge-warning {
+  margin: 0;
+}
+
+.battle-combo {
+  color: #d9f8ff;
+}
+
+.battle-stage.charge-arena {
+  inline-size: min(100%, calc(100cqh * var(--battle-ratio)));
+  min-block-size: 0;
+  margin: 0;
+  border-radius: 14px;
+  background: #0b1225;
+}
+
+.battle-stage.charge-arena .battle-distance {
+  background:
+    radial-gradient(ellipse at 50% 68%, color-mix(in srgb, var(--charge-light), transparent 72%), transparent 65%),
+    linear-gradient(#171c37, #08152b);
+}
+
+.battle-stage .charge-swarm img {
+  inline-size: clamp(22px, 28cqh, 90px);
+}
+
+.battle-stage .charge-cannon {
+  inline-size: min(35%, 88cqh, 250px);
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -190,8 +179,7 @@
   }
 
   .charge-flash {
-    position: fixed;
-    z-index: 2;
+    position: absolute;
     inset: 0;
     pointer-events: none;
     background: #ffdf88;
@@ -210,7 +198,7 @@
 }
 
 @media (max-height: 700px) and ((max-width: 767px) or (pointer: coarse)) {
-  .charge-arena {
+  .charge-arena:not(.battle-stage) {
     min-block-size: clamp(164px, 32dvh, 224px);
   }
 }

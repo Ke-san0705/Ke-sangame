@@ -210,7 +210,11 @@ test.each([
     }
     dispatchKey('Enter', deadline + (beforeDeadline ? -1 : 1))
   })
-  expect(screen.getByText(beforeDeadline ? '正解 1' : '正解 0')).toBeTruthy()
+  if (showMonsterBattle) {
+    expect(Boolean(document.querySelector('.charge-shockwave'))).toBe(beforeDeadline)
+  } else {
+    expect(screen.getByText(beforeDeadline ? '正解 1' : '正解 0')).toBeTruthy()
+  }
 
   act(() => vi.advanceTimersByTime(90))
   if (duration === 'survival' && beforeDeadline) {
@@ -412,7 +416,7 @@ test.each([
   }
 })
 
-test('問題と入力欄の下でチャージ色が青・黄・赤・黒の順に変わる', () => {
+test('問題と入力欄の上でチャージ色が青・黄・赤・黒の順に変わる', () => {
   vi.useFakeTimers()
   vi.spyOn(Math, 'random').mockReturnValue(0.25)
   const generate = createQuestionGenerator()
@@ -421,7 +425,7 @@ test('問題と入力欄の下でチャージ色が青・黄・赤・黒の順�
   )
   const arena = container.querySelector<HTMLElement>('.charge-arena')!
   const keypad = screen.getByRole('group', { name: 'テンキー' })
-  expect(keypad.compareDocumentPosition(arena) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(arena.compareDocumentPosition(keypad) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   for (let count = 0; count <= 15; count++) {
     expect(arena.dataset.color).toBe(count < 4 ? 'blue' : count < 9 ? 'yellow' : count < 15 ? 'red' : 'black')
     expect(screen.queryByText(/STAGE|体討伐|ボス戦/)).toBeNull()

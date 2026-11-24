@@ -1,6 +1,7 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { createDuel, formatReaction, judgeDuel, reactionLimits, saveSetsunaBest } from '../lib/setsuna'
 import type { SoundCue } from '../lib/soundEffects'
+import { BattleStage } from './BattleStage'
 import { GameKeypad, gameKey } from './GameKeypad'
 import './SetsunaScreen.css'
 
@@ -28,6 +29,7 @@ export function SetsunaScreen({ onBack, onReplay, onSound }: SetsunaScreenProps)
   const [duel, setDuel] = useState(createDuel)
   const [signal, setSignal] = useState(false)
   const [earlyCount, setEarlyCount] = useState(0)
+  const [submittedAnswer, setSubmittedAnswer] = useState('')
   const [result, setResult] = useState<RoundResult | null>(null)
   const [best, setBest] = useState<ReturnType<typeof saveSetsunaBest> | null>(null)
   const signalTime = useRef<number | null>(null)
@@ -61,6 +63,7 @@ export function SetsunaScreen({ onBack, onReplay, onSound }: SetsunaScreenProps)
     }
 
     settled.current = true
+    if (signalTime.current !== null) setSubmittedAnswer(key)
     const reactionMs = outcome === 'win' || outcome === 'slow' ? elapsed : null
     setResult({ outcome, reactionMs })
     setBest(saveSetsunaBest(reactionMs, outcome === 'win' ? enemy + 1 : enemy))
@@ -85,6 +88,7 @@ export function SetsunaScreen({ onBack, onReplay, onSound }: SetsunaScreenProps)
     setEnemy(enemy + 1)
     setDuel(createDuel())
     setSignal(false)
+    setSubmittedAnswer('')
     setResult(null)
   }
 
@@ -93,50 +97,65 @@ export function SetsunaScreen({ onBack, onReplay, onSound }: SetsunaScreenProps)
   const finished = result && (!won || cleared)
 
   return (
-    <main className="setsuna-screen" data-outcome={result ? (won ? 'win' : 'loss') : undefined}>
+    <main className="setsuna-screen battle-screen" data-outcome={result ? (won ? 'win' : 'loss') : undefined}>
       <header className="setsuna-header">
         <button type="button" onClick={onBack}>モード選択</button>
         <h1>刹那</h1>
         <span>{enemy + 1} / {reactionLimits.length}</span>
       </header>
-      <div className="setsuna-arena">
-        <img src={sprite('hero')} alt="主人公" />
+      <BattleStage
+        className="setsuna-arena"
+        motion={won ? { cue: 'duelWin', trigger: enemy } : undefined}
+        characters={
+          <>
+            <img src={sprite('hero')} alt="主人公" />
+            <img
+              className={enemies[enemy].mirrored ? 'setsuna-mirrored' : undefined}
+              src={sprite(enemies[enemy].sprite)}
+              alt={`対戦相手 ${enemy + 1}`}
+            />
+          </>
+        }
+        foreground={won && <span className="setsuna-slash" aria-hidden="true" />}
+      />
+      <div className="game-problem setsuna-problem">
         <div className="setsuna-message" role="status">
           {result ? (
             <>
-              <strong>{cleared ? 'クリア' : result.outcome === 'win' ? '勝利' : '敗北'}</strong>
+              <strong>{cleared ? 'クリア' : won ? '勝利' : '敗北'}</strong>
               {result.reactionMs !== null && (
                 <span className="setsuna-reaction">{formatReaction(result.reactionMs)}</span>
               )}
               {result.outcome !== 'win' && <span>{lossLabels[result.outcome]}</span>}
             </>
-          ) : signal ? (
-            <><strong>！</strong><span>{duel.expression}</span></>
           ) : (
-            <span>{earlyCount ? 'お手つき 1 / 2' : '合図を待て'}</span>
+            <strong className="setsuna-equation">
+              {signal ? <><span className="setsuna-signal">！</span><span>{duel.expression}</span></>
+                : earlyCount ? 'お手つき 1 / 2' : '合図を待て'}
+            </strong>
           )}
         </div>
-        <img
-          className={enemies[enemy].mirrored ? 'setsuna-mirrored' : undefined}
-          src={sprite(enemies[enemy].sprite)}
-          alt={`対戦相手 ${enemy + 1}`}
-        />
+        {(!result || submittedAnswer) && (
+          <span className="game-answer" aria-label="入力した答え">{submittedAnswer}</span>
+        )}
       </div>
-      {result ? (
-        <div className="setsuna-actions">
-          {finished ? (
-            <>
-              <p>{won ? enemy + 1 : enemy}人抜き</p>
-              {best && <SetsunaRecords best={best} />}
-              <button type="button" onClick={onReplay}>もう一度</button>
-            </>
-          ) : (
-            <button type="button" onClick={nextDuel}>次の相手</button>
-          )}
-        </div>
-      ) : (
-        <GameKeypad keys={digits} onKey={handleAnswer} />
-      )}
+      <div className="setsuna-controls">
+        {result ? (
+          <div className="setsuna-actions">
+            {finished ? (
+              <>
+                <p>{won ? enemy + 1 : enemy}人抜き</p>
+                {best && <SetsunaRecords best={best} />}
+                <button type="button" onClick={onReplay}>もう一度</button>
+              </>
+            ) : (
+              <button type="button" onClick={nextDuel}>次の相手</button>
+            )}
+          </div>
+        ) : (
+          <GameKeypad keys={digits} onKey={handleAnswer} />
+        )}
+      </div>
     </main>
   )
 }

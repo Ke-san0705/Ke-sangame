@@ -29,11 +29,12 @@ function play({ lowPower = false, reduced = false } = {}) {
   const timersBeforeMount = vi.getTimerCount()
   const view = render(<GameScreen level={1} duration={30} mode="addition" skipCountdown
     showMonsterBattle lowPower={lowPower} onFinish={onFinish} />)
-  const arena = screen.getByRole('main', { name: 'ゲーム' })
+  const game = screen.getByRole('main', { name: 'ゲーム' })
+  const arena = game.querySelector('.battle-camera')!
   const { answer } = createQuestionGenerator()(1, 'addition')
   for (const key of [...answer, 'Enter']) fireEvent.keyDown(window, { key })
   const tweens = () => gsap.getTweensOf(arena)
-  return { ...view, preference, onFinish, timersBeforeMount, tweens }
+  return { ...view, preference, onFinish, timersBeforeMount, tweens, game }
 }
 
 test('解放画面に移ると戦闘のタイムラインと入力処理を破棄する', () => {
@@ -57,7 +58,7 @@ test('解放画面に移ると戦闘のタイムラインと入力処理を破�
 test.each([{ lowPower: true }, { reduced: true }])('演出を抑制しても正解を判定する (%j)', (options) => {
   const { tweens } = play(options)
   expect(tweens()).toHaveLength(0)
-  expect(screen.getByText('正解 1')).toBeTruthy()
+  expect(screen.getByText('CRITICAL CHARGE!')).toBeTruthy()
 })
 
 test('実行中に視差効果を減らす設定に切り替えると演出を破棄する', () => {
@@ -72,4 +73,18 @@ test('matchMedia がない環境でもゲームを開始できる', () => {
   vi.stubGlobal('matchMedia', undefined)
   render(<GameScreen level={1} duration={30} mode="addition" skipCountdown showMonsterBattle onFinish={vi.fn()} />)
   expect(screen.getByRole('timer').textContent).toBe('30')
+})
+
+test('HUD・問題・入力欄はカメラの外に固定する', () => {
+  const { game, tweens } = play()
+  const camera = game.querySelector('.battle-camera')!
+  expect(tweens()).toHaveLength(1)
+  for (const selector of ['.battle-hud', '.game-expression', '.game-answer', '.game-keypad']) {
+    const element = game.querySelector(selector)
+    expect(element).toBeTruthy()
+    expect(camera.contains(element)).toBe(false)
+    expect(gsap.getTweensOf(element).length).toBe(0)
+  }
+  expect(screen.getByRole('meter', { name: 'HP' }).textContent).toBe('')
+  expect(screen.getByText('討伐数')).toBeTruthy()
 })

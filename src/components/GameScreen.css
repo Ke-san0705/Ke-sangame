@@ -281,10 +281,6 @@
   }
 }
 
-.game-overcharge-status {
-  text-align: center;
-}
-
 .game-overcharge-warning {
   display: inline-block;
   margin-block-end: 6px;
@@ -316,34 +312,10 @@
   white-space: nowrap;
 }
 
-.game-timer-bar[data-recovery="true"] .game-timer-fill {
-  position: relative;
-}
-
 @media (prefers-reduced-motion: no-preference) {
-  .game-timer-bar[data-recovery="true"] .game-timer-fill {
-    transition: width 150ms ease-out;
-  }
-
-  .game-timer-recovery {
-    position: absolute;
-    inset-block: 0;
-    inset-inline-end: 0;
-    inline-size: 12%;
-    background: rgb(255 255 255 / 65%);
-    transform-origin: left;
-    animation: game-timer-recovery 400ms ease-out both;
-  }
-
   .game-time-bonus > span {
     animation: game-time-bonus 800ms ease-out both;
   }
-}
-
-@keyframes game-timer-recovery {
-  from { transform: scaleX(0); }
-  35% { transform: scaleX(1); opacity: 1; }
-  to { opacity: 0; }
 }
 
 @keyframes game-time-bonus {

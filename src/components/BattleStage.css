@@ -1,0 +1,191 @@
+main.battle-screen {
+  --battle-width: 58rem;
+  --battle-ratio: calc(16 / 9);
+  --battle-gap: clamp(6px, 1.4dvh, 14px);
+  --battle-key-height: clamp(44px, 7.5dvh, 70px);
+  --battle-key-gap: clamp(5px, 1dvh, 10px);
+  --battle-panel: #141d34;
+  --battle-line: #34446b;
+  --battle-muted: #b6c4dc;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: minmax(0, var(--battle-width));
+  grid-template-rows: auto minmax(64px, 1fr) auto auto;
+  justify-content: center;
+  gap: var(--battle-gap);
+  block-size: 100dvh;
+  padding: max(8px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
+    max(8px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  background: #090e20;
+}
+
+.battle-stage-space {
+  container-type: size;
+  display: grid;
+  place-items: center;
+}
+
+.battle-stage {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  box-sizing: border-box;
+  inline-size: min(100%, calc(100cqh * var(--battle-ratio, 16 / 9)));
+  aspect-ratio: var(--battle-ratio, 16 / 9);
+  border: 1px solid var(--battle-line, #34446b);
+  border-radius: 14px;
+  background: #0b1225;
+  container-type: size;
+}
+
+.battle-camera,
+.battle-layer {
+  position: absolute;
+  inset: 0;
+}
+
+.battle-layer {
+  isolation: isolate;
+}
+
+.battle-distance {
+  background: linear-gradient(#1c2c48, #0b152a);
+}
+
+.battle-ground {
+  inset-block-start: 54%;
+  background:
+    linear-gradient(#94acdb25, transparent 60%),
+    repeating-linear-gradient(90deg, transparent 0 39px, #698abd26 39px 40px),
+    repeating-linear-gradient(0deg, transparent 0 23px, #698abd24 23px 24px),
+    #101a30;
+  border-block-start: 1px solid #698abd44;
+}
+
+.battle-front-effects {
+  pointer-events: none;
+}
+
+.battle-hud {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  padding: 6px 12px;
+  border: 1px solid var(--battle-line);
+  border-radius: 12px;
+  background: var(--battle-panel);
+  text-align: center;
+}
+
+.battle-stat {
+  display: grid;
+  gap: 1px;
+  color: var(--battle-muted);
+  font-size: 0.75rem;
+}
+
+.battle-stat strong {
+  color: var(--color-text);
+  font-size: clamp(1.25rem, 3dvh, 1.8rem);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.battle-stat strong[data-time="low"] {
+  color: #ff8397;
+}
+
+.battle-health {
+  text-align: start;
+}
+
+.battle-health meter {
+  inline-size: 100%;
+  block-size: 0.85rem;
+  appearance: none;
+}
+
+.battle-health meter::-webkit-meter-bar {
+  border: 0;
+  border-radius: 5px;
+  background: #2e3c59;
+}
+
+.battle-health meter::-webkit-meter-optimum-value {
+  border-radius: 5px;
+  background: #47d9a4;
+}
+
+.battle-health meter::-moz-meter-bar {
+  border-radius: 5px;
+  background: #47d9a4;
+}
+
+.battle-stat .game-time-bonus {
+  inset-block-start: auto;
+  inset-block-end: 0;
+  inset-inline-start: 72%;
+  z-index: 1;
+}
+
+.battle-screen .game-problem {
+  block-size: clamp(92px, 16dvh, 130px);
+  min-block-size: 0;
+  padding-block: 6px;
+  margin: 0;
+  border: 1px solid var(--battle-line);
+  border-radius: 14px;
+  background: var(--battle-panel);
+  --game-expression-size: clamp(1.65rem, min(7vw, 6.5dvh), 3.25rem);
+  --game-answer-size: clamp(1.5rem, min(6vw, 4dvh), 2.25rem);
+}
+
+.battle-screen .game-problem-lines {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  inline-size: 100%;
+}
+
+.battle-screen .game-answer {
+  inline-size: max-content;
+  min-inline-size: min(160px, 100%);
+}
+
+.battle-screen .game-keypad {
+  grid-auto-rows: var(--battle-key-height);
+  gap: var(--battle-key-gap);
+  margin-block: 0;
+  padding: 0;
+}
+
+.battle-screen .game-shortcuts {
+  margin: 0;
+}
+
+@media (pointer: fine) {
+  .battle-screen .game-keypad {
+    display: none;
+  }
+
+  .battle-screen .game-shortcuts {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.5rem 1.25rem;
+    color: var(--battle-muted);
+    font-size: 0.875rem;
+  }
+
+  .battle-screen .game-shortcuts button {
+    background: transparent;
+    color: inherit;
+    font: inherit;
+  }
+}
+
+@media not (pointer: fine) {
+  .battle-screen .game-keypad {
+    display: grid;
+  }
+}
