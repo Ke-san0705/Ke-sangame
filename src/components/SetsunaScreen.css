@@ -248,3 +248,29 @@
   font-size: 1.125rem;
   font-weight: 700;
 }
+
+.setsuna-start-enemy {
+  background: #b8ebff;
+  color: #102033;
+  font-weight: 700;
+}
+
+.setsuna-rematches {
+  margin-block: 12px;
+  text-align: center;
+}
+
+.setsuna-rematches summary {
+  padding: 8px;
+  cursor: pointer;
+}
+
+.setsuna-rematch button {
+  min-block-size: 44px;
+  padding-inline: 12px;
+}
+
+.setsuna-duel-record {
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}

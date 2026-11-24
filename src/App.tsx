@@ -25,7 +25,7 @@ const questionModes = {
 
 type Screen =
   | { name: 'top' }
-  | { name: 'setsuna'; attempt: number }
+  | { name: 'setsuna'; attempt: number; rematch: boolean }
   | { name: 'game'; mode: PlayMode; skipCountdown: boolean; bestCurve?: number[] }
   | { name: 'result'; mode: PlayMode; result: GameResult; personalBest: ReturnType<typeof savePersonalBest>; replayRecords: ReturnType<typeof saveReplayRecords>; playedOnline: boolean }
   | { name: 'ranking'; mode: GameMode }
@@ -66,9 +66,9 @@ export function App() {
   }
   const goBack = () => setScreen({ name: 'top' })
 
-  const startSetsuna = (attempt = 0) => {
+  const startSetsuna = (attempt = 0, rematch = false) => {
     if (!muted) sound.unlock()
-    setScreen({ name: 'setsuna', attempt })
+    setScreen({ name: 'setsuna', attempt, rematch })
   }
 
   if (screen.name === 'setsuna') {
@@ -77,7 +77,8 @@ export function App() {
         key={screen.attempt}
         difficulty={setsunaDifficulty}
         onBack={goBack}
-        onReplay={() => startSetsuna(screen.attempt + 1)}
+        rematch={screen.rematch}
+        onReplay={() => startSetsuna(screen.attempt + 1, screen.rematch)}
         onSound={muted ? undefined : sound.play}
       />
     )
@@ -137,6 +138,7 @@ export function App() {
       presentation={presentation}
       setsunaDifficulty={setsunaDifficulty}
       onSetsunaDifficultyChange={setSetsunaDifficulty}
+      onSetsunaRematch={() => startSetsuna(0, true)}
       onPresentationChange={(selection) => {
         setPresentation(selection)
         saveGamePresentation(selection)

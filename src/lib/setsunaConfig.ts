@@ -32,3 +32,22 @@ export const setsunaDifficulties = {
 
 export type SetsunaDifficulty = keyof typeof setsunaDifficulties
 export const defaultSetsunaDifficulty: SetsunaDifficulty = 'normal'
+
+export const setsunaRanks = [
+  { defeated: 3, label: '初段' },
+  { defeated: 5, label: '二段' },
+  { defeated: 10, label: '三段' },
+  { defeated: 15, label: '四段' },
+  { defeated: 20, label: '五段' },
+  { defeated: 30, label: '免許皆伝' },
+  { defeated: 50, label: '剣聖' },
+] as const
+
+export const setsunaStrongEnemy = {
+  label: '剣豪',
+  afterWins: 10,
+  initialPercent: 15,
+  increasePercent: 10,
+  maxPercent: 50,
+  reactionMs: 600,
+} as const
