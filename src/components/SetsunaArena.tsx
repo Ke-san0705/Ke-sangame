@@ -101,6 +101,8 @@ export function SetsunaArena({ waiting, winner, playing, strongEnemy }: {
 
   const finished = winner !== null && !playing
   const style = {
+    '--setsuna-fighter-scale': SETSUNA.arena.fighterScale,
+    '--setsuna-half-gap': `${SETSUNA.arena.stanceGapPercent / 2}%`,
     '--setsuna-pass': `${SETSUNA.finish.passDistance}%`,
     '--setsuna-setback': `${SETSUNA.finish.setback}%`,
     '--setsuna-fall': `${SETSUNA.finish.fallAngle}deg`,

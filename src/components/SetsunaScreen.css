@@ -63,16 +63,17 @@
 .setsuna-fighter {
   position: absolute;
   inset-block-start: 84%;
+  --fighter-home: calc(50% - var(--facing) * var(--setsuna-half-gap));
   left: var(--fighter-home);
   transform-origin: center;
 }
 
-.setsuna-fighter[data-fighter="player"] { --fighter-home: 24%; --facing: 1; }
-.setsuna-fighter[data-fighter="opponent"] { --fighter-home: 76%; --facing: -1; }
+.setsuna-fighter[data-fighter="player"] { --facing: 1; }
+.setsuna-fighter[data-fighter="opponent"] { --facing: -1; }
 
 .setsuna-cell {
   position: absolute;
-  inline-size: 108cqh;
+  inline-size: calc(108cqh * var(--setsuna-fighter-scale));
   aspect-ratio: 1;
   translate: calc(-1 * var(--foot-x)) calc(-1 * var(--foot-y));
   scale: var(--facing) 1;
