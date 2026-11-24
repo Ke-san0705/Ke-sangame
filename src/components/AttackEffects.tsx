@@ -1,13 +1,13 @@
 import { useRef } from 'react'
 import { useGSAP } from '@gsap/react'
 import gsap from 'gsap'
-import { ATTACK_EFFECTS as config, attackEffectForVisual, type AttackShape, type AttackVisual } from '../lib/attackEffects'
+import { ATTACK_EFFECTS as config, attackEffectForStage, type AttackShape, type AttackVisual } from '../lib/attackEffects'
 import { ENEMY_STAGE, ENEMY_TYPES } from '../lib/enemyApproachConfig'
 
 const heroX = ENEMY_STAGE.heroX * config.width
 const screenX = (x: number) => Math.min(x * config.width, config.maxScreenX)
 
-function Stroke({ shape, simple, reach }: { shape: AttackShape; simple: boolean; reach: number }) {
+function Stroke({ shape, simple }: { shape: AttackShape; simple: boolean }) {
   switch (shape) {
     case 'slash':
       return <>
@@ -30,12 +30,6 @@ function Stroke({ shape, simple, reach }: { shape: AttackShape; simple: boolean;
           <path className="attack-sparks" d="m79-48 4-9m106 84 9 5m200-80 9-8m59 75 16 4" />
         </>}
       </>
-    case 'comboSpecial':
-      return <>
-        <path className="attack-trail" d={`M0 14 Q${reach / 2} -115 ${reach} 14 Q${reach / 2} 78 0 14Z`} />
-        <path className="attack-sparks" d={`M0 14 Q${reach / 2} -115 ${reach} 14 M0 14 Q${reach / 2} 78 ${reach} 14`} />
-        {!simple && <path className="attack-lightning" d={`M0 14 Q${reach / 3} -61 ${reach} 14`} />}
-      </>
     case 'cannon':
       return <>
         {!simple && <path className="attack-sparks" d="M30-53 630-93M91-39 708-59M14 43 660 88M139 36 705 55" />}
@@ -52,11 +46,11 @@ export function AttackEffect({ attack, simple, onComplete }: {
   onComplete: (id: number, replace: boolean) => void
 }) {
   const scope = useRef<SVGSVGElement>(null)
-  const profile = attackEffectForVisual(attack)
+  const profile = attackEffectForStage(attack.stage)
   const { shape, reach, color, travel, duration } = profile
   const slashX = attack.targets[0] ? screenX(attack.targets[0].x) : config.defaultSlashX
   const originX = shape === 'slash' ? slashX : heroX
-  const stronger = !attack.special && config.strongStageIds.includes(attack.stage)
+  const stronger = config.strongStageIds.includes(attack.stage)
 
   useGSAP(() => {
     const target = scope.current
@@ -96,15 +90,10 @@ export function AttackEffect({ attack, simple, onComplete }: {
       <g transform={`translate(${originX} ${config.baseline})`}>
         <g className="attack-stroke">
           <g transform={`scale(${stronger ? (reach + config.impact.travel) / reach : 1} ${stronger ? config.strongHeightScale : 1})`}>
-            <Stroke shape={shape} simple={simple} reach={reach} />
+            <Stroke shape={shape} simple={simple} />
           </g>
         </g>
       </g>
-      {attack.special && attack.special.healed > 0 && (
-        <text className="attack-heal" x={heroX} y={config.baseline - 75} textAnchor="middle">
-          +{attack.special.healed} HP
-        </text>
-      )}
       {!simple && attack.targets.map((enemy) => (
         <g key={enemy.id} transform={`translate(${screenX(enemy.x)} ${config.baseline})`}>
           <g className="attack-impact">

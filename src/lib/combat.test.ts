@@ -75,41 +75,17 @@ describe('討伐のダメージと勝敗', () => {
   })
 })
 
-describe('コンボ必殺技', () => {
-  it('10と20コンボで一度ずつ回復し、最大HPを超えない', () => {
-    let state = { ...createCombat(), hp: 77, combo: 8 }
-    state = applyCombatAnswer(state, 'correct')
-    expect(state.hp).toBe(77)
-    state = applyCombatAnswer(state, 'correct')
-    expect(state.hp).toBe(87)
-    expect(applyCombatAnswer(state, 'pass')).toBe(state)
-    for (let i = 0; i < 9; i++) state = applyCombatAnswer(state, 'correct')
-    expect(state.hp).toBe(87)
-    state = applyCombatAnswer(state, 'correct')
-    expect(state.hp).toBe(97)
-    expect(applyCombatAnswer({ ...state, combo: 29 }, 'correct').hp).toBe(100)
-  })
-
-  it('通常攻撃に加え、範囲内の敵にだけ必殺技のダメージを与える', () => {
-    const state = { ...createCombat(), combo: 9, enemies: [
-      { id: 0, type: 'golem' as const, x: 0.4, hp: 5 },
-      { id: 1, type: 'golem' as const, x: 0.99, hp: 5 },
-    ] }
-    const next = applyCombatAnswer(state, 'correct')
-    expect(next.enemies.map(({ hp }) => hp)).toEqual([1, 4])
-  })
-
-  it('範囲内の近い敵から対象上限まで攻撃する', () => {
+describe('コンボ到達時の通常攻撃', () => {
+  it.each([[10, 4], [20, 8]])('%i コンボでHPを維持し、最も近い %i 体だけに通常ダメージを与える', (combo, targetCount) => {
+    const hp = COMBAT_CONFIG.maxHp - COMBAT_CONFIG.incorrectDamage
     const enemies = Array.from({ length: 10 }, (_, id) => ({
-      id, type: 'golem' as const, x: 0.8 - id * 0.05, hp: 5,
+      id, type: 'golem' as const, x: 0.4 + id * 0.05, hp: 5,
     }))
-    const next = applyCombatAnswer({ ...createCombat(), combo: 9, enemies }, 'correct')
-    expect(next.enemies.map(({ hp }) => hp)).toEqual([5, 5, 2, 2, 2, 2, 1, 1, 1, 1])
-  })
+    const next = applyCombatAnswer({ ...createCombat(), hp, combo: combo - 1, enemies }, 'correct')
 
-  it('誤答で途切れた後も、次の10コンボで発動する', () => {
-    let state = applyCombatAnswer({ ...createCombat(), hp: 70, combo: 10 }, 'incorrect')
-    for (let i = 0; i < 10; i++) state = applyCombatAnswer(state, 'correct')
-    expect(state).toMatchObject({ combo: 10, hp: 70 })
+    expect(next).toMatchObject({ combo, hp })
+    expect(next.enemies.map((enemy) => enemy.hp)).toEqual(
+      enemies.map((enemy, index) => index < targetCount ? enemy.hp - COMBAT_CONFIG.attackDamage : enemy.hp),
+    )
   })
 })

@@ -281,16 +281,6 @@
   }
 }
 
-.game-overcharge-warning {
-  display: inline-block;
-  margin-block-end: 6px;
-  margin-inline: 4px;
-  padding: 2px 12px;
-  border-radius: 999px;
-  background: #300811;
-  color: #ffb8c3;
-}
-
 .game-time {
   position: relative;
 }
