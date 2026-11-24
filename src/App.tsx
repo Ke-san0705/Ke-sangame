@@ -8,7 +8,7 @@ import { TopScreen } from './components/TopScreen'
 import {
   defaultMode, readGamePresentation, saveGamePresentation, type GameMode, type PlayMode,
 } from './lib/gameMode'
-import { createSoundEffects, readMuted, saveMuted } from './lib/soundEffects'
+import { createSoundEffects, readMuted, readVolume, saveMuted, saveVolume } from './lib/soundEffects'
 import { readReplayRecords, saveReplayRecords } from './lib/replayRecords'
 import type { QuestionMode } from './lib/question-generator'
 
@@ -42,7 +42,8 @@ const isOnline = () => navigator.onLine
 
 export function App() {
   const [muted, setMuted] = useState(readMuted)
-  const [sound] = useState(createSoundEffects)
+  const [volume, setVolume] = useState(readVolume)
+  const [sound] = useState(() => createSoundEffects(volume))
   useEffect(() => sound.dispose, [sound])
 
   const [presentation, setPresentation] = useState(readGamePresentation)
@@ -135,10 +136,17 @@ export function App() {
         setPresentation(selection)
         saveGamePresentation(selection)
       }}
+      volume={volume}
+      onVolumeChange={(value) => {
+        setVolume(value)
+        sound.setVolume(value)
+        saveVolume(value)
+      }}
       muted={muted}
       onToggleMute={() => {
         setMuted(!muted)
         saveMuted(!muted)
+        if (!muted) sound.play('silence')
       }}
       onModeChange={setMode}
       onStart={() => presentation === 'setsuna' ? startSetsuna() : startGame(mode)}

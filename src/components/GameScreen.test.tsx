@@ -519,6 +519,10 @@ test('時間切れ後に操作なしで超必殺技を発動し、全段階を�
     expect(scene?.getAttribute('data-phase')).toBe(phase)
     expect(onFinish).not.toHaveBeenCalled()
   }
+  expect(onSound.mock.calls.filter(([cue]) => cue === 'silence' || cue.startsWith('ultimate')))
+    .toEqual([
+      ['silence', 0.45], ['ultimateGather', 0.45], ['ultimateSlash', 0.45], ['ultimateBlast', 0.45],
+    ])
   expect(screen.getByText('0 KO')).toBeTruthy()
   act(() => vi.advanceTimersByTime(800))
   expect(onFinish).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
@@ -609,4 +613,37 @@ test('攻撃が進化したときだけ戦闘領域で形態名を一時表示�
   fireEvent.keyDown(window, { key: 'Enter' })
   for (let i = 0; i < 5; i++) correct()
   expect(screen.queryByText(/攻撃進化/)).toBeNull()
+})
+
+test('討伐の被弾・爆発・回復音を鳴らし、消音時も判定と結果が一致する', () => {
+  vi.useFakeTimers()
+  vi.spyOn(Math, 'random').mockReturnValue(0.25)
+  const run = (onSound?: (cue: string) => void) => {
+    const onFinish = vi.fn()
+    const { unmount } = render(<GameScreen level={1} mode="addition" duration={30}
+      skipCountdown showMonsterBattle onSound={onSound} onFinish={onFinish} />)
+    const generate = createQuestionGenerator()
+    const submit = (answer: string) => {
+      for (const key of [...answer, 'Enter']) fireEvent.keyDown(window, { key })
+    }
+    generate(1, 'addition')
+    submit('0')
+    expect(screen.getByRole('meter', { name: 'HP' }).getAttribute('value')).toBe('90')
+    for (let i = 0; i < 10; i += 1) submit(generate(1, 'addition').answer)
+    expect(screen.getByRole('meter', { name: 'HP' }).getAttribute('value')).toBe('100')
+    act(() => vi.advanceTimersByTime(30_050))
+    finishReleaseWithoutInput()
+    expect(onFinish).toHaveBeenCalledOnce()
+    const [result] = onFinish.mock.calls[0]
+    unmount()
+    return result
+  }
+
+  const onSound = vi.fn()
+  const audible = run(onSound)
+  expect(onSound).toHaveBeenCalledWith('damage')
+  expect(onSound).toHaveBeenCalledWith('explosion')
+  expect(onSound).toHaveBeenCalledWith('heal')
+  expect(onSound).not.toHaveBeenCalledWith('incorrect')
+  expect(run()).toEqual(audible)
 })

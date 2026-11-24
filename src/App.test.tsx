@@ -131,6 +131,8 @@ function stubAudio() {
     connect: vi.fn(),
     start: vi.fn(),
     stop: vi.fn(),
+    disconnect: vi.fn(),
+    onended: undefined as (() => void) | undefined,
   }))
   vi.stubGlobal('AudioContext', class {
     state = 'running'
@@ -142,10 +144,15 @@ function stubAudio() {
       return {
         gain: { setValueAtTime: vi.fn(), exponentialRampToValueAtTime: vi.fn() },
         connect: vi.fn(),
+        disconnect: vi.fn(),
       }
     }
   })
   return createOscillator
+}
+
+function finishAudio(play: ReturnType<typeof stubAudio>) {
+  for (const { value } of play.mock.results) value.onended?.()
 }
 
 test('正解・不正解・残り5秒からのカウントダウン・時間切れで効果音を鳴らす', () => {
@@ -161,6 +168,7 @@ test('正解・不正解・残り5秒からのカウントダウン・時間切�
   enter(first().answer)
   expect(play).toHaveBeenCalledTimes(3)
 
+  finishAudio(play)
   advance(24_999)
   expect(play).toHaveBeenCalledTimes(3)
   for (const expected of [4, 5, 6, 7, 8]) {
@@ -179,7 +187,10 @@ test('連続正解で正解音が高くなり、誤答とパスで元の音階�
   const play = stubAudio()
   const frequencies = () => play.mock.results.map(({ value }) => value.frequency.value)
   const generate = createQuestionGenerator()
-  const nextAnswer = () => generate(1, 'multiplication').answer
+  const nextAnswer = () => {
+    finishAudio(play)
+    return generate(1, 'multiplication').answer
+  }
   render(<App />)
   click('掛け算')
   click('30秒')
@@ -489,4 +500,18 @@ test('刹那の途中敗北では勝ち抜いた人数と最速反応時間を�
   expect(screen.getByText('1人抜き')).toBeTruthy()
   expect(screen.getByText('0.450秒')).toBeTruthy()
   expect(screen.getByText('0.213秒')).toBeTruthy()
+})
+
+test('音量を変更し、ミュートの切り替えと再読み込み後も保持する', () => {
+  const { unmount } = render(<App />)
+  const slider = screen.getByRole<HTMLInputElement>('slider', { name: '音量' })
+  fireEvent.change(slider, { target: { value: '35' } })
+  expect(slider.value).toBe('35')
+  click('ミュート')
+  unmount()
+
+  render(<App />)
+  expect(screen.getByRole('button', { name: 'ミュート', pressed: true })).toBeTruthy()
+  click('ミュート')
+  expect(screen.getByRole<HTMLInputElement>('slider', { name: '音量' }).value).toBe('35')
 })

@@ -128,6 +128,7 @@ export function GameScreen({
     if (latestCombat.current === next) return
     if (next.hp < latestCombat.current.hp) {
       setBattleMotion({ cue: 'hit', trigger: ++motionId.current })
+      onSound?.('damage')
     }
     latestCombat.current = next
     setCombat(next)
@@ -172,6 +173,10 @@ export function GameScreen({
         const cue = special ? 'comboSpecial' : evolved ? 'evolution' : critical ? 'hit' : profile.shape === 'shockwave' ? 'shockwave' : undefined
         setBattleMotion(cue ? { cue, trigger: ++motionId.current } : undefined)
         onSound?.(profile.sound, battle.combo)
+        if (special) {
+          onSound?.('explosion')
+          if (special.healed > 0) onSound?.('heal')
+        }
       }
       if (evolved) {
         window.clearTimeout(evolutionTimeout.current)
@@ -309,7 +314,7 @@ export function GameScreen({
             currentQuestionResolved.current = true
           }
         } else {
-          onSound?.('incorrect')
+          if (!showMonsterBattle) onSound?.('incorrect')
           recordAnswer('incorrectCount')
           wrongAnswers.current.push(answer)
           if (showMonsterBattle) {
