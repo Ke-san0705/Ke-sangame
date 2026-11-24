@@ -1,0 +1,16 @@
+# 演出タイムライン（DEV-01）
+
+| パッケージ | 固定バージョン | 配布パッケージのライセンス表記 |
+| --- | --- | --- |
+| `gsap` | 3.15.1 | Standard “no charge” license |
+| `@gsap/react` | 2.1.2 | SEE LICENSE AT https://gsap.com/standard-license |
+
+両パッケージとも配布メタデータは [GSAP Standard License](https://gsap.com/standard-license/) を参照する。バージョンと配布物の整合性ハッシュはルートの `package-lock.json` に記録した。
+
+`useEffectTimeline` は演出を所有する画面から、DOM スコープ、有効条件、演出のトリガー、低負荷モードの値を受け取る。画面のアンマウント、画面内のフェーズ切り替え、トリガー更新、演出抑制への切り替えで GSAP コンテキストを revert し、タイムラインと適用したスタイルを破棄・復元する。
+
+`prefers-reduced-motion: reduce`、低速更新ディスプレイを示す `update: slow`、または呼び出し元の `lowPower` が有効なら GSAP 演出を抑制する。最初の適用箇所はモンスター戦で正解した際の揺れ。解放ゲージのような入力判定に必要な表示は従来の時計で進む。
+
+画面遷移、ゲーム状態、締切、入力判定は React と既存のタイマー・イベント時刻で管理する。タイムラインは描画専用とし、演出の完了を待って状態を進める処理は置かない。
+
+描画比較の手順と結果は [検証ページの README](../benchmarks/rendering/README.md) を参照。
