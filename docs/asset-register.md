@@ -19,10 +19,10 @@
 | [侍](../public/assets/initial/characters/samurai.png) | [定義](../public/assets/initial/characters/samurai.json) | DEV-03b・Pillow 13.0.0 の図形描画で新規制作 | 本リポジトリ向けの新規制作 | 1024×768／128×128 | (64, 112) |
 | [敵剣士](../public/assets/initial/characters/enemy-swordsman.png) | [定義](../public/assets/initial/characters/enemy-swordsman.json) | DEV-03b・Pillow 13.0.0 の図形描画で新規制作 | 本リポジトリ向けの新規制作 | 1024×768／128×128 | (64, 112) |
 | [剣豪](../public/assets/initial/characters/swordmaster.png) | [定義](../public/assets/initial/characters/swordmaster.json) | DEV-03b・Pillow 13.0.0 の図形描画で新規制作 | 本リポジトリ向けの新規制作 | 1024×768／128×128 | (64, 112) |
-| [スライム](../public/assets/initial/characters/slime.png) | [定義](../public/assets/initial/characters/slime.json) | M・[既存静止画](../public/monsters/slime.png) を Pillow 13.0.0 で加工 | 未確認（既存素材と同じ） | 512×320／64×64 | (32, 56) |
-| [ゴブリン](../public/assets/initial/characters/goblin.png) | [定義](../public/assets/initial/characters/goblin.json) | M・[既存静止画](../public/monsters/goblin.png) を Pillow 13.0.0 で加工 | 未確認（既存素材と同じ） | 768×480／96×96 | (48, 84) |
-| [オオカミ](../public/assets/initial/characters/wolf.png) | [定義](../public/assets/initial/characters/wolf.json) | M・[既存静止画](../public/monsters/wolf.png) を Pillow 13.0.0 で加工 | 未確認（既存素材と同じ） | 896×560／112×112 | (56, 98) |
-| [ゴーレム](../public/assets/initial/characters/golem.png) | [定義](../public/assets/initial/characters/golem.json) | M・[既存静止画](../public/monsters/wood-golem.png) を Pillow 13.0.0 で加工 | 未確認（既存素材と同じ） | 1536×960／192×192 | (96, 168) |
+| [スライム](../public/assets/initial/characters/slime.png) | [定義](../public/assets/initial/characters/slime.json) | M・[既存静止画](../public/monsters/slime.png) を Pillow 13.0.0 で加工 | 確認済み（Gemini画像生成、2026-11-23。生成チャット https://gemini.google.com/app/9ce22c062ffd0de7 で確認） | 512×320／64×64 | (32, 56) |
+| [ゴブリン](../public/assets/initial/characters/goblin.png) | [定義](../public/assets/initial/characters/goblin.json) | M・[既存静止画](../public/monsters/goblin.png) を Pillow 13.0.0 で加工 | 確認済み（Gemini画像生成、2026-11-23。生成チャット https://gemini.google.com/app/9ce22c062ffd0de7 で確認） | 768×480／96×96 | (48, 84) |
+| [オオカミ](../public/assets/initial/characters/wolf.png) | [定義](../public/assets/initial/characters/wolf.json) | M・[既存静止画](../public/monsters/wolf.png) を Pillow 13.0.0 で加工 | 確認済み（Gemini画像生成、2026-11-23。生成チャット https://gemini.google.com/app/9ce22c062ffd0de7 で確認） | 896×560／112×112 | (56, 98) |
+| [ゴーレム](../public/assets/initial/characters/golem.png) | [定義](../public/assets/initial/characters/golem.json) | M・[既存静止画](../public/monsters/wood-golem.png) を Pillow 13.0.0 で加工 | 確認済み（Gemini画像生成、2026-11-23。生成チャット https://gemini.google.com/app/9ce22c062ffd0de7 で確認） | 1536×960／192×192 | (96, 168) |
 
 背景は Pillow 13.0.0 の図形描画でこのリポジトリ向けに新規制作。低彩度の配色で、遠景から中景、地面の順に重ねる。全レイヤー共通の左上が原点・配置アンカー。
 
@@ -55,23 +55,23 @@ DEV-10 で侍・敵剣士の各シートに納刀時の 46 コマ目を追加し
 
 | ファイル | 由来 | 利用許諾 | 制作条件 | 実寸 | アンカー | 仮素材判定 | 正式採用の判定と対応 |
 | --- | --- | --- | --- | --- | --- | --- |
-| [`public/monsters/baby-dragon.png`](../public/monsters/baby-dragon.png) | M | 未確認 | M の制作条件 | 512×512 | 未設定 | 仮素材として利用可 | 刷新が必要。左向き。右向き原画と空中ポーズの基準点を用意 |
-| [`public/monsters/dark-mage.png`](../public/monsters/dark-mage.png) | M | 未確認 | M の制作条件 | 512×512 | 未設定 | 仮素材として利用可 | 刷新が必要。正面寄り。右向きの構えを用意 |
-| [`public/monsters/death-knight.png`](../public/monsters/death-knight.png) | M | 未確認 | M の制作条件 | 512×512 | 未設定 | 仮素材として利用可 | 刷新が必要。左向き。右向き原画と剣の収まるセルを用意 |
-| [`public/monsters/demon-king.png`](../public/monsters/demon-king.png) | M | 未確認 | M の制作条件 | 512×512 | 未設定 | 仮素材として利用可 | 刷新が必要。正面寄り。右向きの構えとマントの収まるセルを用意 |
-| [`public/monsters/dragon.png`](../public/monsters/dragon.png) | M | 未確認 | M の制作条件 | 512×512 | 未設定 | 仮素材として利用可 | 刷新が必要。右向き。翼と尾の収まるセルを用意 |
-| [`public/monsters/gargoyle.png`](../public/monsters/gargoyle.png) | M | 未確認 | M の制作条件 | 512×512 | 未設定 | 仮素材として利用可 | 刷新が必要。右向き。翼の動きが収まるセルを用意 |
-| [`public/monsters/goblin.png`](../public/monsters/goblin.png) | M | 未確認 | M の制作条件 | 512×512 | 未設定 | 仮素材として利用可 | 刷新が必要。右向き寄り。通常敵の枠で剣・盾と足位置を統一 |
-| [`public/monsters/hellhound.png`](../public/monsters/hellhound.png) | M | 未確認 | M の制作条件 | 512×512 | 未設定 | 仮素材として利用可 | 刷新が必要。左向き。右向きの四足用ポーズを用意 |
-| [`public/monsters/hero.png`](../public/monsters/hero.png) | M | 未確認 | M の制作条件 | 512×512 | 未設定 | 仮素材として利用可 | 刷新が必要。右向き寄り。5〜6頭身・128×128 の主人公へ差し替え |
-| [`public/monsters/mushroom.png`](../public/monsters/mushroom.png) | M | 未確認 | M の制作条件 | 512×512 | 未設定 | 仮素材として利用可 | 刷新が必要。正面寄り。右向きの小型敵用セルを用意 |
-| [`public/monsters/reaper.png`](../public/monsters/reaper.png) | M | 未確認 | M の制作条件 | 512×512 | 未設定 | 仮素材として利用可 | 刷新が必要。右向き寄り。鎌と浮遊姿勢の基準点を統一 |
-| [`public/monsters/skeleton.png`](../public/monsters/skeleton.png) | M | 未確認 | M の制作条件 | 512×512 | 未設定 | 仮素材として利用可 | 刷新が必要。右向き寄り。剣・盾と足位置を統一 |
-| [`public/monsters/slime.png`](../public/monsters/slime.png) | M | 未確認 | M の制作条件 | 512×512 | 未設定 | 仮素材として利用可 | 刷新が必要。左向き寄り。右向きの小型敵用セルを用意 |
-| [`public/monsters/tiger-cub.png`](../public/monsters/tiger-cub.png) | M | 未確認 | M の制作条件 | 512×512 | 未設定 | 仮素材として利用可 | 刷新が必要。左向き。右向きの四足用ポーズを用意 |
-| [`public/monsters/treant.png`](../public/monsters/treant.png) | M | 未確認 | M の制作条件 | 512×512 | 未設定 | 仮素材として利用可 | 刷新が必要。左向き寄り。右向き原画と浮遊姿勢の基準点を用意 |
-| [`public/monsters/wolf.png`](../public/monsters/wolf.png) | M | 未確認 | M の制作条件 | 512×512 | 未設定 | 仮素材として利用可 | 刷新が必要。右向き。通常敵の枠で四足の接地を統一 |
-| [`public/monsters/wood-golem.png`](../public/monsters/wood-golem.png) | M | 未確認 | M の制作条件 | 512×512 | 未設定 | 仮素材として利用可 | 刷新が必要。正面寄り。右向きの大型敵用セルを用意 |
+| [`public/monsters/baby-dragon.png`](../public/monsters/baby-dragon.png) | M | 確認済み（Gemini画像生成、2026-11-23） | M の制作条件 | 512×512 | 未設定 | 仮素材として利用可 | 刷新が必要。左向き。右向き原画と空中ポーズの基準点を用意 |
+| [`public/monsters/dark-mage.png`](../public/monsters/dark-mage.png) | M | 確認済み（Gemini画像生成、2026-11-23） | M の制作条件 | 512×512 | 未設定 | 仮素材として利用可 | 刷新が必要。正面寄り。右向きの構えを用意 |
+| [`public/monsters/death-knight.png`](../public/monsters/death-knight.png) | M | 確認済み（Gemini画像生成、2026-11-23） | M の制作条件 | 512×512 | 未設定 | 仮素材として利用可 | 刷新が必要。左向き。右向き原画と剣の収まるセルを用意 |
+| [`public/monsters/demon-king.png`](../public/monsters/demon-king.png) | M | 確認済み（Gemini画像生成、2026-11-23） | M の制作条件 | 512×512 | 未設定 | 仮素材として利用可 | 刷新が必要。正面寄り。右向きの構えとマントの収まるセルを用意 |
+| [`public/monsters/dragon.png`](../public/monsters/dragon.png) | M | 確認済み（Gemini画像生成、2026-11-23） | M の制作条件 | 512×512 | 未設定 | 仮素材として利用可 | 刷新が必要。右向き。翼と尾の収まるセルを用意 |
+| [`public/monsters/gargoyle.png`](../public/monsters/gargoyle.png) | M | 確認済み（Gemini画像生成、2026-11-23） | M の制作条件 | 512×512 | 未設定 | 仮素材として利用可 | 刷新が必要。右向き。翼の動きが収まるセルを用意 |
+| [`public/monsters/goblin.png`](../public/monsters/goblin.png) | M | 確認済み（Gemini画像生成、2026-11-23） | M の制作条件 | 512×512 | 未設定 | 仮素材として利用可 | 刷新が必要。右向き寄り。通常敵の枠で剣・盾と足位置を統一 |
+| [`public/monsters/hellhound.png`](../public/monsters/hellhound.png) | M | 確認済み（Gemini画像生成、2026-11-23） | M の制作条件 | 512×512 | 未設定 | 仮素材として利用可 | 刷新が必要。左向き。右向きの四足用ポーズを用意 |
+| [`public/monsters/hero.png`](../public/monsters/hero.png) | M | 確認済み（Gemini画像生成、2026-11-23） | M の制作条件 | 512×512 | 未設定 | 仮素材として利用可 | 刷新が必要。右向き寄り。5〜6頭身・128×128 の主人公へ差し替え |
+| [`public/monsters/mushroom.png`](../public/monsters/mushroom.png) | M | 確認済み（Gemini画像生成、2026-11-23） | M の制作条件 | 512×512 | 未設定 | 仮素材として利用可 | 刷新が必要。正面寄り。右向きの小型敵用セルを用意 |
+| [`public/monsters/reaper.png`](../public/monsters/reaper.png) | M | 確認済み（Gemini画像生成、2026-11-23） | M の制作条件 | 512×512 | 未設定 | 仮素材として利用可 | 刷新が必要。右向き寄り。鎌と浮遊姿勢の基準点を統一 |
+| [`public/monsters/skeleton.png`](../public/monsters/skeleton.png) | M | 確認済み（Gemini画像生成、2026-11-23） | M の制作条件 | 512×512 | 未設定 | 仮素材として利用可 | 刷新が必要。右向き寄り。剣・盾と足位置を統一 |
+| [`public/monsters/slime.png`](../public/monsters/slime.png) | M | 確認済み（Gemini画像生成、2026-11-23） | M の制作条件 | 512×512 | 未設定 | 仮素材として利用可 | 刷新が必要。左向き寄り。右向きの小型敵用セルを用意 |
+| [`public/monsters/tiger-cub.png`](../public/monsters/tiger-cub.png) | M | 確認済み（Gemini画像生成、2026-11-23） | M の制作条件 | 512×512 | 未設定 | 仮素材として利用可 | 刷新が必要。左向き。右向きの四足用ポーズを用意 |
+| [`public/monsters/treant.png`](../public/monsters/treant.png) | M | 確認済み（Gemini画像生成、2026-11-23） | M の制作条件 | 512×512 | 未設定 | 仮素材として利用可 | 刷新が必要。左向き寄り。右向き原画と浮遊姿勢の基準点を用意 |
+| [`public/monsters/wolf.png`](../public/monsters/wolf.png) | M | 確認済み（Gemini画像生成、2026-11-23） | M の制作条件 | 512×512 | 未設定 | 仮素材として利用可 | 刷新が必要。右向き。通常敵の枠で四足の接地を統一 |
+| [`public/monsters/wood-golem.png`](../public/monsters/wood-golem.png) | M | 確認済み（Gemini画像生成、2026-11-23） | M の制作条件 | 512×512 | 未設定 | 仮素材として利用可 | 刷新が必要。正面寄り。右向きの大型敵用セルを用意 |
 
 ### 背景4点
 
