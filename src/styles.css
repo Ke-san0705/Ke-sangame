@@ -58,7 +58,8 @@ button[aria-pressed="true"],
   gap: 8px;
 }
 
-.mute-button {
+.mute-button,
+.auto-confirm-button {
   min-block-size: 36px;
   padding-inline: 12px;
   border-radius: 18px;

@@ -1,5 +1,6 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
+import { DEFAULT_AUTO_CONFIRM, matchesAnswerDigitCount } from '../lib/autoConfirm'
 import { createDuel, formatReaction, judgeDuel, reactionLimit, readSetsunaBest, saveSetsunaBest } from '../lib/setsuna'
 import { SETSUNA, setsunaFinishMs, setsunaStrongEnemy, type SetsunaDifficulty } from '../lib/setsunaConfig'
 import { readStrongEnemy, rollsStrongEnemy, saveStrongEnemy, setsunaRank } from '../lib/setsunaProgress'
@@ -16,12 +17,13 @@ type RoundResult = { outcome: 'win' | keyof typeof lossLabels; reactionMs: numbe
 type SetsunaScreenProps = {
   difficulty: SetsunaDifficulty
   rematch?: boolean
+  autoConfirm?: boolean
   onBack: () => void
   onReplay: () => void
   onSound?: (cue: SoundCue) => void
 }
 
-export function SetsunaScreen({ difficulty, rematch = false, onBack, onReplay, onSound }: SetsunaScreenProps) {
+export function SetsunaScreen({ difficulty, rematch = false, autoConfirm = DEFAULT_AUTO_CONFIRM, onBack, onReplay, onSound }: SetsunaScreenProps) {
   const [defeated, setDefeated] = useState(0)
   const [strongEnemy, setStrongEnemy] = useState(rematch)
   const [ready, setReady] = useState(rematch)
@@ -159,7 +161,9 @@ export function SetsunaScreen({ difficulty, rematch = false, onBack, onReplay, o
       setAnswer(answerBuffer.current)
       return
     }
+    const digit = /^\d$/.test(key)
     if (elapsed < 0) {
+      if (!(autoConfirm ? digit : key === 'Enter')) return
       const outcome = judgeDuel(null, duel.answer, elapsed, cpuLimit, earlyInputs.current)
       if (outcome === 'early') {
         earlyInputs.current += 1
@@ -173,15 +177,14 @@ export function SetsunaScreen({ difficulty, rematch = false, onBack, onReplay, o
       settle('slow')
       return
     }
-    if (key === 'Enter') {
+    if (digit && answerBuffer.current.length < SETSUNA.question.maxInputLength) {
+      answerBuffer.current += key
+      setAnswer(answerBuffer.current)
+    }
+    if (key === 'Enter' || (autoConfirm && digit && matchesAnswerDigitCount(answerBuffer.current, String(duel.answer)))) {
       if (!answerBuffer.current) return
       const outcome = judgeDuel(Number(answerBuffer.current), duel.answer, elapsed, cpuLimit)
       settle(outcome === 'win' ? 'win' : 'wrong', outcome === 'win' ? elapsed : null)
-      return
-    }
-    if (answerBuffer.current.length < SETSUNA.question.maxInputLength) {
-      answerBuffer.current += key
-      setAnswer(answerBuffer.current)
     }
   }
 
@@ -268,7 +271,7 @@ export function SetsunaScreen({ difficulty, rematch = false, onBack, onReplay, o
         ) : (
           <>
             <GameKeypad keys={keys} onKey={handleKey} />
-            <p className="setsuna-key-hint">数字キーで入力・Enterで確定</p>
+            <p className="setsuna-key-hint">{autoConfirm ? '数字キーで入力・桁数が合うと確定' : '数字キーで入力・Enterで確定'}</p>
           </>
         )}
       </div>
