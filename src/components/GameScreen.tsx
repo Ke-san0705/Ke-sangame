@@ -447,6 +447,9 @@ export function GameScreen({
       {showMonsterBattle && (
         <ChargeArena correctCount={correctCount} overcharged={overchargeActive} battle={{
           lowPower,
+          level,
+          combo: counts.combo,
+          active: remaining > 0,
           foreground: (
             <>
               {criticalAnswer !== undefined && <div key={criticalAnswer} className="charge-flash" aria-hidden="true" />}

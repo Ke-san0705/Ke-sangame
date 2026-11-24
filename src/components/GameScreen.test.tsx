@@ -354,9 +354,8 @@ test.each([30, 'survival'] as const)('討伐のチャージ・復習・時間切
       onSound={onSound} onFinish={onFinish} />,
   )
   const arena = container.querySelector<HTMLElement>('.charge-arena')!
-  const initialWidth = parseFloat(arena.style.getPropertyValue('--swarm-width'))
-  const initialScale = Number(arena.style.getPropertyValue('--charge-scale'))
-  const initialMonsters = arena.querySelectorAll('img').length
+  const enemyCount = () => arena.querySelectorAll('.battle-enemy').length
+  expect(enemyCount()).toBe(0)
   const missed = question
 
   submit('0')
@@ -365,15 +364,14 @@ test.each([30, 'survival'] as const)('討伐のチャージ・復習・時間切
   expect(screen.getByText('正解：' + question.answer)).toBeTruthy()
   act(() => vi.advanceTimersByTime(1_000))
   question = generate(1, 'addition')
-  expect(arena.querySelectorAll('img')).toHaveLength(initialMonsters)
-  expect(Number(arena.style.getPropertyValue('--charge-scale'))).toBe(initialScale)
+  const earlyEnemies = enemyCount()
 
   act(() => vi.advanceTimersByTime(3_001))
+  const approachingEnemies = enemyCount()
+  expect(approachingEnemies).toBeGreaterThan(earlyEnemies)
   submit(question.answer)
   expect(screen.queryByText('CRITICAL CHARGE!')).toBeNull()
-  expect(arena.querySelectorAll('img')).toHaveLength(initialMonsters + 1)
-  expect(parseFloat(arena.style.getPropertyValue('--swarm-width'))).toBeLessThan(initialWidth)
-  expect(Number(arena.style.getPropertyValue('--charge-scale'))).toBeGreaterThan(initialScale)
+  expect(enemyCount()).toBe(approachingEnemies)
   const firstRing = arena.querySelector('.charge-shockwave')
   expect(firstRing).not.toBeNull()
 

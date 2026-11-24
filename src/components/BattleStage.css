@@ -189,3 +189,19 @@ main.battle-screen {
     display: grid;
   }
 }
+
+.enemy-approach img {
+  position: absolute;
+  inset-block-end: 24%;
+  inline-size: 13%;
+  block-size: 42%;
+  object-fit: contain;
+  object-position: center bottom;
+  translate: -50%;
+  filter: drop-shadow(0 3px 4px #07091b);
+}
+
+.enemy-approach .battle-enemy {
+  inline-size: 9%;
+  block-size: 30%;
+}

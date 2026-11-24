@@ -152,12 +152,17 @@
     linear-gradient(#171c37, #08152b);
 }
 
-.battle-stage .charge-swarm img {
-  inline-size: clamp(22px, 28cqh, 90px);
+.battle-hero-effects {
+  position: absolute;
+  inset-block-end: 24%;
+  inline-size: 16%;
+  aspect-ratio: 1;
+  translate: -50%;
 }
 
-.battle-stage .charge-cannon {
-  inline-size: min(35%, 88cqh, 250px);
+.battle-hero-effects svg {
+  inline-size: 100%;
+  overflow: visible;
 }
 
 @media (prefers-reduced-motion: no-preference) {
