@@ -28,12 +28,14 @@ export function ChargeArena({ correctCount, battle }: {
   const color = CHARGE_COLORS.find(({ fromCorrect }) => correctCount >= fromCorrect)?.color ?? 'blue'
   if (battle) {
     const simple = reduced || battle.lowPower
+    const attacks = simple ? battle.attacks.slice(-1) : battle.attacks
     return (
       <BattleStage className="charge-arena"
-        characters={<EnemyApproach enemies={battle.enemies} attackId={correctCount} stage={battle.stage} lowPower={simple} />}
+        characters={<EnemyApproach enemies={battle.enemies} attackId={correctCount} stage={battle.stage}
+          lowPower={simple} attacks={reduced ? undefined : attacks} />}
         foreground={
           <>
-            {(simple ? battle.attacks.slice(-1) : battle.attacks).map((attack) => (
+            {attacks.map((attack) => (
               <AttackEffect key={attack.id} attack={attack} simple={simple} onComplete={battle.onAttackComplete} />
             ))}
             {battle.foreground}

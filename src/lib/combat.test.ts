@@ -6,13 +6,30 @@ describe('討伐のダメージと勝敗', () => {
   it('最も近い敵に毎回攻撃し、耐久がなくなった敵を討伐する', () => {
     const state = { ...createCombat(), enemies: [
       { id: 0, type: 'slime' as const, x: 0.8, hp: 1 },
-      { id: 1, type: 'goblin' as const, x: 0.4, hp: 2 },
+      { id: 1, type: 'golem' as const, x: 0.4, hp: 2 },
     ] }
     const first = applyCombatAnswer(state, 'correct')
     expect(first.enemies.map(({ hp }) => hp)).toEqual([1, 1])
     const second = applyCombatAnswer(first, 'correct')
     expect(second.enemies.map(({ id }) => id)).toEqual([0])
     expect(second).toMatchObject({ combo: 2, defeated: 1 })
+  })
+
+  it.each(['slime', 'goblin', 'wolf'] as const)('%s は実際の出現時の耐久から1ヒットで倒れる', (type) => {
+    const enemy = { id: 0, type, x: 0.4, hp: ENEMY_TYPES[type].durability }
+    expect(applyCombatAnswer({ ...createCombat(), enemies: [enemy] }, 'correct'))
+      .toMatchObject({ enemies: [], defeated: 1, lastHits: [{ enemy, defeated: true }] })
+  })
+
+  it('ゴーレムのひるみと最後の一撃を区別する', () => {
+    const enemy = { id: 0, type: 'golem' as const, x: 0.4, hp: ENEMY_TYPES.golem.durability }
+    let state = { ...createCombat(), enemies: [enemy] } as ReturnType<typeof createCombat>
+    for (let hp = enemy.hp - 1; hp > 0; hp--) {
+      state = applyCombatAnswer(state, 'correct')
+      expect(state).toMatchObject({ enemies: [{ hp }], lastHits: [{ enemy: { id: 0 }, defeated: false }] })
+    }
+    expect(applyCombatAnswer(state, 'correct'))
+      .toMatchObject({ enemies: [], defeated: 1, lastHits: [{ enemy: { id: 0 }, defeated: true }] })
   })
 
   it('パスでコンボを維持し、誤答でHPとコンボを減らして攻撃段階を維持する', () => {
@@ -48,7 +65,7 @@ describe('討伐のダメージと勝敗', () => {
 
     const next = applyCombatAnswer({ ...missed, enemies: [
       { id: 0, type: 'slime', x: 0.4, hp: 1 },
-      { id: 1, type: 'goblin', x: 0.5, hp: 2 },
+      { id: 1, type: 'golem', x: 0.5, hp: 2 },
     ] }, 'correct')
     expect(next).toMatchObject({ combo: 1, attackStage: 4, defeated: 1, enemies: [{ id: 1, hp: 1 }] })
   })

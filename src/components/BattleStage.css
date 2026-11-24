@@ -210,7 +210,16 @@ main.battle-screen {
   filter: drop-shadow(0 3px 4px #07091b);
 }
 
-.enemy-approach .battle-enemy {
+.enemy-approach :is(.battle-enemy, .attack-knockback) {
   inline-size: 9%;
   block-size: 30%;
+}
+
+.enemy-approach .battle-enemy {
+  left: 0;
+}
+
+.enemy-approach .attack-knockback {
+  filter: none;
+  pointer-events: none;
 }

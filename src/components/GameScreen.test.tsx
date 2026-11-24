@@ -471,10 +471,11 @@ test('パス中も敵が進み、次の正解で討伐コンボを引き継ぐ',
   generate(1, 'addition')
   act(() => vi.advanceTimersByTime(4_000))
   const enemy = container.querySelector<HTMLElement>('.battle-enemy')!
-  const position = parseFloat(enemy.style.left)
+  const position = () => Number(enemy.style.translate.match(/([\d.]+)cqw/)?.[1])
+  const beforePass = position()
   fireEvent.keyDown(window, { key: 'Tab' })
   act(() => vi.advanceTimersByTime(1_000))
-  expect(parseFloat(enemy.style.left)).toBeLessThan(position)
+  expect(position()).toBeLessThan(beforePass)
   expect(screen.getByText('HP', { exact: true })).toBeTruthy()
   expect(screen.getByRole('meter', { name: 'HP' }).getAttribute('value')).toBe('100')
   submit(generate(1, 'addition').answer)
