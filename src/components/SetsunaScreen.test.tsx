@@ -72,7 +72,7 @@ it('演出をスキップすると、再生中の音と残りの決着音を止�
 
 it('強敵として開始した場合だけ登場音を鳴らす', () => {
   const play = vi.fn()
-  render(<SetsunaScreen {...actions} difficulty="normal" strongEnemy onSound={play} />)
+  render(<SetsunaScreen {...actions} difficulty="normal" rematch onSound={play} />)
   expect(play.mock.calls.flat().filter((cue) => cue === 'duelStrongEnemy')).toHaveLength(1)
 })
 
@@ -83,4 +83,26 @@ it.each([true, false])('音声の有無 (%s) にかかわらず、制限時間�
   vi.mocked(performance.now).mockReturnValue(1000 + SETSUNA.cpu.initialMs)
   input('Enter')
   expect(screen.getByText('CPUに先を越された')).toBeTruthy()
+})
+
+it('10人抜き後に強敵を解放し、開始操作まで合図を出さない', () => {
+  localStorage.clear()
+  // Zero selects the strong enemy and generates either 0 + 0 or 1 + 9.
+  render(<SetsunaScreen {...actions} difficulty="normal" />)
+  for (let wins = 0; wins < 10; wins++) {
+    advance(SETSUNA.wait.minMs)
+    if (wins >= 3) input('1')
+    input('0')
+    input('Enter')
+    advance(setsunaFinishMs)
+    advance(SETSUNA.betweenRoundsMs)
+    if (wins < 9) expect(screen.queryByRole('button', { name: '強敵戦を開始' })).toBeNull()
+  }
+  const start = screen.getByRole('button', { name: '強敵戦を開始' })
+  advance(SETSUNA.wait.maxMs * 2)
+  input('1')
+  expect(screen.queryByText('！')).toBeNull()
+  fireEvent.click(start)
+  advance(SETSUNA.wait.minMs)
+  expect(screen.getByText('！')).toBeTruthy()
 })

@@ -1,6 +1,7 @@
 import { readSetsunaBest } from '../lib/setsuna'
-import { setsunaDifficulties, type SetsunaDifficulty } from '../lib/setsunaConfig'
-import { SetsunaRecords } from './SetsunaScreen'
+import { readStrongEnemy, setsunaRank } from '../lib/setsunaProgress'
+import { setsunaDifficulties, setsunaStrongEnemy, type SetsunaDifficulty } from '../lib/setsunaConfig'
+import { SetsunaDuelRecord, SetsunaRecords } from './SetsunaScreen'
 import { DifficultyInfo } from './DifficultyInfo'
 import { durations, levels, operations, presentations, type GamePresentation, type PlayMode } from '../lib/gameMode'
 import { SOUND_CONFIG } from '../lib/soundConfig'
@@ -11,6 +12,7 @@ type TopScreenProps = {
   replayRecords: ReplayRecords
   presentation: GamePresentation
   setsunaDifficulty: SetsunaDifficulty
+  onSetsunaRematch: () => void
   onSetsunaDifficultyChange: (difficulty: SetsunaDifficulty) => void
   onPresentationChange: (presentation: GamePresentation) => void
   volume: number
@@ -30,9 +32,13 @@ const presentationKeys = Object.keys(presentations) as GamePresentation[]
 
 export function TopScreen({
   mode, replayRecords, presentation, onPresentationChange, setsunaDifficulty, onSetsunaDifficultyChange,
-  volume, onVolumeChange, muted, onToggleMute, onModeChange, onStart, onRanking,
+  volume, onVolumeChange, muted, onToggleMute, onModeChange, onStart, onRanking, onSetsunaRematch,
 }: TopScreenProps) {
   const { min, max, step } = SOUND_CONFIG.volumeControl
+  const setsuna = presentation === 'setsuna' ? {
+    best: readSetsunaBest(setsunaDifficulty),
+    strongEnemy: readStrongEnemy(setsunaDifficulty),
+  } : null
   const volumePercent = Math.round(volume * max)
   return (
     <main className="top-screen">
@@ -64,7 +70,7 @@ export function TopScreen({
         </div>
       </header>
 
-      {presentation === 'setsuna' ? (
+      {setsuna ? (
         <section className="setsuna-setup" aria-labelledby="setsuna-difficulty">
           <h2 id="setsuna-difficulty">計算難易度</h2>
           <div className="level-options" role="group" aria-labelledby="setsuna-difficulty">
@@ -79,7 +85,16 @@ export function TopScreen({
               </button>
             ))}
           </div>
-          <SetsunaRecords best={readSetsunaBest()} />
+          <SetsunaRecords best={setsuna.best} rank={setsunaRank(setsunaDifficulty, setsuna.best, setsuna.strongEnemy)} />
+          <details className="setsuna-rematches">
+            <summary>強敵・個別再戦</summary>
+            {setsuna.strongEnemy.unlocked ? (
+              <div className="setsuna-rematch">
+                <button type="button" onClick={onSetsunaRematch}>{setsunaStrongEnemy.label}に再戦</button>
+                <SetsunaDuelRecord record={setsuna.strongEnemy.rematch} />
+              </div>
+            ) : <p>？？？（未遭遇）</p>}
+          </details>
         </section>
       ) : (
         <>

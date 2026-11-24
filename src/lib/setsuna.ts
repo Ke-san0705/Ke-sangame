@@ -1,4 +1,4 @@
-import { SETSUNA, setsunaDifficulties, type SetsunaDifficulty } from './setsunaConfig'
+import { SETSUNA, defaultSetsunaDifficulty, setsunaDifficulties, type SetsunaDifficulty } from './setsunaConfig'
 
 export function reactionLimit(defeated: number) {
   const { initialMs, fasterPerWinMs, minMs } = SETSUNA.cpu
@@ -39,9 +39,12 @@ type SetsunaBest = { fastestMs: number | null; defeated: number }
 
 const bestKey = 'ke-sangame:setsuna-best'
 
-export function readSetsunaBest(): SetsunaBest {
+export function readSetsunaBest(difficulty = defaultSetsunaDifficulty): SetsunaBest {
   try {
-    const best: Partial<SetsunaBest> | null = JSON.parse(localStorage.getItem(bestKey) ?? 'null')
+    const saved = localStorage.getItem(`${bestKey}:${difficulty}`)
+    // Earlier releases used one shared record. Keep it under the default difficulty.
+    const legacy = difficulty === defaultSetsunaDifficulty ? localStorage.getItem(bestKey) : null
+    const best: Partial<SetsunaBest> | null = JSON.parse(saved ?? legacy ?? 'null')
     const fastestMs = best?.fastestMs
     const defeated = best?.defeated
     return {
@@ -54,14 +57,14 @@ export function readSetsunaBest(): SetsunaBest {
   }
 }
 
-export function saveSetsunaBest(reactionMs: number | null, defeated: number): SetsunaBest {
-  const previous = readSetsunaBest()
+export function saveSetsunaBest(reactionMs: number | null, defeated: number, difficulty = defaultSetsunaDifficulty): SetsunaBest {
+  const previous = readSetsunaBest(difficulty)
   const best = {
     fastestMs: reactionMs === null ? previous.fastestMs : Math.min(reactionMs, previous.fastestMs ?? Infinity),
     defeated: Math.max(defeated, previous.defeated),
   }
   try {
-    localStorage.setItem(bestKey, JSON.stringify({ version: 2, ...best }))
+    localStorage.setItem(`${bestKey}:${difficulty}`, JSON.stringify(best))
   } catch {
     // The result can still show the record when storage is unavailable.
   }

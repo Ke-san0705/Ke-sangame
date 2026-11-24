@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { createDuel, judgeDuel, readSetsunaBest, reactionLimit, saveSetsunaBest } from './setsuna'
 import { SETSUNA } from './setsunaConfig'
+import { rollsStrongEnemy, setsunaRank } from './setsunaProgress'
 
 describe('刹那', () => {
   it('合図とCPUの締切の境界を判定する', () => {
@@ -43,6 +44,24 @@ describe('刹那', () => {
       expect(readSetsunaBest()).toEqual({ fastestMs: 205, defeated: 123 })
     } finally {
       localStorage.removeItem(key)
+    localStorage.removeItem(`${key}:normal`)
     }
   })
+})
+
+it('強敵は10勝以降だけ抽選し、15%から不遇ごとに10ポイント増えて50%で止まる', () => {
+  const random = vi.fn(() => 0)
+  expect(rollsStrongEnemy(9, 0, random)).toBe(false)
+  expect(random).not.toHaveBeenCalled()
+  for (const [misses, probability] of [0.15, 0.25, 0.35, 0.45, 0.5, 0.5].entries()) {
+    expect(rollsStrongEnemy(10 + misses, misses, () => probability - 0.001)).toBe(true)
+    expect(rollsStrongEnemy(10 + misses, misses, () => probability)).toBe(false)
+  }
+})
+
+it.each([
+  [2, '無段'], [3, '初段'], [5, '二段'], [10, '三段'], [15, '四段'],
+  [20, '五段'], [30, '免許皆伝'], [50, '剣聖'],
+])('%i人抜きで%sになる', (defeated, rank) => {
+  expect(setsunaRank('normal', { defeated, fastestMs: null })).toBe(rank)
 })

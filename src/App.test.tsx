@@ -3,7 +3,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { App } from './App'
 import { createQuestionGenerator } from './lib/question-generator'
 import { reactionLimit } from './lib/setsuna'
-import { SETSUNA, setsunaFinishMs } from './lib/setsunaConfig'
+import { SETSUNA, setsunaFinishMs, setsunaStrongEnemy } from './lib/setsunaConfig'
 
 beforeEach(() => {
   localStorage.clear()
@@ -603,4 +603,57 @@ test.each(['誤答', 'お手つき2回', 'CPUに先を越された'])('刹那の
   expect(screen.getByText(reason)).toBeTruthy()
   expect(document.querySelector('[data-duel-winner="opponent"]')).toBeTruthy()
   expect(screen.getByRole('button', { name: '演出をスキップ' })).toBeTruthy()
+})
+
+test('刹那の段位と強敵の解放を復元し、個別再戦の勝敗・最速を難易度別に保存する', () => {
+  const clock = vi.spyOn(performance, 'now').mockReturnValue(1000)
+  vi.mocked(Math.random).mockReturnValue(0)
+  const { unmount } = render(<App />)
+  click('刹那')
+  fireEvent.click(screen.getByText('強敵・個別再戦'))
+  expect(screen.getByText('？？？（未遭遇）')).toBeTruthy()
+  expect(screen.queryByRole('button', { name: '剣豪に再戦' })).toBeNull()
+  click('START')
+
+  for (let wins = 0; wins < setsunaStrongEnemy.afterWins; wins++) {
+    advance(SETSUNA.wait.minMs)
+    clock.mockReturnValue(performance.now() + 150)
+    enter(wins < 3 ? '0' : '10')
+    click('演出をスキップ')
+    advance(SETSUNA.betweenRoundsMs)
+  }
+  expect(screen.getByRole('button', { name: '強敵戦を開始' })).toBeTruthy()
+  // Leave before starting. Encountering the opponent is sufficient to unlock.
+  unmount()
+
+  const resumed = render(<App />)
+  expect(screen.getByText('三段')).toBeTruthy()
+  expect(screen.getByText('10人')).toBeTruthy()
+  fireEvent.click(screen.getByText('強敵・個別再戦'))
+  click('剣豪に再戦')
+  click('強敵戦を開始')
+  advance(SETSUNA.wait.minMs)
+  enter('9')
+  expect(screen.getByText('誤答')).toBeTruthy()
+  expect(screen.getByText('0勝 1敗 ・ 最速 —')).toBeTruthy()
+  click('演出をスキップ')
+  click('もう一度')
+  click('強敵戦を開始')
+  advance(SETSUNA.wait.minMs)
+  clock.mockReturnValue(performance.now() + 80)
+  enter('10')
+  advance(setsunaFinishMs + SETSUNA.betweenRoundsMs)
+  expect(screen.getByText('1勝 1敗 ・ 最速 0.080秒')).toBeTruthy()
+  resumed.unmount()
+
+  render(<App />)
+  expect(screen.getByText('無双')).toBeTruthy()
+  expect(screen.getByText('10人')).toBeTruthy()
+  expect(screen.getByText('0.150秒')).toBeTruthy()
+  fireEvent.click(screen.getByText('強敵・個別再戦'))
+  expect(screen.getByText('1勝 1敗 ・ 最速 0.080秒')).toBeTruthy()
+  click('上級')
+  expect(screen.getByText('無段')).toBeTruthy()
+  expect(screen.getByText('0人')).toBeTruthy()
+  expect(screen.getByText('？？？（未遭遇）')).toBeTruthy()
 })

@@ -1,5 +1,6 @@
 import { useRef, type CSSProperties } from 'react'
 import samuraiJson from '../../public/assets/initial/characters/samurai.json?raw'
+import swordmasterJson from '../../public/assets/initial/characters/swordmaster.json?raw'
 import opponentJson from '../../public/assets/initial/characters/enemy-swordsman.json?raw'
 import { loadSpriteAnimation, spriteFramePosition, type SpriteAnimation } from '../lib/spriteAnimation'
 import { SETSUNA } from '../lib/setsunaConfig'
@@ -10,12 +11,16 @@ const sheets = {
   player: loadSpriteAnimation(samuraiJson),
   opponent: loadSpriteAnimation(opponentJson),
 }
+const strongEnemySheets = { ...sheets, opponent: loadSpriteAnimation(swordmasterJson) }
 type Fighter = keyof typeof sheets
 const sides = { player: 1, opponent: -1 } as const
 
+function sheathedPose(sheet: SpriteAnimation) {
+  return sheet.animations.sheathed ?? sheet.animations.idle!
+}
+
 function fighterStyle(sheet: SpriteAnimation, pose: 'sheathed' | 'defeat') {
-  // Both bundled duel sheets declare these poses with the same foot anchor.
-  const clip = sheet.animations[pose]!
+  const clip = pose === 'sheathed' ? sheathedPose(sheet) : sheet.animations.defeat!
   return {
     backgroundImage: `url("${import.meta.env.BASE_URL}assets/initial/characters/${sheet.image}")`,
     backgroundSize: `${sheet.grid.columns * 100}% ${sheet.grid.rows * 100}%`,
@@ -25,11 +30,13 @@ function fighterStyle(sheet: SpriteAnimation, pose: 'sheathed' | 'defeat') {
   } as CSSProperties
 }
 
-export function SetsunaArena({ waiting, winner, playing }: {
+export function SetsunaArena({ waiting, winner, playing, strongEnemy }: {
+  strongEnemy: boolean
   waiting: boolean
   winner: Fighter | null
   playing: boolean
 }) {
+  const fighters = strongEnemy ? strongEnemySheets : sheets
   const arena = useRef<HTMLDivElement>(null)
   useEffectTimeline({ scope: arena, active: playing, trigger: winner ?? '', lowPower: false }, (timeline, target) => {
     if (!winner) return
@@ -54,11 +61,11 @@ export function SetsunaArena({ waiting, winner, playing }: {
 
     const attackerCell = attacker.firstElementChild!
     const defenderCell = defender.firstElementChild!
-    const draw = sheets[winner].animations.iai!
-    const defeat = sheets[loser].animations.defeat!
-    const sheathed = sheets[winner].animations.sheathed!
+    const draw = fighters[winner].animations.iai!
+    const defeat = fighters[loser].animations.defeat!
+    const sheathed = sheathedPose(fighters[winner])
     const showDrawFrame = (frame: number, at: number) => {
-      timeline.set(attackerCell, { backgroundPosition: spriteFramePosition(sheets[winner], frame) }, at)
+      timeline.set(attackerCell, { backgroundPosition: spriteFramePosition(fighters[winner], frame) }, at)
     }
 
     timeline.to(attacker, { left: `+=${direction * stepDistance}%`, duration: step, ease: 'power1.in' }, 0)
@@ -88,7 +95,7 @@ export function SetsunaArena({ waiting, winner, playing }: {
     showDrawFrame(sheathed.endFrame, collapse + fall)
     for (let frame = defeat.startFrame; frame <= defeat.endFrame; frame++) {
       const progress = (frame - defeat.startFrame) / (defeat.endFrame - defeat.startFrame)
-      timeline.set(defenderCell, { backgroundPosition: spriteFramePosition(sheets[loser], frame) }, collapse + fall * progress)
+      timeline.set(defenderCell, { backgroundPosition: spriteFramePosition(fighters[loser], frame) }, collapse + fall * progress)
     }
   })
 
@@ -104,9 +111,9 @@ export function SetsunaArena({ waiting, winner, playing }: {
         key={finished ? 'result' : 'duel'}
         className="setsuna-arena"
         rearEffects={<div className="setsuna-wind" aria-hidden="true"><i /><i /><i /></div>}
-        characters={(Object.keys(sheets) as Fighter[]).map((fighter) => (
+        characters={(Object.keys(fighters) as Fighter[]).map((fighter) => (
           <div className="setsuna-fighter" key={fighter} data-fighter={fighter}>
-            <div className="setsuna-cell" style={fighterStyle(sheets[fighter],
+            <div className="setsuna-cell" style={fighterStyle(fighters[fighter],
               finished && fighter !== winner ? 'defeat' : 'sheathed')} aria-hidden="true" />
           </div>
         ))}
