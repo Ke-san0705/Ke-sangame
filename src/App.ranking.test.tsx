@@ -73,12 +73,15 @@ test.each(['計算モード', 'モンスター討伐モード'])('%sで任意の
   if (presentation === 'モンスター討伐モード') {
     expect(screen.getByText('11 COMBO')).toBeTruthy()
   }
-  finish()
   if (presentation === 'モンスター討伐モード') {
+    advance(30_000)
+    advance(800)
     advance(2_000)
     expect(screen.getByText('強化解放')).toBeTruthy()
     expect(screen.getByText('2,530 KO')).toBeTruthy()
     advance(800)
+  } else {
+    finish()
   }
   expect(screen.getByText('1,584 pt')).toBeTruthy()
 

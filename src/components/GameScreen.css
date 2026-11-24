@@ -17,6 +17,19 @@
   font-variant-numeric: tabular-nums;
 }
 
+.game-finish {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  color: #fff;
+  font-size: clamp(3.5rem, 15vw, 9rem);
+  font-weight: 900;
+  text-shadow: 0 2px 6px #000, 0 0 20px #000;
+}
+
 .game-hud {
   position: sticky;
   z-index: 1;

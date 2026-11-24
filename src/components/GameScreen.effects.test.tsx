@@ -41,16 +41,18 @@ function play({ lowPower = false, reduced = false, slow = false, takeDamage = fa
   return { ...view, preference, onFinish, timersBeforeMount, tweens, game }
 }
 
-test('解放画面に移ると戦闘のタイムラインと入力処理を破棄する', () => {
+test('FINISHに移ると戦闘のタイムラインと入力処理を破棄する', () => {
   const { tweens, timersBeforeMount, unmount, onFinish } = play({ takeDamage: true })
   expect(tweens().length).toBeGreaterThan(0)
   const [tween] = tweens()
   // Keep a visual effect in progress until the game clock switches screens.
   tween.parent?.pause()
-  act(() => vi.advanceTimersByTime(30_050))
-  expect(screen.getByRole('main', { name: '解放' })).toBeTruthy()
+  act(() => vi.advanceTimersByTime(30_000))
+  expect(screen.getByText('FINISH')).toBeTruthy()
   expect(tweens()).toHaveLength(0)
   expect(fireEvent.keyDown(window, { key: 'Tab' })).toBe(true)
+  act(() => vi.advanceTimersByTime(800))
+  expect(screen.getByRole('main', { name: '解放' })).toBeTruthy()
   // Only the release screen's phase timeout should remain.
   expect(vi.getTimerCount()).toBe(timersBeforeMount + 1)
   unmount()
@@ -64,7 +66,9 @@ test.each([{ lowPower: true }, { reduced: true }, { slow: true }])('演出を抑
   expect(tweens()).toHaveLength(0)
   expect(screen.queryByText('CRITICAL CHARGE!')).toBeNull()
 
-  act(() => vi.advanceTimersByTime(30_050))
+  act(() => vi.advanceTimersByTime(30_000))
+  expect(screen.getByText('FINISH')).toBeTruthy()
+  act(() => vi.advanceTimersByTime(800))
   act(() => vi.advanceTimersByTime(1_300))
   const release = screen.getByRole('main', { name: '解放' })
   expect(release.getAttribute('data-phase')).toBe('blast')
@@ -146,7 +150,9 @@ test('10コンボでもHPは回復せず、通常攻撃だけを表示する', (
 
 test('解放の収束と爆発で粒子スロットを再利用する', () => {
   play()
-  act(() => vi.advanceTimersByTime(30_050))
+  act(() => vi.advanceTimersByTime(30_000))
+  expect(screen.getByText('FINISH')).toBeTruthy()
+  act(() => vi.advanceTimersByTime(800))
   const scene = screen.getByRole('main', { name: '解放' })
   act(() => vi.advanceTimersByTime(400))
   const sparks = [...scene.querySelectorAll('.release-spark')]

@@ -22,7 +22,7 @@ export function preloadChargeSprites() {
 
 export function ChargeArena({ correctCount, battle }: {
   correctCount: number
-  battle?: { lowPower: boolean; foreground: ReactNode; enemies: readonly Enemy[]; attacks: readonly AttackVisual[]; onAttackComplete: (id: number, replace: boolean) => void; stage: number; motion?: BattleMotion }
+  battle?: { lowPower: boolean; frozen: boolean; foreground: ReactNode; enemies: readonly Enemy[]; attacks: readonly AttackVisual[]; onAttackComplete: (id: number, replace: boolean) => void; stage: number; motion?: BattleMotion }
 }) {
   const reduced = useReducedEffects()
   const color = CHARGE_COLORS.find(({ fromCorrect }) => correctCount >= fromCorrect)?.color ?? 'blue'
@@ -31,7 +31,7 @@ export function ChargeArena({ correctCount, battle }: {
     const attacks = simple ? battle.attacks.slice(-1) : battle.attacks
     return (
       <BattleStage className="charge-arena"
-        characters={<EnemyApproach enemies={battle.enemies} attackId={correctCount} stage={battle.stage}
+        characters={<EnemyApproach enemies={battle.enemies} attackId={battle.frozen ? 0 : correctCount} stage={battle.stage}
           lowPower={simple} attacks={reduced ? undefined : attacks} />}
         foreground={
           <>
