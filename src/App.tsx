@@ -4,6 +4,7 @@ import { RankingScreen } from './components/RankingScreen'
 import { ResultScreen } from './components/ResultScreen'
 import { readPersonalBestCurve, savePersonalBest } from './lib/personalBest'
 import { SetsunaScreen } from './components/SetsunaScreen'
+import { defaultSetsunaDifficulty } from './lib/setsunaConfig'
 import { TopScreen } from './components/TopScreen'
 import {
   defaultMode, readGamePresentation, saveGamePresentation, type GameMode, type PlayMode,
@@ -47,6 +48,7 @@ export function App() {
   useEffect(() => sound.dispose, [sound])
 
   const [presentation, setPresentation] = useState(readGamePresentation)
+  const [setsunaDifficulty, setSetsunaDifficulty] = useState(defaultSetsunaDifficulty)
   const [mode, setMode] = useState<PlayMode>(defaultMode)
   const [screen, setScreen] = useState<Screen>({ name: 'top' })
   const online = useSyncExternalStore(subscribeOnline, isOnline)
@@ -73,6 +75,7 @@ export function App() {
     return (
       <SetsunaScreen
         key={screen.attempt}
+        difficulty={setsunaDifficulty}
         onBack={goBack}
         onReplay={() => startSetsuna(screen.attempt + 1)}
         onSound={muted ? undefined : sound.play}
@@ -132,6 +135,8 @@ export function App() {
       mode={mode}
       replayRecords={readReplayRecords()}
       presentation={presentation}
+      setsunaDifficulty={setsunaDifficulty}
+      onSetsunaDifficultyChange={setSetsunaDifficulty}
       onPresentationChange={(selection) => {
         setPresentation(selection)
         saveGamePresentation(selection)

@@ -2,6 +2,8 @@ import { act, cleanup, fireEvent, render, screen, within } from '@testing-librar
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { App } from './App'
 import { createQuestionGenerator } from './lib/question-generator'
+import { reactionLimit } from './lib/setsuna'
+import { SETSUNA, setsunaFinishMs } from './lib/setsunaConfig'
 
 beforeEach(() => {
   localStorage.clear()
@@ -435,36 +437,42 @@ test('完走とスキップで討伐記録を一度ずつ更新する', () => {
   expect(screen.getByText('地球爆破 2 回')).toBeTruthy()
 })
 
-test('刹那を5人抜きしてランキング登録なしで自己ベストを保存する', () => {
-  vi.spyOn(performance, 'now').mockReturnValue(0)
+test('刹那は6人抜きの先まで自動進行し、敗北後も自己ベストを保存する', () => {
+  const clock = vi.spyOn(performance, 'now').mockReturnValue(0)
   render(<App />)
   click('刹那')
   expect(screen.queryByRole('group', { name: '演算' })).toBeNull()
+  click('初級')
   click('START')
 
-  for (let round = 1; round <= 5; round++) {
-    expect(screen.queryByText('2 ＋ 2')).toBeNull()
+  for (let round = 1; round <= 6; round++) {
+    expect(screen.getByText(`第${round}戦`)).toBeTruthy()
     const cueTime = round * 3_000
-    vi.mocked(performance.now).mockReturnValue(cueTime)
+    clock.mockReturnValue(cueTime)
     advance(2125)
-    expect(screen.getByText('！')).toBeTruthy()
     expect(screen.getByText('2 ＋ 2')).toBeTruthy()
-    vi.mocked(performance.now).mockReturnValue(cueTime + round * 10)
-    if (round === 1) click('4')
-    else fireEvent.keyDown(window, { key: '4' })
-    if (round < 5) {
-      click('演出をスキップ')
-      click('次の相手')
+    clock.mockReturnValue(cueTime + round * 10)
+    if (round === 1) {
+      click('4')
+      expect(screen.queryByText('勝利')).toBeNull()
+      click('Enter')
+    } else {
+      enter('4')
     }
+    expect(screen.getByText('勝利')).toBeTruthy()
+    advance(setsunaFinishMs)
+    advance(SETSUNA.betweenRoundsMs)
   }
 
-  expect(screen.getByText('クリア')).toBeTruthy()
-  expect(screen.getByText('5人抜き')).toBeTruthy()
+  advance(2125)
+  expect(screen.getByText('第7戦')).toBeTruthy()
+  advance(reactionLimit(6))
+  expect(screen.getByText('CPUに先を越された')).toBeTruthy()
+  expect(screen.getByText('6人抜き')).toBeTruthy()
   expect(screen.getByText('0.010秒')).toBeTruthy()
   expect(screen.queryByText(/ランキング/)).toBeNull()
   click('モード選択')
-  expect(screen.getByText('0.010秒')).toBeTruthy()
-  expect(screen.getByText('5人')).toBeTruthy()
+  expect(screen.getByText('6人')).toBeTruthy()
 })
 
 test('刹那では長押しを除き、合図前の2回の入力で敗北する', () => {
@@ -476,35 +484,15 @@ test('刹那では長押しを除き、合図前の2回の入力で敗北する'
   fireEvent.keyDown(window, { key: '4', repeat: true })
   expect(screen.queryByText('敗北')).toBeNull()
   click('4')
-  expect(screen.getByText('敗北')).toBeTruthy()
+  expect(screen.getByText('お手つき2回')).toBeTruthy()
   expect(screen.getByText('0人抜き')).toBeTruthy()
   click('演出をスキップ')
   click('もう一度')
   expect(screen.getByText('合図を待て')).toBeTruthy()
   advance(2125)
   click('9')
+  click('Enter')
   expect(screen.getByText('誤答')).toBeTruthy()
-})
-
-test('刹那の途中敗北では勝ち抜いた人数と最速反応時間を表示する', () => {
-  const clock = vi.spyOn(performance, 'now').mockReturnValue(3000)
-  render(<App />)
-  click('刹那')
-  click('START')
-  advance(2125)
-  clock.mockReturnValue(3213)
-  click('4')
-  expect(screen.getByText('0.213秒')).toBeTruthy()
-  click('演出をスキップ')
-  click('次の相手')
-  clock.mockReturnValue(6000)
-  advance(2125)
-  clock.mockReturnValue(6450)
-  click('4')
-  expect(screen.getByText('CPUに先を越された')).toBeTruthy()
-  expect(screen.getByText('1人抜き')).toBeTruthy()
-  expect(screen.getByText('0.450秒')).toBeTruthy()
-  expect(screen.getByText('0.213秒')).toBeTruthy()
 })
 
 test('音量を変更し、ミュートの切り替えと再読み込み後も保持する', () => {
@@ -521,7 +509,7 @@ test('音量を変更し、ミュートの切り替えと再読み込み後も�
   expect(screen.getByRole<HTMLInputElement>('slider', { name: '音量' }).value).toBe('35')
 })
 
-test('刹那では合図と問題が同時に出て、演出中も確定した実測値を表示する', () => {
+test('刹那は合図と問題を同時表示し、決着後の対戦間だけ一時停止できる', () => {
   const clock = vi.spyOn(performance, 'now').mockReturnValue(1000)
   render(<App />)
   click('刹那')
@@ -529,36 +517,70 @@ test('刹那では合図と問題が同時に出て、演出中も確定した�
   advance(2124)
   expect(screen.queryByText('！')).toBeNull()
   expect(screen.queryByText('2 ＋ 2')).toBeNull()
+  expect(screen.queryByRole('button', { name: '一時停止' })).toBeNull()
   advance(1)
   expect(screen.getByText('！')).toBeTruthy()
   expect(screen.getByText('2 ＋ 2')).toBeTruthy()
   clock.mockReturnValue(1143)
-  click('4')
+  enter('4')
   expect(screen.getByText('0.143秒')).toBeTruthy()
-  expect(screen.getByRole<HTMLButtonElement>('button', { name: '次の相手' }).disabled).toBe(true)
-  clock.mockReturnValue(2000)
-  advance(799)
+  advance(setsunaFinishMs - 1)
   expect(screen.getByRole('button', { name: '演出をスキップ' })).toBeTruthy()
   advance(1)
-  expect(screen.getByRole<HTMLButtonElement>('button', { name: '次の相手' }).disabled).toBe(false)
+  click('一時停止')
+  fireEvent.keyDown(window, { key: '8' })
+  advance(10_000)
+  expect(screen.getByText('一時停止中')).toBeTruthy()
   expect(screen.getByText('0.143秒')).toBeTruthy()
+  click('再開')
+  advance(SETSUNA.betweenRoundsMs)
+  fireEvent.keyDown(window, { key: 'Enter', repeat: true })
+  expect(screen.getByText('第2戦')).toBeTruthy()
+  expect(screen.getByText('合図を待て')).toBeTruthy()
+  advance(2125)
+  expect(screen.getByLabelText('入力した答え').textContent).toBe('')
+  click('Enter')
+  expect(screen.queryByText('誤答')).toBeNull()
 })
 
-test('刹那のスキップ・次戦開始・長押しを次戦の回答として受け付けない', () => {
-  const clock = vi.spyOn(performance, 'now').mockReturnValue(1000)
+test('刹那では連戦中のお手つきは累積するが、次戦の回答欄は空になる', () => {
   render(<App />)
   click('刹那')
   click('START')
+  click('4')
   advance(2125)
-  clock.mockReturnValue(1100)
-  fireEvent.keyDown(window, { key: '4' })
-  fireEvent.keyDown(window, { key: '4' })
+  expect(screen.getByLabelText('入力した答え').textContent).toBe('')
+  enter('4')
   click('演出をスキップ')
-  click('次の相手')
-  fireEvent.keyDown(window, { key: '4', repeat: true })
-  expect(screen.getByText('合図を待て')).toBeTruthy()
-  fireEvent.keyDown(window, { key: '4' })
+  advance(SETSUNA.betweenRoundsMs)
   expect(screen.getByText('お手つき 1 / 2')).toBeTruthy()
+  click('4')
+  expect(screen.getByText('お手つき2回')).toBeTruthy()
+  expect(screen.getByText('1人抜き')).toBeTruthy()
+})
+
+test('刹那は開始前に選んだ難易度を連戦の2桁問題に反映する', () => {
+  const clock = vi.spyOn(performance, 'now').mockReturnValue(1000)
+  render(<App />)
+  click('刹那')
+  click('上級')
+  click('START')
+  for (let round = 0; round < 2; round++) {
+    clock.mockReturnValue(1000 + round * 3000)
+    advance(2125)
+    enter('4')
+    click('演出をスキップ')
+    advance(SETSUNA.betweenRoundsMs)
+  }
+  advance(2125)
+  expect(screen.getByText('3 ＋ 7')).toBeTruthy()
+  click('1')
+  click('9')
+  fireEvent.keyDown(window, { key: 'Backspace' })
+  click('0')
+  expect(screen.getByLabelText('入力した答え').textContent).toBe('10')
+  click('Enter')
+  expect(screen.getByText('勝利')).toBeTruthy()
 })
 
 test.each(['誤答', 'お手つき2回', 'CPUに先を越された'])('刹那の%sでは敵剣士が一閃する', (reason) => {
@@ -571,8 +593,12 @@ test.each(['誤答', 'お手つき2回', 'CPUに先を越された'])('刹那の
     click('4')
   } else {
     advance(2125)
-    clock.mockReturnValue(reason === '誤答' ? 1100 : 1650)
-    click(reason === '誤答' ? '9' : '4')
+    const deadline = 1000 + reactionLimit(0)
+    clock.mockReturnValue(reason === '誤答' ? 1100 : deadline - 1)
+    fireEvent.keyDown(window, { key: reason === '誤答' ? '9' : '4' })
+    expect(screen.queryByText('敗北')).toBeNull()
+    if (reason !== '誤答') clock.mockReturnValue(deadline)
+    fireEvent.keyDown(window, { key: 'Enter' })
   }
   expect(screen.getByText(reason)).toBeTruthy()
   expect(document.querySelector('[data-duel-winner="opponent"]')).toBeTruthy()

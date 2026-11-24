@@ -200,6 +200,40 @@ button[aria-pressed="true"],
   }
 }
 
+.setsuna-setup {
+  grid-column: 1 / -1;
+  justify-self: center;
+  inline-size: 100%;
+  max-inline-size: 342px;
+  margin-block-start: 28px;
+  text-align: center;
+}
+
+.setsuna-setup h2 {
+  margin: 0 0 10px;
+  font-size: 1rem;
+}
+
+.setsuna-setup .level-options {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+}
+
+.setsuna-setup .level-options button {
+  padding-inline: 6px;
+  text-align: center;
+}
+
+.setsuna-setup .setsuna-records {
+  margin-block-end: 0;
+}
+
+@media (min-width: 768px) {
+  .setsuna-setup {
+    margin-block-start: 0;
+  }
+}
+
 .secondary-screen {
   max-inline-size: 390px;
   margin-inline: auto;
