@@ -7,7 +7,7 @@ export function reactionLimit(defeated: number) {
 
 export function createDuel(difficulty: SetsunaDifficulty, defeated: number, random = Math.random) {
   const { minMs, maxMs } = SETSUNA.wait
-  const { maxOperand, twoDigitMin } = SETSUNA.question
+  const { additionChance, maxOperand, twoDigitMin } = SETSUNA.question
   const waitMs = minMs + Math.floor(random() * (maxMs - minMs + 1))
   const { twoDigitAfterWins, initialChance, chancePerWin, maxChance } = setsunaDifficulties[difficulty]
   const winsPastThreshold = defeated - twoDigitAfterWins
@@ -19,7 +19,7 @@ export function createDuel(difficulty: SetsunaDifficulty, defeated: number, rand
     return { waitMs, expression: `${left} ＋ ${right}`, answer: left + right }
   }
 
-  const addition = random() < 0.5
+  const addition = random() < additionChance
   const left = Math.floor(random() * (maxOperand + 1))
   const right = Math.floor(random() * (addition ? maxOperand - left + 1 : left + 1))
   return {

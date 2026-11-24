@@ -1,0 +1,3 @@
+PASS 20261121000000_ranking_foundation.sql
+PASS 20261123000000_ranking_combo_scoring.sql
+PASS supabase/tests/ranking.sql

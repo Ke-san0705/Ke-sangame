@@ -14,25 +14,19 @@ import type { SoundCue } from '../lib/soundEffects'
 import { ChargeArena, preloadChargeSprites } from './ChargeArena'
 import { ReleaseSequence } from './ReleaseSequence'
 import { GameKeypad, gameKey, keypadRows } from './GameKeypad'
+import { HUNT_TIMING } from '../lib/huntConfig'
 
 const FINAL_INPUT_DRAIN_MS = 50
 const START_COUNTDOWN_SECONDS = 3
 const SURVIVAL_INITIAL_SECONDS = 20
 const TIMER_WARNING_SECONDS = 10
 const TIMER_SOUND_SECONDS = 5
-const CRITICAL_NOTICE_MS = 650
-const OVERCHARGE_MISS_MS = 3_000
-const OVERCHARGE_TIME_MS = 10_000
-
-function survivalBonusMs(correctCount: number) {
-  if (correctCount >= 60) return 0
-  if (correctCount >= 30) return 1_000
-  return 2_000
-}
-
-const CRITICAL_TIME_MS = { 1: 3_000, 2: 4_000, 3: 5_000, 4: 7_000, 5: 10_000 }
 const PASS_PENALTY_MS = 3_000
 const PASS_REVEAL_MS = 1_000
+
+function survivalBonusMs(correctCount: number) {
+  return HUNT_TIMING.survivalBonus.find(({ fromCorrect }) => correctCount >= fromCorrect)?.bonusMs ?? 0
+}
 
 type ReviewQuestion = Pick<Question, 'expression' | 'answer'> & {
   outcome: 'miss' | 'pass' | 'timeout'
@@ -102,7 +96,7 @@ export function GameScreen({
   const [remaining, setRemaining] = useState(initialTimeMs)
   const [missOvercharge, setMissOvercharge] = useState(false)
   const missOverchargeTimeout = useRef<number | undefined>(undefined)
-  const overchargeActive = showMonsterBattle && (missOvercharge || (!battleSurvival && remaining > 0 && remaining <= OVERCHARGE_TIME_MS))
+  const overchargeActive = showMonsterBattle && (missOvercharge || (!battleSurvival && remaining > 0 && remaining <= HUNT_TIMING.overchargeTimeMs))
   const deadline = useRef(0)
   const gameStartedAt = useRef(0)
   const [elapsedSecond, setElapsedSecond] = useState(0)
@@ -293,13 +287,13 @@ export function GameScreen({
             const second = Math.ceil(Math.max(0, answerTime - gameStartedAt.current) / 1000)
             correctPerSecond.current[second] += 1
           }
-          const critical = showMonsterBattle && elapsedMs <= CRITICAL_TIME_MS[level]
+          const critical = showMonsterBattle && elapsedMs <= HUNT_TIMING.criticalWindowMs[level]
           recordAnswer('correctCount', critical)
           if (showMonsterBattle) {
             window.clearTimeout(criticalTimeout.current)
             setCriticalAnswer(critical ? latestCounts.current.correctCount : undefined)
             if (critical) {
-              criticalTimeout.current = window.setTimeout(() => setCriticalAnswer(undefined), CRITICAL_NOTICE_MS)
+              criticalTimeout.current = window.setTimeout(() => setCriticalAnswer(undefined), HUNT_TIMING.criticalNoticeMs)
             }
           }
           if (!showMonsterBattle) onSound?.('correct', latestCounts.current.combo)
@@ -320,7 +314,7 @@ export function GameScreen({
           if (showMonsterBattle) {
             setMissOvercharge(true)
             window.clearTimeout(missOverchargeTimeout.current)
-            missOverchargeTimeout.current = window.setTimeout(() => setMissOvercharge(false), OVERCHARGE_MISS_MS)
+            missOverchargeTimeout.current = window.setTimeout(() => setMissOvercharge(false), HUNT_TIMING.overchargeMissMs)
             recordReviewQuestion('miss')
             if (latestCombat.current.phase === 'defeat') {
               currentQuestionResolved.current = true

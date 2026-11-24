@@ -1,3 +1,5 @@
+import { CHARGE_POWER } from './huntConfig'
+
 type ChargeCounts = {
   correctCount: number
   maxCombo: number
@@ -10,5 +12,5 @@ export type ChargeResult = {
 }
 
 export function calculateCharge({ correctCount, maxCombo, criticalCount }: ChargeCounts) {
-  return 10 * correctCount + 5 * maxCombo + 8 * criticalCount
+  return CHARGE_POWER.perCorrect * correctCount + CHARGE_POWER.perMaxCombo * maxCombo + CHARGE_POWER.perCritical * criticalCount
 }

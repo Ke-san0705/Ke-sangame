@@ -1,0 +1,40 @@
+Node v24.22.3 | npm 11.19.1
+
+> ke-sangame@0.0.0 test
+> vitest run
+
+
+ RUN  v4.1.12 /workspace/Ke-sangame
+
+
+ Test Files  15 passed (15)
+      Tests  249 passed (249)
+   Start at  19:58:58
+   Duration  20.77s (transform 1.65s, setup 0ms, import 3.16s, tests 10.79s, environment 4.35s)
+
+
+> ke-sangame@0.0.0 build
+> tsc --noEmit && vite build
+
+vite v8.3.8 building client environment for production...
+transforming...
+✓ 66 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/registerSW.js                0.15 kB
+dist/manifest.webmanifest         0.39 kB
+dist/index.html                   0.76 kB │ gzip:   0.41 kB
+dist/assets/index-B_2FXmmG.css   33.52 kB │ gzip:   8.16 kB
+dist/assets/index-DSdaCRNv.js   370.97 kB │ gzip: 123.47 kB
+
+✓ built in 233ms
+
+PWA v2.0.0
+mode      generateSW
+precache  33 entries (395.92 KiB)
+files generated
+  dist/sw.js
+  dist/workbox-9c191d2f.js
+
+> ke-sangame@0.0.0 lint
+> eslint .

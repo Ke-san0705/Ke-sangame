@@ -27,6 +27,8 @@ export const ENEMY_DIFFICULTY: Record<Level, { baseRate: number; rateGrowth: num
   5: { baseRate: 0.90, rateGrowth: 0.115, maxEnemies: 10 },
 }
 
+export const MAX_ENEMY_SPRITES = Math.max(...Object.values(ENEMY_DIFFICULTY).map(({ maxEnemies }) => maxEnemies))
+
 export const COMBO_SPAWN_MULTIPLIERS = [
   { combo: 0, multiplier: 1 },
   { combo: 5, multiplier: 1.5 },
