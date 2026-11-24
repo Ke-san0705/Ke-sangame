@@ -92,10 +92,16 @@ export function GameScreen({
   const comboTimeout = useRef<number | undefined>(undefined)
   const { correctCount, incorrectCount, passCount } = counts
   const [countdown, setCountdown] = useState(skipCountdown ? 0 : START_COUNTDOWN_SECONDS)
-  const [pendingRelease, setPendingRelease] = useState<GameResult & { release: ReleaseResult }>()
-  const playing = countdown === 0 && pendingRelease === undefined
+  const [ending, setEnding] = useState<{
+    phase: 'finish' | 'release'
+    result: GameResult & { release: ReleaseResult }
+  }>()
+  const timedHunt = showMonsterBattle && !survival
+  const playing = countdown === 0 && ending === undefined
+  const showingFinish = ending?.phase === 'finish'
   const [remaining, setRemaining] = useState(initialTimeMs)
   const deadline = useRef(0)
+  const deadlineTimeout = useRef<number | undefined>(undefined)
   const gameStartedAt = useRef(0)
   const [elapsedSecond, setElapsedSecond] = useState(0)
   const correctPerSecond = useRef<number[] | undefined>(undefined)
@@ -186,7 +192,7 @@ export function GameScreen({
       return cumulativeCorrect
     })
     const defeated = showMonsterBattle && latestCombat.current.phase === 'defeat'
-    const ultimate = showMonsterBattle && !survival && !defeated
+    const ultimate = timedHunt && !defeated
     if (ultimate) updateCombat(finishCombat(latestCombat.current))
     else if (!defeated) onSound?.('timeUp')
     const result: GameResult = {
@@ -201,8 +207,12 @@ export function GameScreen({
       reviewQuestions: reviewQuestions.current,
       averageAnswerSeconds: correctCount === 0 ? 0 : totalCorrectAnswerMs.current / correctCount / 1000,
     }
-    if (ultimate && result.charge) setPendingRelease({ ...result, release: calculateRelease(result.charge.power) })
-    else onFinish(result)
+    if (ultimate && result.charge) {
+      setRemaining(0)
+      setEnding({ phase: 'finish', result: { ...result, release: calculateRelease(result.charge.power) } })
+    } else {
+      onFinish(result)
+    }
   }
 
   function updateRemaining(timeLeft: number) {
@@ -252,6 +262,17 @@ export function GameScreen({
         if (!battleSurvival) updateRemaining(Math.max(0, deadline.current - now))
         updateAnswer('')
         setShowPassAnswer(true)
+        if (timedHunt) {
+          window.clearTimeout(deadlineTimeout.current)
+          if (now >= deadline.current) {
+            finish()
+            return
+          }
+          deadlineTimeout.current = window.setTimeout(() => {
+            advanceBattle(deadline.current)
+            finish()
+          }, Math.ceil(deadline.current - performance.now()))
+        }
         passTimeout.current = window.setTimeout(() => {
           passTimeout.current = undefined
           const nextQuestionTime = performance.now()
@@ -328,6 +349,10 @@ export function GameScreen({
       setElapsedSecond(Math.min(bestCurve.length - 1, seconds))
     }
     updateRemaining(timeLeft)
+    if (timedHunt && timeLeft === 0) {
+      finish()
+      return false
+    }
     return timeLeft === 0 && (survival || passTimeout.current === undefined)
   })
 
@@ -368,12 +393,12 @@ export function GameScreen({
       }, FINAL_INPUT_DRAIN_MS)
     }
     const interval = window.setInterval(tick, ENEMY_STAGE.tickMs)
-    const timeout = battleSurvival ? undefined : window.setTimeout(tick, initialTimeMs)
+    if (!battleSurvival) deadlineTimeout.current = window.setTimeout(tick, initialTimeMs)
     const onKeyDown = (event: KeyboardEvent) => handleKeyboard(event)
     window.addEventListener('keydown', onKeyDown)
     return () => {
       window.clearInterval(interval)
-      window.clearTimeout(timeout)
+      window.clearTimeout(deadlineTimeout.current)
       window.clearTimeout(finishTimeout)
       window.clearTimeout(passTimeout.current)
       window.clearTimeout(comboTimeout.current)
@@ -385,19 +410,27 @@ export function GameScreen({
     if (showMonsterBattle) preloadChargeSprites()
   }, [showMonsterBattle])
 
-  if (pendingRelease) {
+  useEffect(() => {
+    if (ending?.phase !== 'finish') return
+    const timeout = window.setTimeout(() => {
+      setEnding({ phase: 'release', result: ending.result })
+    }, HUNT_TIMING.finishDisplayMs)
+    return () => window.clearTimeout(timeout)
+  }, [ending])
+
+  if (ending?.phase === 'release') {
     return (
       <ReleaseSequence
-        release={pendingRelease.release}
+        release={ending.result.release}
         enemies={combat.enemies}
         lowPower={lowPower}
         onSound={onSound}
-        onComplete={() => onFinish(pendingRelease)}
+        onComplete={() => onFinish(ending.result)}
       />
     )
   }
 
-  if (!playing) {
+  if (countdown > 0) {
     return (
       <main className="game-screen game-start-countdown" aria-label="ゲーム">
         <div role="status" aria-label="開始までの秒数">{countdown}</div>
@@ -475,14 +508,15 @@ export function GameScreen({
       {showMonsterBattle && (
         <ChargeArena correctCount={correctCount} battle={{
           lowPower,
+          frozen: showingFinish,
           enemies: combat.enemies,
-          attacks,
+          attacks: showingFinish ? [] : attacks,
           onAttackComplete: completeAttack,
           stage: combat.attackStage,
-          motion: battleMotion,
+          motion: showingFinish ? undefined : battleMotion,
           foreground: (
             <div className="battle-feedback" role="status">
-              {comboNotice !== undefined && <strong key={correctCount} className="battle-combo">{comboNotice} COMBO</strong>}
+              {!showingFinish && comboNotice !== undefined && <strong key={correctCount} className="battle-combo">{comboNotice} COMBO</strong>}
             </div>
           ),
         }} />
@@ -492,12 +526,13 @@ export function GameScreen({
         answer={(showPassAnswer ? question.answer : answer).replace('-', '−')}
         showPassAnswer={showPassAnswer}
       />
-      <GameKeypad keys={keypad} disabled={showPassAnswer} onKey={handleKey} />
+      <GameKeypad keys={keypad} disabled={showPassAnswer || showingFinish} onKey={handleKey} />
       <div className="game-shortcuts">
         <span>{autoConfirm && !question.answer.startsWith('-') ? '桁数が合うと確定' : 'Enter：決定'}</span>
         <span>Backspace：クリア</span>
-        <button type="button" disabled={showPassAnswer} onClick={() => handleKey('pass')}>Tab：パス</button>
+        <button type="button" disabled={showPassAnswer || showingFinish} onClick={() => handleKey('pass')}>Tab：パス</button>
       </div>
+      {showingFinish && <div className="game-finish" role="status">FINISH</div>}
     </main>
   )
 }

@@ -209,7 +209,8 @@ test.each([
     dispatchKey('Enter', deadline + (beforeDeadline ? -1 : 1))
   })
   if (showMonsterBattle) {
-    expect(Boolean(document.querySelector('[data-attack="slash"]'))).toBe(beforeDeadline)
+    expect(screen.getByText('FINISH')).toBeTruthy()
+    expect(document.querySelector('[data-attack="slash"]')).toBeNull()
   } else {
     expect(screen.getByText(beforeDeadline ? '正解 1' : '正解 0')).toBeTruthy()
   }
@@ -220,10 +221,14 @@ test.each([
     expect(screen.getByRole('timer').textContent).toBe('2')
     act(() => vi.advanceTimersByTime(2_000))
   }
-  if (showMonsterBattle) finishReleaseWithoutInput()
+  if (showMonsterBattle) {
+    act(() => vi.advanceTimersByTime(800))
+    finishReleaseWithoutInput()
+  }
+  const accepted = beforeDeadline && !showMonsterBattle
   expect(onFinish).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
-    correctCount: beforeDeadline ? 1 : 0,
-    reviewQuestions: beforeDeadline && duration !== 'survival'
+    correctCount: accepted ? 1 : 0,
+    reviewQuestions: accepted && duration !== 'survival'
       ? []
       : [expect.objectContaining({ outcome: 'timeout' })],
   }))
@@ -382,6 +387,7 @@ test('討伐のチャージ・復習・時間切れの引き渡し', () => {
   expect(onSound).toHaveBeenCalledWith('slash', 2)
 
   act(() => vi.advanceTimersByTime(90_000))
+  act(() => vi.advanceTimersByTime(800))
   finishReleaseWithoutInput()
   expect(onFinish).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
     correctCount: 2, maxCombo: 2, missCount: 2, score: 160,
@@ -408,7 +414,8 @@ test.each([
     fireEvent.keyDown(window, { key: 'Enter' })
     expect(screen.queryByText('CRITICAL CHARGE!')).toBeNull()
   }
-  act(() => vi.advanceTimersByTime(30_050 - (2 * threshold + 1)))
+  act(() => vi.advanceTimersByTime(30_000 - (2 * threshold + 1)))
+  act(() => vi.advanceTimersByTime(800))
   finishReleaseWithoutInput()
   expect(onFinish).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
     charge: { power: 38, criticalCount: 1 },
@@ -482,20 +489,36 @@ test('パス中も敵が進み、次の正解で討伐コンボを引き継ぐ',
   expect(onSound).toHaveBeenCalledWith('slash', 2)
 })
 
-test('制限時間ちょうどの誤答でHPがゼロになると敗北する', () => {
+test('制限時間ちょうどに先に届いた誤答でHPがゼロになると敗北する', () => {
   vi.useFakeTimers()
   vi.spyOn(Math, 'random').mockReturnValue(0.25)
   const onFinish = vi.fn()
-  render(<GameScreen level={1} mode="addition" duration={1} skipCountdown showMonsterBattle onFinish={onFinish} />)
   const miss = () => {
     fireEvent.keyDown(window, { key: '0' })
     fireEvent.keyDown(window, { key: 'Enter' })
   }
+  window.setTimeout(miss, 1_000)
+  render(<GameScreen level={1} mode="addition" duration={1} skipCountdown showMonsterBattle onFinish={onFinish} />)
   for (let i = 0; i < 9; i++) miss()
   act(() => vi.advanceTimersByTime(1_000))
-  miss()
   expect(onFinish).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ battleOutcome: 'defeat' }))
+  act(() => vi.advanceTimersByTime(800))
+  expect(screen.queryByText('FINISH')).toBeNull()
   expect(screen.queryByRole('main', { name: '解放' })).toBeNull()
+})
+
+test('パスで短縮した制限時間に達すると、正解表示と出題を固定する', () => {
+  vi.useFakeTimers()
+  vi.spyOn(Math, 'random').mockReturnValue(0.25)
+  const { answer, expression } = createQuestionGenerator()(1, 'addition')
+  render(<GameScreen level={1} mode="addition" duration={30} skipCountdown showMonsterBattle onFinish={vi.fn()} />)
+  act(() => vi.advanceTimersByTime(26_999))
+  fireEvent.keyDown(window, { key: 'Tab' })
+  expect(screen.queryByText('FINISH')).toBeNull()
+  act(() => vi.advanceTimersByTime(1))
+  expect(screen.getByText('FINISH')).toBeTruthy()
+  expect(screen.getByText(`正解：${answer}`)).toBeTruthy()
+  expect(screen.getByText(`${expression} =`)).toBeTruthy()
 })
 
 function finishReleaseWithoutInput() {
@@ -511,7 +534,29 @@ test('時間切れ後に操作なしで超必殺技を発動し、全段階を�
       onSound={onSound} onFinish={onFinish} />,
   )
 
-  act(() => vi.advanceTimersByTime(30_050))
+  act(() => vi.advanceTimersByTime(29_999))
+  fireEvent.keyDown(window, { key: '1' })
+  const problem = container.querySelector('.game-problem')
+  expect(screen.queryByText('FINISH')).toBeNull()
+
+  act(() => vi.advanceTimersByTime(1))
+  expect(screen.getByText('FINISH').getAttribute('role')).toBe('status')
+  expect(container.querySelector('.game-problem')).toBe(problem)
+  const keypad = screen.getByRole('group', { name: 'テンキー' })
+  expect(within(keypad).getAllByRole<HTMLButtonElement>('button').every((button) => button.disabled)).toBe(true)
+  expect(screen.getByRole<HTMLButtonElement>('button', { name: 'Tab：パス' }).disabled).toBe(true)
+  const enemies = () => [...container.querySelectorAll('.battle-enemy')].map((enemy) => enemy.getAttribute('style'))
+  const frozenPositions = enemies()
+  fireEvent.keyDown(window, { key: 'Backspace' })
+  fireEvent.keyDown(window, { key: 'Enter' })
+  act(() => vi.advanceTimersByTime(799))
+  expect(enemies()).toEqual(frozenPositions)
+  expect(screen.getByLabelText('入力した答え').textContent).toBe('1')
+  expect(screen.getByText('FINISH')).toBeTruthy()
+  expect(container.querySelector('.release-scene')).toBeNull()
+  expect(onFinish).not.toHaveBeenCalled()
+  act(() => vi.advanceTimersByTime(1))
+  expect(screen.queryByText('FINISH')).toBeNull()
   const scene = container.querySelector('.release-scene')
   expect(scene?.getAttribute('data-tier')).toBe('1')
   expect(scene?.getAttribute('data-phase')).toBe('blackout')
@@ -548,7 +593,8 @@ test('スキップを繰り返しても完走時と同じ結果を一度だけ�
     for (let index = 0; index < 10; index++) {
       for (const key of [...generate(1, 'addition').answer, 'Enter']) fireEvent.keyDown(window, { key })
     }
-    act(() => vi.advanceTimersByTime(30_050))
+    act(() => vi.advanceTimersByTime(30_000))
+    act(() => vi.advanceTimersByTime(800))
     act(() => vi.advanceTimersByTime(400))
     expect(screen.getByText('強化解放')).toBeTruthy()
     if (skip) {
@@ -632,7 +678,8 @@ test('討伐の被弾音と通常攻撃音を鳴らし、消音時も判定と�
     expect(screen.getByRole('meter', { name: 'HP' }).getAttribute('value')).toBe('90')
     for (let i = 0; i < 20; i += 1) submit(generate(1, 'addition').answer)
     expect(screen.getByRole('meter', { name: 'HP' }).getAttribute('value')).toBe('90')
-    act(() => vi.advanceTimersByTime(30_050))
+    act(() => vi.advanceTimersByTime(30_000))
+    act(() => vi.advanceTimersByTime(800))
     finishReleaseWithoutInput()
     expect(onFinish).toHaveBeenCalledOnce()
     const [result] = onFinish.mock.calls[0]

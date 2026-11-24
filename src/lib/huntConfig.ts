@@ -5,6 +5,7 @@ export const CHARGE_POWER = {
 } as const
 
 export const HUNT_TIMING = {
+  finishDisplayMs: 800,
   criticalWindowMs: { 1: 3_000, 2: 4_000, 3: 5_000, 4: 7_000, 5: 10_000 },
   survivalBonus: [
     { fromCorrect: 60, bonusMs: 0 },
