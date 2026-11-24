@@ -161,7 +161,7 @@ test('解放の連撃で粒子数が上限を超えず、静寂に入ると消�
   act(() => vi.advanceTimersByTime(interval))
   expect(scene.querySelector('.release-ring')).toBeTruthy()
   expect(scene.querySelectorAll('.release-spark')).toHaveLength(RELEASE.tiers[0].sparks)
-  act(() => vi.advanceTimersByTime(interval))
+  act(() => vi.advanceTimersByTime(interval * (RELEASE.tiers[0].waves - 1)))
   expect(scene.querySelectorAll('.release-spark')).toHaveLength(0)
 })
 

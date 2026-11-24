@@ -62,7 +62,8 @@ export function ReleaseSequence({ plan, lowPower, onSound, onComplete }: {
 
   const wave = waves[beat - 1]
   const phase = beat === 0 ? 'gather' : beat === 1 ? 'slash' : wave ? 'blast' : 'aftermath'
-  const duration = (waves[beat]?.at ?? RELEASE.aftermathMs) - (wave?.at ?? (beat === 0 ? 0 : RELEASE.aftermathMs))
+  const phaseStart = wave?.at ?? (beat === 0 ? 0 : RELEASE.aftermathMs)
+  const phaseEnd = waves[beat]?.at ?? (phase === 'aftermath' ? RELEASE.endMs : RELEASE.aftermathMs)
   const koCount = wave?.koCount ?? (beat === 0 ? startingKo : result.koCount)
   const style = {
     '--release-color': RELEASE.color,
@@ -71,7 +72,7 @@ export function ReleaseSequence({ plan, lowPower, onSound, onComplete }: {
     '--release-glow': profile.glow,
     '--release-reach': profile.reach,
     '--release-shake': `${profile.shake}px`,
-    '--release-phase-ms': `${duration}ms`,
+    '--release-phase-ms': `${phaseEnd - phaseStart}ms`,
   } as CSSProperties
 
   const { angleStep, minDistance, distanceStep, distanceVariants, delayStepMs, delayVariants } = RELEASE.particles
@@ -81,7 +82,7 @@ export function ReleaseSequence({ plan, lowPower, onSound, onComplete }: {
       data-reduced={reduced} data-beat={beat % 2} style={style}>
       <div className="release-camera" aria-hidden="true">
         <div className="release-land" />
-        {breaksPlanet(result) && <div className="release-planet" data-broken={beat === waves.length} />}
+        {phase !== 'aftermath' && breaksPlanet(result) && <div className="release-planet" data-broken={beat === waves.length} />}
         <EnemyApproach enemies={[]} attackId={wave ? beat : 0} stage={beat === 1 ? 2 : 4} lowPower={reduced} />
         {waves.slice(Math.max(0, beat - 1)).flatMap(({ targets }, index) => {
           const targetBeat = Math.max(0, beat - 1) + index + 1

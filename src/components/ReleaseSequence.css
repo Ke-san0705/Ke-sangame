@@ -107,8 +107,8 @@
 }
 
 .release-spark {
-  left: var(--release-sword-x);
-  top: var(--release-sword-y);
+  top: var(--release-impact-y);
+  left: var(--release-impact-x);
   width: clamp(0.5rem, 2.4vmin, 2rem);
   height: 2px;
   opacity: 0;
@@ -116,11 +116,6 @@
   background: var(--release-color);
   box-shadow: 0 0 0.55rem #ffdda1;
   rotate: var(--spark-angle);
-}
-
-.release-spark {
-  top: var(--release-impact-y);
-  left: var(--release-impact-x);
   animation: release-scatter-spark var(--release-phase-ms) var(--spark-delay) ease-out both;
 }
 
@@ -144,10 +139,6 @@
 .release-planet[data-broken="true"] {
   background: linear-gradient(35deg, #36242b 39%, #fefaeb 41%, #f6804b 45%, #39272b 48%);
   animation: release-ring var(--release-phase-ms) ease-out both;
-}
-
-.release-scene[data-phase="aftermath"] .release-planet {
-  visibility: hidden;
 }
 
 .release-status {

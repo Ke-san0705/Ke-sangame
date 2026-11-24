@@ -564,18 +564,23 @@ test('時間切れ後に操作なしで超必殺技を発動し、全段階を�
   expect(onSound).not.toHaveBeenCalledWith('timeUp')
   expect(screen.queryByRole('group', { name: 'テンキー' })).toBeNull()
   fireEvent.keyDown(window, { key: 'Enter' })
-  const interval = (RELEASE.aftermathMs - RELEASE.firstStrikeMs) / RELEASE.tiers[0].waves
-  const phases = [[RELEASE.firstStrikeMs, 'slash'], [interval, 'blast'], [interval, 'aftermath']] as const
-  for (const [ms, phase] of phases) {
-    act(() => vi.advanceTimersByTime(ms - 1))
-    expect(scene?.getAttribute('data-phase')).not.toBe(phase)
-    act(() => vi.advanceTimersByTime(1))
-    expect(scene?.getAttribute('data-phase')).toBe(phase)
+  const { waves, volume } = RELEASE.tiers[0]
+  const interval = (RELEASE.aftermathMs - RELEASE.firstStrikeMs) / waves
+  act(() => vi.advanceTimersByTime(RELEASE.firstStrikeMs))
+  expect(scene?.getAttribute('data-phase')).toBe('slash')
+  for (let index = 1; index < waves; index++) {
+    act(() => vi.advanceTimersByTime(interval))
+    expect(scene?.getAttribute('data-phase')).toBe('blast')
     expect(onFinish).not.toHaveBeenCalled()
   }
+  act(() => vi.advanceTimersByTime(interval))
+  expect(scene?.getAttribute('data-phase')).toBe('aftermath')
+  expect(onFinish).not.toHaveBeenCalled()
   expect(onSound.mock.calls.filter(([cue]) => cue === 'silence' || cue.startsWith('ultimate')))
     .toEqual([
-      ['ultimateGather', 0.45], ['ultimateSlash', 0.45], ['ultimateBlast', 0.45], ['silence', 0.45],
+      ['ultimateGather', volume], ['ultimateSlash', volume],
+      ...Array.from({ length: waves - 1 }, () => ['ultimateBlast', volume]),
+      ['silence', volume],
     ])
   const koCount = Number(screen.getByText(/^\d+ KO$/).textContent?.split(' ')[0])
   expect(koCount).toBeGreaterThanOrEqual(RELEASE.tiers[0].reinforcements)
