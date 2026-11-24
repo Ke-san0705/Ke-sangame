@@ -375,14 +375,12 @@ test('討伐のチャージ・復習・時間切れの引き渡し', () => {
 
   act(() => vi.advanceTimersByTime(3_000))
   submit(question.answer)
-  expect(screen.getByText('CRITICAL CHARGE!')).toBeTruthy()
+  expect(screen.queryByText('CRITICAL CHARGE!')).toBeNull()
   expect([...arena.querySelectorAll('[data-attack="slash"]')].at(-1)).not.toBe(firstRing)
   expect(screen.getByText(question.expression + ' =')).toBeTruthy()
   expect(onSound).toHaveBeenCalledWith('slash', 1)
   expect(onSound).toHaveBeenCalledWith('slash', 2)
 
-  act(() => vi.advanceTimersByTime(650))
-  expect(screen.queryByText('CRITICAL CHARGE!')).toBeNull()
   act(() => vi.advanceTimersByTime(90_000))
   finishReleaseWithoutInput()
   expect(onFinish).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
@@ -400,18 +398,24 @@ test.each([
   vi.useFakeTimers()
   vi.spyOn(Math, 'random').mockReturnValue(0.25)
   const generate = createQuestionGenerator()
-  render(<GameScreen level={level} mode="addition" duration={60} skipCountdown showMonsterBattle onFinish={vi.fn()} />)
+  const onFinish = vi.fn()
+  render(<GameScreen level={level} mode="addition" duration={30} skipCountdown showMonsterBattle onFinish={onFinish} />)
 
   for (const delay of [threshold + 1, threshold]) {
     act(() => vi.advanceTimersByTime(delay))
     const { answer } = generate(level, 'addition')
     for (const key of answer) fireEvent.keyDown(window, { key })
     fireEvent.keyDown(window, { key: 'Enter' })
-    expect(Boolean(screen.queryByText('CRITICAL CHARGE!'))).toBe(delay === threshold)
+    expect(screen.queryByText('CRITICAL CHARGE!')).toBeNull()
   }
+  act(() => vi.advanceTimersByTime(30_050 - (2 * threshold + 1)))
+  finishReleaseWithoutInput()
+  expect(onFinish).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
+    charge: { power: 38, criticalCount: 1 },
+  }))
 })
 
-test('問題と入力欄の上でチャージ色が青・黄・赤・黒の順に変わる', () => {
+test('正解数を重ねても戦闘領域にチャージ色やオーラが出ない', () => {
   vi.useFakeTimers()
   vi.spyOn(Math, 'random').mockReturnValue(0.25)
   const generate = createQuestionGenerator()
@@ -422,7 +426,8 @@ test('問題と入力欄の上でチャージ色が青・黄・赤・黒の順�
   const keypad = screen.getByRole('group', { name: 'テンキー' })
   expect(arena.compareDocumentPosition(keypad) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   for (let count = 0; count <= 15; count++) {
-    expect(arena.dataset.color).toBe(count < 4 ? 'blue' : count < 9 ? 'yellow' : count < 15 ? 'red' : 'black')
+    expect(arena.dataset.color).toBeUndefined()
+    expect(arena.querySelector('.battle-hero-aura')).toBeNull()
     expect(screen.queryByText(/STAGE|体討伐|ボス戦/)).toBeNull()
     const { answer } = generate(1, 'addition')
     for (const key of answer) fireEvent.keyDown(window, { key })
@@ -561,35 +566,29 @@ test('スキップを繰り返しても完走時と同じ結果を一度だけ�
   expect(run(true)).toEqual(completed)
 })
 
-test.each([true, false])('誤答後の過充電は討伐でのみ発動し、再誤答で延長する（%s）', (showMonsterBattle) => {
+test('討伐の誤答後と残り時間が少ないときに過充電が出ない', () => {
   vi.useFakeTimers()
   vi.spyOn(Math, 'random').mockReturnValue(0.25)
   const { container } = render(
-    <GameScreen level={1} mode="addition" duration={30} skipCountdown
-      showMonsterBattle={showMonsterBattle} onFinish={vi.fn()} />,
+    <GameScreen level={1} mode="addition" duration={30} skipCountdown showMonsterBattle onFinish={vi.fn()} />,
   )
-  const warning = () => screen.queryByText('危険！過充電')
-  const miss = () => {
-    fireEvent.keyDown(window, { key: '0' })
-    fireEvent.keyDown(window, { key: 'Enter' })
+
+  const expectNoOvercharge = () => {
+    expect(screen.queryByText('危険！過充電')).toBeNull()
+    expect(container.querySelector('[data-overcharged="true"], .charge-lightning')).toBeNull()
   }
 
-  expect(warning()).toBeNull()
-  miss()
-  expect(Boolean(warning())).toBe(showMonsterBattle)
-  expect(Boolean(container.querySelector('.charge-lightning'))).toBe(showMonsterBattle)
-  act(() => vi.advanceTimersByTime(2_000))
-  miss()
-  act(() => vi.advanceTimersByTime(2_999))
-  expect(Boolean(warning())).toBe(showMonsterBattle)
-  act(() => vi.advanceTimersByTime(1))
-  expect(warning()).toBeNull()
-  expect(container.querySelector('.charge-lightning')).toBeNull()
-  act(() => vi.advanceTimersByTime(15_000))
-  expect(Boolean(warning())).toBe(showMonsterBattle)
+  fireEvent.keyDown(window, { key: '0' })
+  fireEvent.keyDown(window, { key: 'Enter' })
+  expect(screen.getByRole('meter', { name: 'HP' }).getAttribute('value')).toBe('90')
+  expectNoOvercharge()
+
+  act(() => vi.advanceTimersByTime(20_000))
+  expect(screen.getByRole('timer').textContent).toBe('10')
+  expectNoOvercharge()
 })
 
-test('攻撃が進化したときだけ戦闘領域で形態名を一時表示する', () => {
+test('攻撃進化時も一時表示はコンボ数だけ', () => {
   vi.useFakeTimers()
   vi.spyOn(Math, 'random').mockReturnValue(0.25)
   const generate = createQuestionGenerator()
@@ -605,9 +604,10 @@ test('攻撃が進化したときだけ戦闘領域で形態名を一時表示�
   for (let i = 0; i < 4; i++) correct()
   expect(screen.queryByText(/攻撃進化/)).toBeNull()
   correct()
-  expect(within(screen.getByRole('status')).getByText('攻撃進化：飛翔斬撃')).toBeTruthy()
-  act(() => vi.advanceTimersByTime(1_500))
+  expect(within(screen.getByRole('status')).getByText('5 COMBO')).toBeTruthy()
   expect(screen.queryByText(/攻撃進化/)).toBeNull()
+  act(() => vi.advanceTimersByTime(1_500))
+  expect(screen.queryByText('5 COMBO')).toBeNull()
 
   fireEvent.keyDown(window, { key: '0' })
   fireEvent.keyDown(window, { key: 'Enter' })
@@ -615,7 +615,7 @@ test('攻撃が進化したときだけ戦闘領域で形態名を一時表示�
   expect(screen.queryByText(/攻撃進化/)).toBeNull()
 })
 
-test('討伐の被弾・爆発・回復音を鳴らし、消音時も判定と結果が一致する', () => {
+test('討伐の被弾音と通常攻撃音を鳴らし、消音時も判定と結果が一致する', () => {
   vi.useFakeTimers()
   vi.spyOn(Math, 'random').mockReturnValue(0.25)
   const run = (onSound?: (cue: string) => void) => {
@@ -630,7 +630,7 @@ test('討伐の被弾・爆発・回復音を鳴らし、消音時も判定と�
     submit('0')
     expect(screen.getByRole('meter', { name: 'HP' }).getAttribute('value')).toBe('90')
     for (let i = 0; i < 10; i += 1) submit(generate(1, 'addition').answer)
-    expect(screen.getByRole('meter', { name: 'HP' }).getAttribute('value')).toBe('100')
+    expect(screen.getByRole('meter', { name: 'HP' }).getAttribute('value')).toBe('90')
     act(() => vi.advanceTimersByTime(30_050))
     finishReleaseWithoutInput()
     expect(onFinish).toHaveBeenCalledOnce()
@@ -642,8 +642,9 @@ test('討伐の被弾・爆発・回復音を鳴らし、消音時も判定と�
   const onSound = vi.fn()
   const audible = run(onSound)
   expect(onSound).toHaveBeenCalledWith('damage')
-  expect(onSound).toHaveBeenCalledWith('explosion')
-  expect(onSound).toHaveBeenCalledWith('heal')
+  expect(onSound).toHaveBeenCalledWith('shockwave', 10)
+  expect(onSound).not.toHaveBeenCalledWith('explosion')
+  expect(onSound).not.toHaveBeenCalledWith('heal')
   expect(onSound).not.toHaveBeenCalledWith('incorrect')
   expect(run()).toEqual(audible)
 })

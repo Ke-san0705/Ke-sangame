@@ -28,7 +28,5 @@ export const SOUND_CUES = {
   flying: { notes: [420, 710, 960], waveform: 'sine', spacing: 0.035, duration: 0.09, peak: 0.07 },
   shockwave: { notes: [155, 88], waveform: 'triangle', spacing: 0.052, duration: 0.13, peak: 0.07 },
   cannon: { notes: [86, 172, 344], waveform: 'sawtooth', spacing: 0.023, duration: 0.16, peak: 0.07 },
-  explosion: { notes: [128, 73, 47], waveform: 'sawtooth', spacing: 0.036, duration: 0.23, peak: 0.09 },
-  heal: { notes: [523, 659, 784], waveform: 'sine', spacing: 0.065, duration: 0.15, peak: 0.08 },
   damage: { notes: [230, 116], waveform: 'triangle', spacing: 0.024, duration: 0.11, peak: 0.10 },
 } as const

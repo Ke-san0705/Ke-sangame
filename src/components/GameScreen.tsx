@@ -83,13 +83,9 @@ export function GameScreen({
   const currentQuestionResolved = useRef(false)
   const [counts, setCounts] = useState({ correctCount: 0, incorrectCount: 0, passCount: 0, combo: 0, maxCombo: 0, criticalCount: 0 })
   const latestCounts = useRef(counts)
-  const [criticalAnswer, setCriticalAnswer] = useState<number>()
-  const criticalTimeout = useRef<number | undefined>(undefined)
   const [attacks, setAttacks] = useState<readonly AttackVisual[]>([])
   const [battleMotion, setBattleMotion] = useState<BattleMotion>()
   const motionId = useRef(0)
-  const [attackEvolution, setAttackEvolution] = useState<string>()
-  const evolutionTimeout = useRef<number | undefined>(undefined)
   const [comboNotice, setComboNotice] = useState<number>()
   const comboTimeout = useRef<number | undefined>(undefined)
   const { correctCount, incorrectCount, passCount } = counts
@@ -97,9 +93,6 @@ export function GameScreen({
   const [pendingRelease, setPendingRelease] = useState<GameResult & { release: ReleaseResult }>()
   const playing = countdown === 0 && pendingRelease === undefined
   const [remaining, setRemaining] = useState(initialTimeMs)
-  const [missOvercharge, setMissOvercharge] = useState(false)
-  const missOverchargeTimeout = useRef<number | undefined>(undefined)
-  const overchargeActive = showMonsterBattle && (missOvercharge || (!battleSurvival && remaining > 0 && remaining <= HUNT_TIMING.overchargeTimeMs))
   const deadline = useRef(0)
   const gameStartedAt = useRef(0)
   const [elapsedSecond, setElapsedSecond] = useState(0)
@@ -155,30 +148,12 @@ export function GameScreen({
       const previous = latestCombat.current
       const battle = applyCombatAnswer(previous, kind === 'correctCount' ? 'correct' : 'incorrect')
       updateCombat(battle)
-      const evolved = battle.attackStage > previous.attackStage
       if (kind === 'correctCount') {
         const stage = ATTACK_STAGES.find(({ stage }) => stage === battle.attackStage) ?? ATTACK_STAGES[0]
         const targets = selectAttackTargets(previous.enemies, Math.min(stage.targets, ATTACK_EFFECTS.maxImpacts))
-        const special = battle.comboSpecial
-        const attack = {
-          id: next.correctCount, stage: stage.stage,
-          targets: special?.targets ?? targets,
-          special,
-        }
+        const attack = { id: next.correctCount, stage: stage.stage, targets }
         setAttacks((current) => queueAttackVisual(current, attack))
-        const profile = attackEffectForStage(stage.stage)
-        const cue = special ? 'comboSpecial' : evolved ? 'evolution' : critical ? 'hit' : profile.shape === 'shockwave' ? 'shockwave' : undefined
-        setBattleMotion(cue ? { cue, trigger: ++motionId.current } : undefined)
-        onSound?.(profile.sound, battle.combo)
-        if (special) {
-          onSound?.('explosion')
-          if (special.healed > 0) onSound?.('heal')
-        }
-      }
-      if (evolved) {
-        window.clearTimeout(evolutionTimeout.current)
-        setAttackEvolution(ATTACK_STAGES.find(({ stage }) => stage === battle.attackStage)?.name)
-        evolutionTimeout.current = window.setTimeout(() => setAttackEvolution(undefined), BATTLE_FEEDBACK.evolutionDurationMs)
+        onSound?.(attackEffectForStage(stage.stage).sound, battle.combo)
       }
       const battleCombo = battle.combo
       window.clearTimeout(comboTimeout.current)
@@ -299,13 +274,6 @@ export function GameScreen({
           }
           const critical = showMonsterBattle && elapsedMs <= HUNT_TIMING.criticalWindowMs[level]
           recordAnswer('correctCount', critical)
-          if (showMonsterBattle) {
-            window.clearTimeout(criticalTimeout.current)
-            setCriticalAnswer(critical ? latestCounts.current.correctCount : undefined)
-            if (critical) {
-              criticalTimeout.current = window.setTimeout(() => setCriticalAnswer(undefined), HUNT_TIMING.criticalNoticeMs)
-            }
-          }
           if (!showMonsterBattle) onSound?.('correct', latestCounts.current.combo)
           if (survival && !battleSurvival) {
             deadline.current += survivalBonusMs(latestCounts.current.correctCount)
@@ -322,9 +290,6 @@ export function GameScreen({
           recordAnswer('incorrectCount')
           wrongAnswers.current.push(answer)
           if (showMonsterBattle) {
-            setMissOvercharge(true)
-            window.clearTimeout(missOverchargeTimeout.current)
-            missOverchargeTimeout.current = window.setTimeout(() => setMissOvercharge(false), HUNT_TIMING.overchargeMissMs)
             recordReviewQuestion('miss')
             if (latestCombat.current.phase === 'defeat') {
               currentQuestionResolved.current = true
@@ -408,10 +373,7 @@ export function GameScreen({
       window.clearTimeout(timeout)
       window.clearTimeout(finishTimeout)
       window.clearTimeout(passTimeout.current)
-      window.clearTimeout(criticalTimeout.current)
-      window.clearTimeout(evolutionTimeout.current)
       window.clearTimeout(comboTimeout.current)
-      window.clearTimeout(missOverchargeTimeout.current)
       window.removeEventListener('keydown', onKeyDown)
     }
   }, [battleSurvival, duration, initialTimeMs, playing])
@@ -508,7 +470,7 @@ export function GameScreen({
         </header>
       )}
       {showMonsterBattle && (
-        <ChargeArena correctCount={correctCount} overcharged={overchargeActive} battle={{
+        <ChargeArena correctCount={correctCount} battle={{
           lowPower,
           enemies: combat.enemies,
           attacks,
@@ -516,14 +478,9 @@ export function GameScreen({
           stage: combat.attackStage,
           motion: battleMotion,
           foreground: (
-            <>
-              <div className="battle-feedback" role="status">
-                {overchargeActive && <strong className="game-overcharge-warning">危険！過充電</strong>}
-                {attackEvolution && <strong className="battle-evolution">攻撃進化：{attackEvolution}</strong>}
-                {comboNotice !== undefined && <strong key={correctCount} className="battle-combo">{comboNotice} COMBO</strong>}
-                {criticalAnswer !== undefined && <strong key={`critical-${criticalAnswer}`} className="charge-critical-status">CRITICAL CHARGE!</strong>}
-              </div>
-            </>
+            <div className="battle-feedback" role="status">
+              {comboNotice !== undefined && <strong key={correctCount} className="battle-combo">{comboNotice} COMBO</strong>}
+            </div>
           ),
         }} />
       )}

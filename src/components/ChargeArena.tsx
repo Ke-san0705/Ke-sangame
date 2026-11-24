@@ -1,12 +1,11 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { preload } from 'react-dom'
 import { CHARGE_COLORS } from '../lib/huntConfig'
-import { ENEMY_STAGE } from '../lib/enemyApproachConfig'
 import type { Enemy } from '../lib/enemyApproach'
 import { EnemyApproach } from './EnemyApproach'
 import { BattleStage, type BattleMotion } from './BattleStage'
 import { AttackEffect } from './AttackEffects'
-import { ATTACK_EFFECTS, type AttackVisual } from '../lib/attackEffects'
+import type { AttackVisual } from '../lib/attackEffects'
 import { useReducedEffects } from '../lib/useEffectTimeline'
 import './ChargeArena.css'
 
@@ -17,41 +16,20 @@ const initialMonsters = 6
 const maxMonsters = 66
 const goldenAngle = Math.PI * (3 - Math.sqrt(5))
 
-const lightning = (
-  <g className="charge-lightning">
-    <path d="m61 49-24-13 4 16-26-9m108 1 14-22 8 11 17-17m-12 48 22 11-11 7 26 9" />
-    <path d="m82 40-12-18-4 7-13-15m-6 55-18 8 8 6-21 12" />
-  </g>
-)
-
 export function preloadChargeSprites() {
   for (const src of sprites) preload(src, { as: 'image' })
 }
 
-export function ChargeArena({ correctCount, overcharged = false, battle }: {
+export function ChargeArena({ correctCount, battle }: {
   correctCount: number
-  overcharged?: boolean
   battle?: { lowPower: boolean; foreground: ReactNode; enemies: readonly Enemy[]; attacks: readonly AttackVisual[]; onAttackComplete: (id: number, replace: boolean) => void; stage: number; motion?: BattleMotion }
 }) {
   const reduced = useReducedEffects()
   const color = CHARGE_COLORS.find(({ fromCorrect }) => correctCount >= fromCorrect)?.color ?? 'blue'
   if (battle) {
     const simple = reduced || battle.lowPower
-    const aura = Math.min(
-      simple ? ATTACK_EFFECTS.auraReducedMax : ATTACK_EFFECTS.auraMax,
-      ATTACK_EFFECTS.auraMin + correctCount * ATTACK_EFFECTS.auraPerAnswer,
-    )
-    const auraStyle = { left: `${ENEMY_STAGE.heroX * 100}%`, '--aura-opacity': aura } as CSSProperties
-    const frame = simple ? 1 : (ATTACK_EFFECTS.frameScales[battle.stage - 1] ?? 1)
     return (
-      <BattleStage className="charge-arena" color={color} overcharged={overcharged}
-        framing={{ '--attack-frame': frame } as CSSProperties}
-        rearEffects={
-          <div className="battle-hero-effects" aria-hidden="true" style={auraStyle}>
-            <span className="battle-hero-aura" />
-            {overcharged && !simple && <svg viewBox="0 0 200 120" focusable="false">{lightning}</svg>}
-          </div>
-        }
+      <BattleStage className="charge-arena"
         characters={<EnemyApproach enemies={battle.enemies} attackId={correctCount} stage={battle.stage} lowPower={simple} />}
         foreground={
           <>
@@ -113,16 +91,13 @@ export function ChargeArena({ correctCount, overcharged = false, battle }: {
         <ellipse className="charge-cannon-field" cx="100" cy="57" rx="53" ry="26" />
         <ellipse className="charge-cannon-core" cx="100" cy="56" rx="38" ry="17" />
         <path className="charge-cannon-rail" d="M91 84h18m-9 10v22" />
-        {overcharged && (
-          lightning
-        )}
       </svg>
     </div>
   )
 
 
   return (
-    <div className="charge-arena" data-color={color} data-overcharged={overcharged} style={arenaStyle} aria-hidden="true">
+    <div className="charge-arena" data-color={color} style={arenaStyle} aria-hidden="true">
       {swarm}
       {barrier}
       {cannon}

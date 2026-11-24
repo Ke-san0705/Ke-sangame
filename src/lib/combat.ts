@@ -1,5 +1,5 @@
-import { advanceEnemies, createEnemyApproach, type Enemy, type EnemyApproach } from './enemyApproach'
-import { ATTACK_STAGES, COMBAT_CONFIG, COMBO_SPECIAL, ENEMY_STAGE, ENEMY_TYPES } from './enemyApproachConfig'
+import { advanceEnemies, createEnemyApproach, type EnemyApproach } from './enemyApproach'
+import { ATTACK_STAGES, COMBAT_CONFIG, ENEMY_STAGE, ENEMY_TYPES } from './enemyApproachConfig'
 import type { Level } from './question-generator'
 
 type Combat = EnemyApproach & {
@@ -7,7 +7,6 @@ type Combat = EnemyApproach & {
   combo: number
   attackStage: number
   defeated: number
-  comboSpecial?: { targets: readonly Enemy[]; healed: number }
   phase: 'playing' | 'defeat' | 'special'
 }
 
@@ -34,7 +33,7 @@ export function selectAttackTargets(enemies: Combat['enemies'], limit: number) {
 
 export function applyCombatAnswer(state: Combat, answer: 'correct' | 'incorrect' | 'pass'): Combat {
   if (state.phase !== 'playing' || answer === 'pass') return state
-  if (answer === 'incorrect') return damageCombat({ ...state, combo: 0, comboSpecial: undefined }, COMBAT_CONFIG.incorrectDamage)
+  if (answer === 'incorrect') return damageCombat({ ...state, combo: 0 }, COMBAT_CONFIG.incorrectDamage)
 
   const combo = state.combo + 1
   const attack = ATTACK_STAGES.reduce(
@@ -44,25 +43,14 @@ export function applyCombatAnswer(state: Combat, answer: 'correct' | 'incorrect'
   const targetIds = new Set(
     selectAttackTargets(state.enemies, attack.targets).map(({ id }) => id),
   )
-  const specialTargets = combo % COMBO_SPECIAL.interval === 0
-    ? selectAttackTargets(state.enemies.filter(({ x }) =>
-      x >= ENEMY_STAGE.heroX && x <= ENEMY_STAGE.heroX + COMBO_SPECIAL.range,
-    ), COMBO_SPECIAL.maxTargets)
-    : undefined
-  const specialIds = specialTargets && new Set(specialTargets.map(({ id }) => id))
+
   const enemies = state.enemies
-    .map((enemy) => {
-      const damage = (targetIds.has(enemy.id) ? COMBAT_CONFIG.attackDamage : 0)
-        + (specialIds?.has(enemy.id) ? COMBO_SPECIAL.damage : 0)
-      return damage ? { ...enemy, hp: enemy.hp - damage } : enemy
-    })
+    .map((enemy) => targetIds.has(enemy.id) ? { ...enemy, hp: enemy.hp - COMBAT_CONFIG.attackDamage } : enemy)
     .filter((enemy) => enemy.hp > 0)
-  const hp = specialTargets ? Math.min(COMBAT_CONFIG.maxHp, state.hp + COMBO_SPECIAL.heal) : state.hp
 
   return {
-    ...state, hp, combo, attackStage: attack.stage, enemies,
+    ...state, combo, attackStage: attack.stage, enemies,
     defeated: state.defeated + state.enemies.length - enemies.length,
-    comboSpecial: specialTargets && { targets: specialTargets, healed: hp - state.hp },
   }
 }
 

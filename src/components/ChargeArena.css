@@ -130,18 +130,6 @@
   text-shadow: 0 2px 4px #090e20;
 }
 
-.battle-feedback .game-overcharge-warning {
-  margin: 0;
-}
-
-.battle-evolution {
-  padding: 0.18em 0.5em;
-  border: 1px solid #ffd98c;
-  border-radius: 0.4em;
-  background: #302247;
-  color: #fff4c8;
-}
-
 .battle-combo {
   color: #d9f8ff;
 }
@@ -152,25 +140,6 @@
   margin: 0;
   border-radius: 14px;
   background: #0b1225;
-}
-
-.battle-stage.charge-arena .battle-distance {
-  background:
-    radial-gradient(ellipse at 50% 68%, color-mix(in srgb, var(--charge-light), transparent 72%), transparent 65%),
-    linear-gradient(#171c37, #08152b);
-}
-
-.battle-hero-effects {
-  position: absolute;
-  inset-block-end: 24%;
-  inline-size: 16%;
-  aspect-ratio: 1;
-  translate: -50%;
-}
-
-.battle-hero-effects svg {
-  inline-size: 100%;
-  overflow: visible;
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -185,46 +154,6 @@
   .charge-arena:not(.battle-stage) {
     min-block-size: clamp(164px, 32dvh, 224px);
   }
-}
-
-.charge-arena[data-overcharged="true"] {
-  --charge-light: #ff2849;
-  --charge-core: #100409;
-  --charge-outline: #ff8293;
-}
-
-.charge-arena[data-overcharged="true"] :is(.charge-cannon-mount, .charge-cannon-body, .charge-cannon-rim) {
-  fill: #1d080e;
-  stroke: var(--charge-light);
-}
-
-.charge-lightning {
-  fill: none;
-  stroke: var(--charge-outline);
-  stroke-width: 3;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  filter: drop-shadow(0 0 5px var(--charge-light));
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .charge-arena[data-overcharged="true"] .charge-cannon svg {
-    animation: charge-overload 280ms linear infinite;
-  }
-}
-
-@keyframes charge-overload {
-  0%, 100% { transform: translateX(0); }
-  25% { transform: translateX(-2px) rotate(-1deg); }
-  75% { transform: translateX(2px) rotate(1deg); }
-}
-
-.battle-hero-aura {
-  position: absolute;
-  inset: 4% 7% 0;
-  border-radius: 50%;
-  opacity: var(--aura-opacity);
-  background: radial-gradient(ellipse at 50% 72%, var(--charge-core), var(--charge-light) 20%, transparent 67%);
 }
 
 .attack-effect {
@@ -273,13 +202,4 @@
   background-repeat: no-repeat;
   image-rendering: pixelated;
   filter: drop-shadow(0 3px 4px #07091b);
-}
-
-.attack-heal {
-  fill: currentColor;
-  stroke: #241500;
-  stroke-width: 4px;
-  paint-order: stroke;
-  font-size: 25px;
-  font-weight: 800;
 }

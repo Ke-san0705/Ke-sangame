@@ -4,23 +4,20 @@ import { useEffectTimeline } from '../lib/useEffectTimeline'
 import { BATTLE_FEEDBACK } from '../lib/battleUi'
 import './BattleStage.css'
 
-export type BattleMotion = { cue: 'hit' | 'shockwave' | 'evolution' | 'comboSpecial'; trigger: number }
+export type BattleMotion = { cue: 'hit'; trigger: number }
 
 type BattleStageProps = {
   className?: string
   style?: CSSProperties
-  color?: string
-  overcharged?: boolean
   rearEffects?: ReactNode
   characters: ReactNode
   foreground?: ReactNode
   motion?: BattleMotion
-  framing?: CSSProperties
   lowPower?: boolean
 }
 
 export function BattleStage({
-  className, style, color, overcharged, rearEffects, characters, foreground, motion, framing, lowPower = false,
+  className, style, rearEffects, characters, foreground, motion, lowPower = false,
 }: BattleStageProps) {
   const camera = useRef<HTMLDivElement>(null)
   useEffectTimeline({
@@ -40,9 +37,9 @@ export function BattleStage({
 
   return (
     <div className="battle-stage-space">
-      <div className={`battle-stage ${className ?? ''}`} data-color={color} data-overcharged={overcharged} style={style}>
+      <div className={`battle-stage ${className ?? ''}`} style={style}>
         <div className="battle-camera" ref={camera}>
-          <div className="attack-framing" style={framing}>
+          <div className="attack-framing">
             <div className="battle-layer battle-distance" aria-hidden="true" />
             <div className="battle-layer battle-ground" aria-hidden="true" />
             <div className="battle-layer battle-rear-effects">{rearEffects}</div>

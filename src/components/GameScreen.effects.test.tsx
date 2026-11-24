@@ -16,7 +16,7 @@ function motionPreference(query: string) {
   return Object.assign(preference, { matches: false, media: query })
 }
 
-function play({ lowPower = false, reduced = false, slow = false } = {}) {
+function play({ lowPower = false, reduced = false, slow = false, takeDamage = false } = {}) {
   vi.useFakeTimers()
   vi.spyOn(Math, 'random').mockReturnValue(0.25)
   const preference = motionPreference('(prefers-reduced-motion: reduce)')
@@ -34,12 +34,15 @@ function play({ lowPower = false, reduced = false, slow = false } = {}) {
   const arena = game.querySelector('.battle-camera')!
   const { answer } = createQuestionGenerator()(1, 'addition')
   for (const key of [...answer, 'Enter']) fireEvent.keyDown(window, { key })
+  if (takeDamage) {
+    for (const key of ['0', 'Enter']) fireEvent.keyDown(window, { key })
+  }
   const tweens = () => gsap.getTweensOf(arena)
   return { ...view, preference, onFinish, timersBeforeMount, tweens, game }
 }
 
 test('解放画面に移ると戦闘のタイムラインと入力処理を破棄する', () => {
-  const { tweens, timersBeforeMount, unmount, onFinish } = play()
+  const { tweens, timersBeforeMount, unmount, onFinish } = play({ takeDamage: true })
   expect(tweens().length).toBeGreaterThan(0)
   const [tween] = tweens()
   // Keep a visual effect in progress until the game clock switches screens.
@@ -57,10 +60,9 @@ test('解放画面に移ると戦闘のタイムラインと入力処理を破�
 })
 
 test.each([{ lowPower: true }, { reduced: true }, { slow: true }])('演出を抑制しても正解を判定する (%j)', (options) => {
-  const { tweens, game, onFinish } = play(options)
+  const { tweens, onFinish } = play(options)
   expect(tweens()).toHaveLength(0)
-  expect((game.querySelector('.attack-framing') as HTMLElement).style.getPropertyValue('--attack-frame')).toBe('1')
-  expect(screen.getByText('CRITICAL CHARGE!')).toBeTruthy()
+  expect(screen.queryByText('CRITICAL CHARGE!')).toBeNull()
 
   act(() => vi.advanceTimersByTime(30_050))
   act(() => vi.advanceTimersByTime(1_300))
@@ -74,7 +76,7 @@ test.each([{ lowPower: true }, { reduced: true }, { slow: true }])('演出を抑
 })
 
 test('実行中に視差効果を減らす設定に切り替えると演出を破棄する', () => {
-  const { preference, tweens } = play()
+  const { preference, tweens } = play({ takeDamage: true })
   expect(tweens().length).toBeGreaterThan(0)
   preference.matches = true
   act(() => preference.dispatchEvent(new Event('change')))
@@ -88,7 +90,7 @@ test('matchMedia がない環境でもゲームを開始できる', () => {
 })
 
 test('HUD・問題・入力欄はカメラの外に固定する', () => {
-  const { game, tweens } = play()
+  const { game, tweens } = play({ takeDamage: true })
   const camera = game.querySelector('.battle-camera')!
   expect(tweens()).toHaveLength(1)
   for (const selector of ['.battle-hud', '.game-expression', '.game-answer', '.game-keypad']) {
@@ -115,7 +117,7 @@ test('連続正解で攻撃が進化し、重ねるエフェクトは上限内�
 })
 
 
-test('10コンボの正解入力でHPが回復し、金色の必殺技を一度表示する', () => {
+test('10コンボでもHPは回復せず、通常攻撃だけを表示する', () => {
   const { game } = play()
   const generate = createQuestionGenerator()
   generate(1, 'addition')
@@ -130,11 +132,12 @@ test('10コンボの正解入力でHPが回復し、金色の必殺技を一度�
     if (combo < 10) expect(hp.getAttribute('value')).toBe('90')
   }
 
-  expect(hp.getAttribute('value')).toBe('100')
+  expect(hp.getAttribute('value')).toBe('90')
   expect(screen.getByText('10 COMBO')).toBeTruthy()
-  expect(screen.getByText('+10 HP')).toBeTruthy()
+  expect(screen.queryByText('+10 HP')).toBeNull()
+  expect(game.querySelector('[data-attack="shockwave"]')).toBeTruthy()
   fireEvent.keyDown(window, { key: 'Enter' })
-  expect(game.querySelectorAll('[data-attack="comboSpecial"]')).toHaveLength(1)
+  expect(game.querySelectorAll('[data-attack="comboSpecial"]')).toHaveLength(0)
 })
 
 test('解放の収束と爆発で粒子スロットを再利用する', () => {

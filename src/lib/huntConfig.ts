@@ -6,9 +6,6 @@ export const CHARGE_POWER = {
 
 export const HUNT_TIMING = {
   criticalWindowMs: { 1: 3_000, 2: 4_000, 3: 5_000, 4: 7_000, 5: 10_000 },
-  criticalNoticeMs: 650,
-  overchargeMissMs: 3_000,
-  overchargeTimeMs: 10_000,
   survivalBonus: [
     { fromCorrect: 60, bonusMs: 0 },
     { fromCorrect: 30, bonusMs: 1_000 },
