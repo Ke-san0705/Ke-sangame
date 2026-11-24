@@ -3,7 +3,7 @@ import { createQuestionGenerator, isCorrectAnswer } from '../lib/question-genera
 import type { Level, Question, QuestionMode } from '../lib/question-generator'
 import { calculateCharge } from '../lib/charge'
 import type { ChargeResult } from '../lib/charge'
-import type { ReleaseResult } from '../lib/release'
+import { calculateRelease, type ReleaseResult } from '../lib/release'
 import { calculateScore } from '../lib/score'
 import { BATTLE_FEEDBACK } from '../lib/battleUi'
 import { advanceCombat, applyCombatAnswer, createCombat, finishCombat, selectAttackTargets } from '../lib/combat'
@@ -97,12 +97,11 @@ export function GameScreen({
   const comboTimeout = useRef<number | undefined>(undefined)
   const { correctCount, incorrectCount, passCount } = counts
   const [countdown, setCountdown] = useState(skipCountdown ? 0 : START_COUNTDOWN_SECONDS)
-  const [pendingRelease, setPendingRelease] = useState<{ result: GameResult; overcharged: boolean }>()
+  const [pendingRelease, setPendingRelease] = useState<GameResult & { release: ReleaseResult }>()
   const playing = countdown === 0 && pendingRelease === undefined
   const [remaining, setRemaining] = useState(initialTimeMs)
   const [missOvercharge, setMissOvercharge] = useState(false)
   const missOverchargeTimeout = useRef<number | undefined>(undefined)
-  const wasOvercharged = useRef(false)
   const overchargeActive = showMonsterBattle && (missOvercharge || (!battleSurvival && remaining > 0 && remaining <= OVERCHARGE_TIME_MS))
   const deadline = useRef(0)
   const gameStartedAt = useRef(0)
@@ -207,8 +206,9 @@ export function GameScreen({
       return cumulativeCorrect
     })
     const defeated = showMonsterBattle && latestCombat.current.phase === 'defeat'
-    if (!defeated) onSound?.('timeUp')
-    if (showMonsterBattle && !defeated) updateCombat(finishCombat(latestCombat.current))
+    const ultimate = showMonsterBattle && !survival && !defeated
+    if (ultimate) updateCombat(finishCombat(latestCombat.current))
+    else if (!defeated) onSound?.('timeUp')
     const result: GameResult = {
       correctCount,
       maxCombo,
@@ -221,12 +221,11 @@ export function GameScreen({
       reviewQuestions: reviewQuestions.current,
       averageAnswerSeconds: correctCount === 0 ? 0 : totalCorrectAnswerMs.current / correctCount / 1000,
     }
-    if (result.charge && latestCombat.current.phase === 'special') setPendingRelease({ result, overcharged: wasOvercharged.current })
+    if (ultimate && result.charge) setPendingRelease({ ...result, release: calculateRelease(result.charge.power) })
     else onFinish(result)
   }
 
   function updateRemaining(timeLeft: number) {
-    if (showMonsterBattle && timeLeft <= OVERCHARGE_TIME_MS) wasOvercharged.current = true
     setRemaining(timeLeft)
     const seconds = Math.ceil(timeLeft / 1000)
     if (seconds >= 1 && seconds <= TIMER_SOUND_SECONDS && seconds < lastCountdownSecond.current) {
@@ -314,7 +313,6 @@ export function GameScreen({
           recordAnswer('incorrectCount')
           wrongAnswers.current.push(answer)
           if (showMonsterBattle) {
-            wasOvercharged.current = true
             setMissOvercharge(true)
             window.clearTimeout(missOverchargeTimeout.current)
             missOverchargeTimeout.current = window.setTimeout(() => setMissOvercharge(false), OVERCHARGE_MISS_MS)
@@ -417,13 +415,14 @@ export function GameScreen({
     if (showMonsterBattle) preloadChargeSprites()
   }, [showMonsterBattle])
 
-  if (pendingRelease?.result.charge) {
+  if (pendingRelease) {
     return (
       <ReleaseSequence
-        power={pendingRelease.result.charge.power}
-        correctCount={pendingRelease.result.correctCount}
-        overcharged={pendingRelease.overcharged}
-        onComplete={(release) => onFinish({ ...pendingRelease.result, release })}
+        release={pendingRelease.release}
+        enemies={combat.enemies}
+        lowPower={lowPower}
+        onSound={onSound}
+        onComplete={() => onFinish(pendingRelease)}
       />
     )
   }

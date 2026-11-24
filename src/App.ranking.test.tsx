@@ -75,13 +75,10 @@ test.each(['計算モード', 'モンスター討伐モード'])('%sで任意の
   }
   finish()
   if (presentation === 'モンスター討伐モード') {
-    advance(450)
-    advance(250)
-    click('決定')
-    expect(screen.getByText('CRITICAL RELEASE!')).toBeTruthy()
-    advance(200)
-    expect(screen.getByText('新星座誕生')).toBeTruthy()
-    advance(1400)
+    advance(2_000)
+    expect(screen.getByText('強化解放')).toBeTruthy()
+    expect(screen.getByText('2,530 KO')).toBeTruthy()
+    advance(800)
   }
   expect(screen.getByText('1,584 pt')).toBeTruthy()
 

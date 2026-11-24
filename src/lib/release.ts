@@ -1,30 +1,20 @@
-export const RELEASE_METER_MS = 1000
-const CRITICAL_WINDOW_MS = 40
+import { RELEASE } from './releaseConfig'
 
 export type ReleaseResult = {
-  tier: 1 | 2 | 3
+  tier: typeof RELEASE.tiers[number]['tier']
   koCount: number
   distanceKm: number
 }
 
-export function calculateRelease(power: number, critical = false, overcharged = false): ReleaseResult {
-  const baseTier = power >= 400 ? 3 : power >= 200 ? 2 : 1
-  const boost = Number(critical) + Number(overcharged)
-  const tier = Math.min(3, baseTier + boost) as ReleaseResult['tier']
-
+export function calculateRelease(power: number): ReleaseResult {
+  const profile = RELEASE.tiers.reduce((current, tier) => power >= tier.minPower ? tier : current)
   return {
-    tier,
-    koCount: power * 10,
-    distanceKm: 5 * power ** 2,
+    tier: profile.tier,
+    koCount: power * RELEASE.koPerPower,
+    distanceKm: RELEASE.distancePerPowerSquared * power ** 2,
   }
 }
 
-export function releaseMeterPosition(elapsedMs: number) {
-  return 1 - Math.abs(1 - 2 * Math.min(1, Math.max(0, elapsedMs / RELEASE_METER_MS)))
-}
-
-export function isCriticalRelease(elapsedMs: number) {
-  return [RELEASE_METER_MS / 4, RELEASE_METER_MS * 3 / 4].some(
-    (center) => Math.abs(elapsedMs - center) <= CRITICAL_WINDOW_MS,
-  )
+export function breaksPlanet(release: ReleaseResult) {
+  return RELEASE.tiers[release.tier - 1].minPower >= RELEASE.planetBreakPower
 }

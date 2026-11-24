@@ -334,8 +334,8 @@ test('モンスター討伐モードの30秒でチャージ結果を表示し、
   enter(first().answer)
   expect(screen.getByText('CRITICAL CHARGE!')).toBeTruthy()
   advance(30_050)
-  expect(screen.getByText('CHARGE COMPLETE')).toBeTruthy()
-  for (const ms of [450, 1000, 200, 1400]) advance(ms)
+  expect(screen.getByRole('main', { name: '解放' })).toBeTruthy()
+  advance(2_800)
   expect(screen.getByRole('heading', { name: 'TIME UP!' })).toBeTruthy()
   expect(screen.getByText('チャージ量').nextElementSibling?.textContent).toBe('23')
   expect(screen.getByText('KO数').nextElementSibling?.textContent).toBe('230')
@@ -345,8 +345,8 @@ test('モンスター討伐モードの30秒でチャージ結果を表示し、
   expect(document.querySelector('.charge-arena')?.getAttribute('data-color')).toBe('blue')
   expect(screen.queryByText('CRITICAL CHARGE!')).toBeNull()
   advance(30_050)
-  expect(screen.getByText('CHARGE COMPLETE')).toBeTruthy()
-  for (const ms of [450, 1000, 200, 1400]) advance(ms)
+  expect(screen.getByRole('main', { name: '解放' })).toBeTruthy()
+  advance(2_800)
   expect(screen.getByText('チャージ量').nextElementSibling?.textContent).toBe('0')
   expect(screen.getByText('KO数').nextElementSibling?.textContent).toBe('0')
   expect(screen.getByText('飛距離').nextElementSibling?.textContent).toBe('0 km')
@@ -394,7 +394,7 @@ test('選択した表示モードを次の起動時にも復元する', () => {
   expect(screen.getByRole('button', { name: '計算モード', pressed: true })).toBeTruthy()
 })
 
-test('解放規模「大」を毎回加算し、同じ飛距離には新記録を表示しない', () => {
+test('完走とスキップで討伐記録を一度ずつ更新する', () => {
   render(<App />)
   click('掛け算')
   click('モンスター討伐モード')
@@ -402,25 +402,25 @@ test('解放規模「大」を毎回加算し、同じ飛距離には新記録�
   click('START')
   advance(3_000)
 
-  function clearWithCriticalRelease() {
+  function clearWithUltimate(skip: boolean) {
     const generate = createQuestionGenerator()
-    for (let index = 0; index < 10; index++) enter(generate(1, 'multiplication').answer)
-    for (const ms of [30_050, 450, 250]) advance(ms)
-    click('決定')
-    for (const ms of [200, 1400]) advance(ms)
+    for (let index = 0; index < 18; index++) enter(generate(1, 'multiplication').answer)
+    advance(30_050)
+    if (skip) click('スキップ')
+    advance(2_800)
   }
 
-  clearWithCriticalRelease()
+  clearWithUltimate(false)
   expect(screen.getAllByText('新記録')).toHaveLength(3)
   expect(screen.getByText('地球爆破').nextElementSibling?.textContent).toBe('1 回')
   click('もう1回')
-  clearWithCriticalRelease()
+  clearWithUltimate(true)
   expect(screen.getAllByText('新記録')).toHaveLength(2)
   expect(within(screen.getByText('飛距離')).queryByText('新記録')).toBeNull()
   expect(screen.getByText('地球爆破').nextElementSibling?.textContent).toBe('2 回')
   click('モード選択に戻る')
-  expect(screen.getByText('累計KO数 4,600')).toBeTruthy()
-  expect(screen.getByText('最大飛距離 264,500 km')).toBeTruthy()
+  expect(screen.getByText('累計KO数 8,280')).toBeTruthy()
+  expect(screen.getByText('最大飛距離 856,980 km')).toBeTruthy()
   expect(screen.getByText('地球爆破 2 回')).toBeTruthy()
 })
 
