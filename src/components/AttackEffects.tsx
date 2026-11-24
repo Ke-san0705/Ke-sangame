@@ -2,7 +2,7 @@ import { useRef } from 'react'
 import { useGSAP } from '@gsap/react'
 import gsap from 'gsap'
 import { ATTACK_EFFECTS as config, attackEffectForStage, type AttackShape, type AttackVisual } from '../lib/attackEffects'
-import { ENEMY_STAGE, ENEMY_TYPES } from '../lib/enemyApproachConfig'
+import { ENEMY_STAGE } from '../lib/enemyApproachConfig'
 
 const heroX = ENEMY_STAGE.heroX * config.width
 const screenX = (x: number) => Math.min(x * config.width, config.maxScreenX)
@@ -48,7 +48,8 @@ export function AttackEffect({ attack, simple, onComplete }: {
   const scope = useRef<SVGSVGElement>(null)
   const profile = attackEffectForStage(attack.stage)
   const { shape, color, travel, duration } = profile
-  const slashX = attack.targets[0] ? screenX(attack.targets[0].x) : config.defaultSlashX
+  const hits = attack.hits.slice(0, config.maxImpacts)
+  const slashX = hits[0] ? screenX(hits[0].enemy.x) : config.defaultSlashX
   const originX = shape === 'slash' ? slashX : heroX
 
   useGSAP(() => {
@@ -56,9 +57,13 @@ export function AttackEffect({ attack, simple, onComplete }: {
     if (!target) return
     const stroke = target.querySelector('.attack-stroke')
     const impacts = target.querySelectorAll('.attack-impact')
-    const timeline = gsap.timeline({ onComplete: () => onComplete(attack.id, simple) })
+    const timeline = gsap.timeline()
     const lifetime = simple ? config.shortDuration : duration
-
+    // Keep flight sprites mounted until the longest hit animation has finished.
+    const flightDuration = attack.hits.reduce((longest, { enemy, defeated }) => {
+      const profile = enemy.type === 'golem' ? config.knockback.golem : config.knockback.small
+      return defeated ? Math.max(longest, profile.durationMs / 1000) : longest
+    }, 0)
     timeline.fromTo(target, { opacity: 1 }, { opacity: 0, duration: lifetime, ease: 'power2.in' })
     if (!simple && stroke) {
       const flying = shape === 'flying'
@@ -68,19 +73,15 @@ export function AttackEffect({ attack, simple, onComplete }: {
         ease: flying ? 'none' : 'power2.out',
       }, 0)
       impacts.forEach((impact, index) => {
-        const enemy = attack.targets[index]
+        const { enemy } = hits[index]
         const distance = screenX(enemy.x) - heroX - config.flyingTipX
         const hitTime = flying
           ? Math.max(0, distance / travel) * config.flyingTravelDuration
           : config.windup
         timeline.fromTo(impact, { opacity: 0 }, { opacity: 0.85, duration: config.windup }, hitTime)
-        const ghost = impact.querySelector('.attack-knockback')
-        if (ghost) {
-          const { travel, lift, angle, duration } = config.impact
-          timeline.to(ghost, { x: travel, y: lift, rotation: angle, opacity: 0, duration, ease: 'power2.out' }, hitTime)
-        }
       })
     }
+    timeline.call(() => onComplete(attack.id, simple), [], Math.max(timeline.duration(), flightDuration))
   }, { scope, dependencies: [simple], revertOnUpdate: true })
 
   return (
@@ -91,13 +92,9 @@ export function AttackEffect({ attack, simple, onComplete }: {
           <Stroke shape={shape} simple={simple} />
         </g>
       </g>
-      {!simple && attack.targets.map((enemy) => (
+      {!simple && hits.map(({ enemy }) => (
         <g key={enemy.id} transform={`translate(${screenX(enemy.x)} ${config.baseline})`}>
           <g className="attack-impact">
-            {shape === 'flying' && (
-              <image className="attack-knockback" x="-36" y="-78" width="72" height="115"
-                href={`${import.meta.env.BASE_URL}monsters/${ENEMY_TYPES[enemy.type].sprite}.png`} />
-            )}
             <path className="attack-sparks" d="m-18-19-12-8m43 11 13-11m-10 27 12 8m-46-4-10 9" />
           </g>
         </g>

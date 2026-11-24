@@ -1,5 +1,5 @@
 import type { Level } from './question-generator'
-import { COMBO_SPAWN_MULTIPLIERS, ENEMY_DIFFICULTY, ENEMY_SPAWN_ORDER, ENEMY_STAGE, ENEMY_TYPES } from './enemyApproachConfig'
+import { COMBO_SPAWN_MULTIPLIERS, ENEMY_DENSITY, ENEMY_DIFFICULTY, ENEMY_SPAWN_ORDER, ENEMY_STAGE, ENEMY_TYPES } from './enemyApproachConfig'
 
 export type Enemy = { id: number; type: keyof typeof ENEMY_TYPES; x: number; hp: number }
 
@@ -23,18 +23,41 @@ function moveEnemies(enemies: readonly Enemy[], seconds: number): Enemy[] {
   })
 }
 
-export function advanceEnemies(state: EnemyApproach, seconds: number, level: Level, combo: number): EnemyApproach {
+export type EnemySpawnOptions = { survival?: boolean; lowPower?: boolean }
+
+const survivalDensity = [...ENEMY_DENSITY.timed, ...ENEMY_DENSITY.survival]
+
+export function advanceEnemies(
+  state: EnemyApproach, seconds: number, level: Level, combo: number, options: EnemySpawnOptions = {},
+): EnemyApproach {
+  const comboMultiplier = COMBO_SPAWN_MULTIPLIERS.reduce((value, entry) => combo >= entry.combo ? entry.multiplier : value, 1)
+  const phases = options.survival ? survivalDensity : ENEMY_DENSITY.timed
+  const end = state.elapsedSeconds + seconds
+  let elapsed = state.elapsedSeconds
+
+  while (elapsed < end) {
+    const nextPhase = phases.findIndex(({ fromSeconds }) => fromSeconds > elapsed)
+    const phase = phases[nextPhase === -1 ? phases.length - 1 : nextPhase - 1]
+    const nextBoundary = phases[nextPhase]?.fromSeconds ?? end
+    const stepEnd = Math.min(end, nextBoundary)
+    const multiplier = Math.min(comboMultiplier * phase.multiplier, ENEMY_DENSITY.combinedMultiplierCap)
+    state = { ...advanceEnemyPhase(state, stepEnd - elapsed, level, multiplier, options.lowPower), elapsedSeconds: stepEnd }
+    elapsed = stepEnd
+  }
+  return state
+}
+
+function advanceEnemyPhase(
+  state: EnemyApproach, seconds: number, level: Level, multiplier: number, lowPower = false,
+): Omit<EnemyApproach, 'elapsedSeconds'> {
   const { baseRate, rateGrowth, maxEnemies } = ENEMY_DIFFICULTY[level]
-  const multiplier = COMBO_SPAWN_MULTIPLIERS.reduce(
-    (value, entry) => combo >= entry.combo ? entry.multiplier : value,
-    COMBO_SPAWN_MULTIPLIERS[0].multiplier,
-  )
+  const cap = Math.max(1, maxEnemies - (lowPower ? ENEMY_DENSITY.lowPowerCapReduction : 0))
   const growth = rateGrowth * multiplier
   let rate = (baseRate + rateGrowth * state.elapsedSeconds) * multiplier
   let timeLeft = seconds
   let { enemies, nextEnemyId, spawnProgress } = state
 
-  while (enemies.length < maxEnemies) {
+  while (enemies.length < cap) {
     const progressNeeded = 1 - spawnProgress
     // Solve the integral of the linear spawn rate for the next spawn time.
     const untilSpawn = 2 * progressNeeded / (rate + Math.sqrt(rate ** 2 + 2 * growth * progressNeeded))
@@ -50,8 +73,7 @@ export function advanceEnemies(state: EnemyApproach, seconds: number, level: Lev
 
   return {
     nextEnemyId,
-    elapsedSeconds: state.elapsedSeconds + seconds,
-    spawnProgress: enemies.length < maxEnemies ? spawnProgress + (rate + growth * timeLeft / 2) * timeLeft : 0,
+    spawnProgress: enemies.length < cap ? spawnProgress + (rate + growth * timeLeft / 2) * timeLeft : 0,
     enemies: moveEnemies(enemies, timeLeft),
   }
 }

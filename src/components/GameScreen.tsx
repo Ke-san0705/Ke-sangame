@@ -7,14 +7,15 @@ import type { ChargeResult } from '../lib/charge'
 import { calculateRelease, type ReleaseResult } from '../lib/release'
 import { calculateScore } from '../lib/score'
 import { BATTLE_FEEDBACK } from '../lib/battleUi'
-import { advanceCombat, applyCombatAnswer, createCombat, finishCombat, selectAttackTargets } from '../lib/combat'
+import { advanceCombat, applyCombatAnswer, createCombat, finishCombat } from '../lib/combat'
 import { ATTACK_STAGES, COMBAT_CONFIG, ENEMY_STAGE } from '../lib/enemyApproachConfig'
-import { ATTACK_EFFECTS, attackEffectForStage, queueAttackVisual, type AttackVisual } from '../lib/attackEffects'
+import { attackEffectForStage, queueAttackVisual, type AttackVisual } from '../lib/attackEffects'
 import type { BattleMotion } from './BattleStage'
 import type { SoundCue } from '../lib/soundEffects'
 import { ChargeArena, preloadChargeSprites } from './ChargeArena'
 import { ReleaseSequence } from './ReleaseSequence'
 import { GameKeypad, gameKey, keypadRows } from './GameKeypad'
+import { useReducedEffects } from '../lib/useEffectTimeline'
 import { HUNT_TIMING } from '../lib/huntConfig'
 
 const FINAL_INPUT_DRAIN_MS = 50
@@ -64,6 +65,7 @@ export function GameScreen({
 }: GameScreenProps) {
   const survival = duration === 'survival'
   const battleSurvival = survival && showMonsterBattle
+  const reducedEffects = useReducedEffects()
   const [combat, setCombat] = useState(createCombat)
   const latestCombat = useRef(combat)
   const lastCombatTick = useRef(0)
@@ -126,7 +128,9 @@ export function GameScreen({
 
   function advanceBattle(now: number) {
     if (!showMonsterBattle || now <= lastCombatTick.current) return
-    updateCombat(advanceCombat(latestCombat.current, (now - lastCombatTick.current) / 1_000, level))
+    updateCombat(advanceCombat(latestCombat.current, (now - lastCombatTick.current) / 1_000, level, {
+      survival: battleSurvival, lowPower: lowPower || reducedEffects,
+    }))
     lastCombatTick.current = now
     if (latestCombat.current.phase === 'defeat') finish()
   }
@@ -150,8 +154,7 @@ export function GameScreen({
       updateCombat(battle)
       if (kind === 'correctCount') {
         const stage = ATTACK_STAGES.find(({ stage }) => stage === battle.attackStage) ?? ATTACK_STAGES[0]
-        const targets = selectAttackTargets(previous.enemies, Math.min(stage.targets, ATTACK_EFFECTS.maxImpacts))
-        const attack = { id: next.correctCount, stage: stage.stage, targets }
+        const attack = { id: next.correctCount, stage: stage.stage, hits: battle.lastHits }
         setAttacks((current) => queueAttackVisual(current, attack))
         onSound?.(attackEffectForStage(stage.stage).sound, battle.combo)
       }

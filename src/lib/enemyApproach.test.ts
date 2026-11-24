@@ -22,6 +22,34 @@ describe('敵の出現と接近', () => {
     }
   })
 
+  it.each([
+    [0, false, 0, 1], [19, false, 0, 1], [20, false, 0, 1.5],
+    [39, false, 0, 1.5], [40, false, 0, 2], [60, false, 0, 2],
+    [60, true, 0, 2.5], [80, true, 0, 3], [120, true, 50, 6],
+  ])('経過 %i 秒、サバイバル %s、コンボ %i の倍率は %s', (elapsedSeconds, survival, combo, multiplier) => {
+    const { baseRate, rateGrowth } = ENEMY_DIFFICULTY[1]
+    const seconds = 0.01
+    const result = advanceEnemies({ ...initial, elapsedSeconds }, seconds, 1, combo, { survival })
+    expect(result.spawnProgress).toBeCloseTo((baseRate + rateGrowth * (elapsedSeconds + seconds / 2)) * seconds * multiplier)
+  })
+
+  it('時間帯をまたぐ更新は境界で分割した更新と一致する', () => {
+    const start = { ...initial, elapsedSeconds: 19.9, spawnProgress: 0.95 }
+    const once = advanceEnemies(start, 0.2, 1, 0)
+    const split = advanceEnemies(advanceEnemies(start, 0.1, 1, 0), 0.1, 1, 0)
+    expect(once.spawnProgress).toBeCloseTo(split.spawnProgress)
+    expect(once.enemies[0].x).toBeCloseTo(split.enemies[0].x)
+  })
+
+  it('低負荷で出現を間引いても移動と経過時間は進む', () => {
+    const normal = advanceEnemies(initial, 5, 5, 50)
+    const lowPower = advanceEnemies(initial, 5, 5, 50, { lowPower: true })
+    expect(lowPower.enemies.length).toBeLessThan(normal.enemies.length)
+    const later = advanceEnemies(lowPower, 1, 5, 50, { lowPower: true })
+    expect(later).toMatchObject({ elapsedSeconds: 6, nextEnemyId: lowPower.nextEnemyId, spawnProgress: 0 })
+    expect(later.enemies[0].x).toBeLessThan(lowPower.enemies[0].x)
+  })
+
   it('高コンボや長時間経過でも難易度ごとの上限で停止する', () => {
     for (const level of [1, 2, 3, 4, 5] as const) {
       const saturated = advanceEnemies(initial, 60, level, 50)

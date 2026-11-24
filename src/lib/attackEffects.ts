@@ -1,5 +1,5 @@
 import { ATTACK_STAGES } from './enemyApproachConfig'
-import type { Enemy } from './enemyApproach'
+import type { EnemyHit } from './combat'
 import type { SoundCue } from './soundEffects'
 
 const profiles = {
@@ -27,7 +27,16 @@ export const ATTACK_EFFECTS = {
   windup: 0.055,
   shortDuration: 0.21,
   hero: { windupX: -4, strikeX: 13, angle: 6 },
-  impact: { travel: 68, lift: -35, angle: 25, duration: 0.25 },
+  knockback: {
+    small: { lift: 0.32, rotation: 340, durationMs: 340 },
+    golem: { lift: 0.48, rotation: 450, durationMs: 420 },
+    exitX: 1.10,
+    stageTravel: 0.10,
+    stageLift: 0.035,
+    golemTravel: 0.22,
+    samples: 9,
+    flinch: { travelPx: 7, rotation: 7, durationMs: 150 },
+  },
 }
 
 export function attackEffectForStage(stage: number) {
@@ -38,7 +47,7 @@ export function attackEffectForStage(stage: number) {
 export type AttackVisual = {
   id: number
   stage: number
-  targets: readonly Enemy[]
+  hits: readonly EnemyHit[]
 }
 
 export function queueAttackVisual(current: readonly AttackVisual[], attack: AttackVisual) {
