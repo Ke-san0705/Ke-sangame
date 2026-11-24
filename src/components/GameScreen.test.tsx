@@ -447,7 +447,7 @@ test('討伐サバイバルでは制限時間がなく、HPゼロで解放せず
     fireEvent.keyDown(window, { key: 'Enter' })
   }
   expect(hp()).toBe(0)
-  expect(screen.queryByText('CHARGE COMPLETE')).toBeNull()
+  expect(screen.queryByRole('main', { name: '解放' })).toBeNull()
   expect(onFinish).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ battleOutcome: 'defeat' }))
 })
 
@@ -489,55 +489,73 @@ test('制限時間ちょうどの誤答でHPがゼロになると敗北する', 
   act(() => vi.advanceTimersByTime(1_000))
   miss()
   expect(onFinish).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ battleOutcome: 'defeat' }))
-  expect(screen.queryByText('CHARGE COMPLETE')).toBeNull()
+  expect(screen.queryByRole('main', { name: '解放' })).toBeNull()
 })
 
 function finishReleaseWithoutInput() {
-  for (const ms of [450, 1000, 200, 1400]) {
-    act(() => vi.advanceTimersByTime(ms))
-  }
+  act(() => vi.advanceTimersByTime(2_800))
 }
 
-test.each(['keyboard', 'button', 'early', 'timeout'] as const)('時間切れ後に解放する（%s）', (input) => {
+test('時間切れ後に操作なしで超必殺技を発動し、全段階を経て終了する', () => {
   vi.useFakeTimers()
   const onFinish = vi.fn()
+  const onSound = vi.fn()
   const { container } = render(
-    <GameScreen level={1} mode="addition" duration={30} skipCountdown showMonsterBattle onFinish={onFinish} />,
+    <GameScreen level={1} mode="addition" duration={30} skipCountdown showMonsterBattle
+      onSound={onSound} onFinish={onFinish} />,
   )
 
   act(() => vi.advanceTimersByTime(30_050))
-  expect(screen.getByText('CHARGE COMPLETE')).toBeTruthy()
-  expect(onFinish).not.toHaveBeenCalled()
+  const scene = container.querySelector('.release-scene')
+  expect(scene?.getAttribute('data-tier')).toBe('1')
+  expect(scene?.getAttribute('data-phase')).toBe('blackout')
+  expect(onSound).not.toHaveBeenCalledWith('timeUp')
   expect(screen.queryByRole('group', { name: 'テンキー' })).toBeNull()
-  act(() => vi.advanceTimersByTime(450))
-
-  const critical = input === 'keyboard' || input === 'button'
-  if (critical) {
-    act(() => vi.advanceTimersByTime(250))
-    if (input === 'keyboard') fireEvent.keyDown(window, { key: 'Enter' })
-    else fireEvent.click(screen.getByRole('button', { name: '決定' }))
-    expect(screen.getByText('CRITICAL RELEASE!')).toBeTruthy()
-  } else if (input === 'early') {
-    fireEvent.keyDown(window, { key: 'Enter' })
-  } else {
-    act(() => vi.advanceTimersByTime(1000))
+  fireEvent.keyDown(window, { key: 'Enter' })
+  for (const [ms, phase] of [[400, 'gather'], [600, 'slash'], [300, 'blast'], [700, 'aftermath']] as const) {
+    act(() => vi.advanceTimersByTime(ms - 1))
+    expect(scene?.getAttribute('data-phase')).not.toBe(phase)
+    act(() => vi.advanceTimersByTime(1))
+    expect(scene?.getAttribute('data-phase')).toBe(phase)
+    expect(onFinish).not.toHaveBeenCalled()
   }
-
-  const releaseScene = container.querySelector('.release-scene')
-  expect(releaseScene?.getAttribute('data-phase')).toBe('impact')
-  expect(releaseScene?.getAttribute('data-tier')).toBe(critical ? '3' : '2')
-  act(() => vi.advanceTimersByTime(199))
-  expect(releaseScene?.getAttribute('data-phase')).toBe('impact')
-  act(() => vi.advanceTimersByTime(1))
   expect(screen.getByText('0 KO')).toBeTruthy()
-  expect(onFinish).not.toHaveBeenCalled()
-  act(() => vi.advanceTimersByTime(1400))
+  act(() => vi.advanceTimersByTime(800))
   expect(onFinish).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
-    score: 0,
-    release: { koCount: 0, distanceKm: 0, tier: critical ? 3 : 2 },
+    score: 0, release: { koCount: 0, distanceKm: 0, tier: 1 },
   }))
 })
 
+test('スキップを繰り返しても完走時と同じ結果を一度だけ返す', () => {
+  vi.useFakeTimers()
+  const run = (skip: boolean) => {
+    vi.spyOn(Math, 'random').mockReturnValue(0.25)
+    const onFinish = vi.fn()
+    const { unmount } = render(
+      <GameScreen level={1} mode="addition" duration={30} skipCountdown showMonsterBattle onFinish={onFinish} />,
+    )
+    const generate = createQuestionGenerator()
+    for (let index = 0; index < 10; index++) {
+      for (const key of [...generate(1, 'addition').answer, 'Enter']) fireEvent.keyDown(window, { key })
+    }
+    act(() => vi.advanceTimersByTime(30_050))
+    act(() => vi.advanceTimersByTime(400))
+    expect(screen.getByText('強化解放')).toBeTruthy()
+    if (skip) {
+      const button = screen.getByRole('button', { name: 'スキップ' })
+      fireEvent.click(button)
+      fireEvent.click(button)
+    }
+    finishReleaseWithoutInput()
+    expect(onFinish).toHaveBeenCalledTimes(1)
+    unmount()
+    return onFinish.mock.calls[0][0]
+  }
+
+  const completed = run(false)
+  expect(completed.release.koCount).toBeGreaterThan(0)
+  expect(run(true)).toEqual(completed)
+})
 
 test.each([true, false])('誤答後の過充電は討伐でのみ発動し、再誤答で延長する（%s）', (showMonsterBattle) => {
   vi.useFakeTimers()

@@ -1,4 +1,4 @@
-import type { ReleaseResult } from './release'
+import { breaksPlanet, type ReleaseResult } from './release'
 
 export type ReplayRecords = {
   totalKoCount: number
@@ -30,7 +30,7 @@ export function saveReplayRecords(release: ReleaseResult) {
   const records = {
     totalKoCount: previous.totalKoCount + release.koCount,
     maxDistanceKm: Math.max(previous.maxDistanceKm, release.distanceKm),
-    earthExplosionCount: previous.earthExplosionCount + (release.tier === 3 ? 1 : 0),
+    earthExplosionCount: previous.earthExplosionCount + Number(breaksPlanet(release)),
   }
   const updated = {
     totalKoCount: records.totalKoCount > previous.totalKoCount,

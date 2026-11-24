@@ -47,7 +47,7 @@ test('解放画面に移ると戦闘のタイムラインと入力処理を破�
   expect(screen.getByRole('main', { name: '解放' })).toBeTruthy()
   expect(tweens()).toHaveLength(0)
   expect(fireEvent.keyDown(window, { key: 'Tab' })).toBe(true)
-  // Only the release screen's ready timeout should remain.
+  // Only the release screen's phase timeout should remain.
   expect(vi.getTimerCount()).toBe(timersBeforeMount + 1)
   unmount()
   expect(vi.getTimerCount()).toBe(timersBeforeMount)
