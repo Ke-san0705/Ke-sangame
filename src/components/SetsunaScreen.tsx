@@ -14,12 +14,14 @@ const lossLabels = { wrong: '誤答', slow: 'CPUに先を越された', falseSta
 type RoundResult = { outcome: 'win' | keyof typeof lossLabels; reactionMs: number | null }
 type SetsunaScreenProps = {
   difficulty: SetsunaDifficulty
+  // DEV-12 supplies this when a strong-enemy encounter starts.
+  strongEnemy?: boolean
   onBack: () => void
   onReplay: () => void
   onSound?: (cue: SoundCue) => void
 }
 
-export function SetsunaScreen({ difficulty, onBack, onReplay, onSound }: SetsunaScreenProps) {
+export function SetsunaScreen({ difficulty, strongEnemy = false, onBack, onReplay, onSound }: SetsunaScreenProps) {
   const [enemy, setEnemy] = useState(0)
   const [duel, setDuel] = useState(() => createDuel(difficulty, 0))
   const [signal, setSignal] = useState(false)
@@ -41,17 +43,28 @@ export function SetsunaScreen({ difficulty, onBack, onReplay, onSound }: Setsuna
   const settled = useRef(false)
 
   const playSound = useEffectEvent((cue: SoundCue) => onSound?.(cue))
+  useEffect(() => () => playSound('silence'), [])
+  useEffect(() => {
+    if (strongEnemy) playSound('duelStrongEnemy')
+  }, [strongEnemy])
+
   useEffect(() => {
     if (!waiting) return
-    playSound('heartbeat')
-    const pulse = window.setInterval(() => playSound('heartbeat'), SETSUNA.heartbeatIntervalMs)
+    const ambience = () => {
+      if (settled.current || signalTime.current !== null) return
+      playSound('duelWind')
+      playSound('heartbeat')
+    }
     const reveal = window.setTimeout(() => {
       if (settled.current) return
       // Commit the equation and cue in the same task that starts the reaction clock.
       signalTime.current = performance.now()
       flushSync(() => setSignal(true))
+      playSound('silence')
       playSound('duelSignal')
     }, duel.waitMs)
+    const pulse = window.setInterval(ambience, SETSUNA.heartbeatIntervalMs)
+    ambience()
     return () => {
       window.clearInterval(pulse)
       window.clearTimeout(reveal)
@@ -61,10 +74,10 @@ export function SetsunaScreen({ difficulty, onBack, onReplay, onSound }: Setsuna
   function settle(outcome: RoundResult['outcome'], reactionMs: number | null = null) {
     if (settled.current) return
     settled.current = true
-    onSound?.('silence')
     setResult({ outcome, reactionMs })
     setFinishPlaying(!reducedEffects)
     setBest(saveSetsunaBest(reactionMs, outcome === 'win' ? enemy + 1 : enemy))
+    onSound?.('silence')
   }
 
   const cpuWins = useEffectEvent(() => settle('slow'))
@@ -77,11 +90,23 @@ export function SetsunaScreen({ difficulty, onBack, onReplay, onSound }: Setsuna
 
   useEffect(() => {
     if (!playing) return
-    const slash = window.setTimeout(() => playSound('slash'), SETSUNA.finish.stepMs)
-    const finish = window.setTimeout(() => setFinishPlaying(false), setsunaFinishMs)
+    const { stepMs, slashMs, hitStopMs, silenceMs } = SETSUNA.finish
+    const silenceAt = stepMs + slashMs + hitStopMs
+    const draw = window.setTimeout(() => playSound('duelDraw'), stepMs)
+    const silence = window.setTimeout(() => playSound('silence'), silenceAt)
+    const fall = window.setTimeout(() => playSound('duelFall'), silenceAt + silenceMs)
+    let completed = false
+    const finish = window.setTimeout(() => {
+      completed = true
+      setFinishPlaying(false)
+      playSound('duelSheathe')
+    }, setsunaFinishMs)
     return () => {
-      window.clearTimeout(slash)
+      window.clearTimeout(draw)
+      window.clearTimeout(silence)
+      window.clearTimeout(fall)
       window.clearTimeout(finish)
+      if (!completed) playSound('silence')
     }
   }, [playing])
 
@@ -163,7 +188,7 @@ export function SetsunaScreen({ difficulty, onBack, onReplay, onSound }: Setsuna
   return (
     <main className="setsuna-screen battle-screen" data-outcome={result ? (won ? 'win' : 'loss') : undefined}>
       <header className="setsuna-header">
-        <button type="button" onClick={() => { onSound?.('silence'); onBack() }}>モード選択</button>
+        <button type="button" onClick={onBack}>モード選択</button>
         <h1>刹那</h1>
         <span>第{enemy + 1}戦</span>
       </header>

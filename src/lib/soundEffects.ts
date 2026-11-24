@@ -2,7 +2,7 @@ import { ULTIMATE_AUDIO } from './releaseConfig'
 
 import { SOUND_CONFIG, SOUND_CUES } from './soundConfig'
 
-export type SoundCue = keyof typeof SOUND_CUES | keyof typeof ULTIMATE_AUDIO | 'silence'
+export type SoundCue = keyof typeof SOUND_CUES | keyof typeof ULTIMATE_AUDIO | 'silence' | 'duelWind'
 
 function comboPitchMultiplier(combo: number) {
   const step = SOUND_CONFIG.comboPitch.find(({ minCombo }) => combo >= minCombo)
@@ -54,7 +54,50 @@ export function createSoundEffects(initialVolume: number = SOUND_CONFIG.defaultV
   let context: AudioContext | undefined
   let output: GainNode | undefined
   let volume = normalizeVolume(initialVolume)
-  const voices = new Map<OscillatorNode, () => void>()
+  const voices = new Map<AudioScheduledSourceNode, () => void>()
+  let windBuffer: AudioBuffer | undefined
+
+  function startVoice(source: AudioScheduledSourceNode, gain: GainNode, at: number, duration: number, filter?: BiquadFilterNode) {
+    const cleanup = () => {
+      voices.delete(source)
+      source.onended = null
+      source.disconnect()
+      filter?.disconnect()
+      gain.disconnect()
+    }
+    source.start(at)
+    source.stop(at + duration)
+    voices.set(source, cleanup)
+    source.onended = cleanup
+  }
+
+  function playWind(audio: AudioContext, destination: GainNode) {
+    if (voices.size >= SOUND_CONFIG.maxVoices) return
+    const { sampleRate, duration, attack, cutoff, peak } = SOUND_CONFIG.wind
+    const { floor } = SOUND_CONFIG.envelope
+    if (!windBuffer) {
+      const samples = Math.ceil(sampleRate * duration)
+      // Audio synthesis must not consume the random sequence used by duel generation.
+      const noise = crypto.getRandomValues(new Uint8Array(samples))
+      windBuffer = audio.createBuffer(1, samples, sampleRate)
+      const channel = windBuffer.getChannelData(0)
+      for (let i = 0; i < channel.length; i += 1) channel[i] = noise[i] / 127.5 - 1
+    }
+    const source = audio.createBufferSource()
+    const filter = audio.createBiquadFilter()
+    const gain = audio.createGain()
+    const at = audio.currentTime
+    source.buffer = windBuffer
+    filter.type = 'lowpass'
+    filter.frequency.value = cutoff
+    gain.gain.setValueAtTime(floor, at)
+    gain.gain.linearRampToValueAtTime(peak, at + attack)
+    gain.gain.exponentialRampToValueAtTime(floor, at + duration)
+    source.connect(filter)
+    filter.connect(gain)
+    gain.connect(destination)
+    startVoice(source, gain, at, duration, filter)
+  }
 
   function stopVoices() {
     for (const [voice, cleanup] of voices) {
@@ -90,8 +133,15 @@ export function createSoundEffects(initialVolume: number = SOUND_CONFIG.defaultV
         stopVoices()
         return
       }
-      if (context?.state !== 'running' || !output || volume === 0) return
+      if (!context || !output || volume === 0) return
+      // An encounter can mount while the START gesture is still resuming audio.
+      const pendingEntrance = cue === 'duelStrongEnemy' && context.state === 'suspended'
+      if (context.state !== 'running' && !pendingEntrance) return
       const audio = context
+      if (cue === 'duelWind') {
+        playWind(audio, output)
+        return
+      }
       const start = audio.currentTime
       const pitch = cue === 'correct' || cue === 'slash' ? comboPitchMultiplier(intensity) : 1
       const ultimate = ULTIMATE_AUDIO[cue as keyof typeof ULTIMATE_AUDIO]
@@ -112,22 +162,14 @@ export function createSoundEffects(initialVolume: number = SOUND_CONFIG.defaultV
         gain.gain.exponentialRampToValueAtTime(floor, at + profile.duration)
         oscillator.connect(gain)
         gain.connect(output)
-        const cleanup = () => {
-          voices.delete(oscillator)
-          oscillator.onended = null
-          oscillator.disconnect()
-          gain.disconnect()
-        }
-        oscillator.start(at)
-        oscillator.stop(at + profile.duration)
-        voices.set(oscillator, cleanup)
-        oscillator.onended = cleanup
+        startVoice(oscillator, gain, at, profile.duration)
       }
     },
     dispose() {
       stopVoices()
       output?.disconnect()
       output = undefined
+      windBuffer = undefined
       if (context) void context.close().catch(() => {})
       context = undefined
     },
