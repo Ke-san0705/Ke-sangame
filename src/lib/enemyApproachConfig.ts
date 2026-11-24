@@ -36,9 +36,18 @@ export const COMBO_SPAWN_MULTIPLIERS = [
   { combo: 50, multiplier: 5 },
 ]
 
+export const ATTACK_STAGES = [
+  { combo: 0, stage: 1, targets: 1, name: '通常斬撃' },
+  { combo: 5, stage: 2, targets: 2, name: '飛翔斬撃' },
+  { combo: 10, stage: 3, targets: 4, name: '衝撃波・弱' },
+  { combo: 20, stage: 4, targets: 8, name: '衝撃波・強' },
+  { combo: 30, stage: 5, targets: 16, name: 'エネルギー砲・弱' },
+  { combo: 50, stage: 6, targets: 32, name: 'エネルギー砲・強' },
+]
+
 export const COMBAT_CONFIG = {
   maxHp: 100,
   incorrectDamage: 10,
-  initialAttackStage: 1,
+  initialAttackStage: ATTACK_STAGES[0].stage,
   attackDamage: 1,
 }

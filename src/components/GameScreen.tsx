@@ -7,7 +7,7 @@ import type { ReleaseResult } from '../lib/release'
 import { calculateScore } from '../lib/score'
 import { BATTLE_FEEDBACK } from '../lib/battleUi'
 import { advanceCombat, applyCombatAnswer, createCombat, finishCombat } from '../lib/combat'
-import { COMBAT_CONFIG, ENEMY_STAGE } from '../lib/enemyApproachConfig'
+import { ATTACK_STAGES, COMBAT_CONFIG, ENEMY_STAGE } from '../lib/enemyApproachConfig'
 import type { SoundCue } from '../lib/soundEffects'
 import { ChargeArena, preloadChargeSprites } from './ChargeArena'
 import { ReleaseSequence } from './ReleaseSequence'
@@ -86,6 +86,8 @@ export function GameScreen({
   const latestCounts = useRef(counts)
   const [criticalAnswer, setCriticalAnswer] = useState<number>()
   const criticalTimeout = useRef<number | undefined>(undefined)
+  const [attackEvolution, setAttackEvolution] = useState<string>()
+  const evolutionTimeout = useRef<number | undefined>(undefined)
   const [comboNotice, setComboNotice] = useState<number>()
   const comboTimeout = useRef<number | undefined>(undefined)
   const { correctCount, incorrectCount, passCount } = counts
@@ -141,8 +143,15 @@ export function GameScreen({
     setCounts(next)
     if (showMonsterBattle) {
       if (kind === 'passCount') return
-      updateCombat(applyCombatAnswer(latestCombat.current, kind === 'correctCount' ? 'correct' : 'incorrect'))
-      const battleCombo = latestCombat.current.combo
+      const previous = latestCombat.current
+      const battle = applyCombatAnswer(previous, kind === 'correctCount' ? 'correct' : 'incorrect')
+      updateCombat(battle)
+      if (battle.attackStage > previous.attackStage) {
+        window.clearTimeout(evolutionTimeout.current)
+        setAttackEvolution(ATTACK_STAGES.find(({ stage }) => stage === battle.attackStage)?.name)
+        evolutionTimeout.current = window.setTimeout(() => setAttackEvolution(undefined), BATTLE_FEEDBACK.evolutionDurationMs)
+      }
+      const battleCombo = battle.combo
       window.clearTimeout(comboTimeout.current)
       setComboNotice(battleCombo >= BATTLE_FEEDBACK.comboMinimum ? battleCombo : undefined)
       if (battleCombo >= BATTLE_FEEDBACK.comboMinimum) {
@@ -369,6 +378,7 @@ export function GameScreen({
       window.clearTimeout(finishTimeout)
       window.clearTimeout(passTimeout.current)
       window.clearTimeout(criticalTimeout.current)
+      window.clearTimeout(evolutionTimeout.current)
       window.clearTimeout(comboTimeout.current)
       window.clearTimeout(missOverchargeTimeout.current)
       window.removeEventListener('keydown', onKeyDown)
@@ -474,6 +484,7 @@ export function GameScreen({
               {criticalAnswer !== undefined && <div key={criticalAnswer} className="charge-flash" aria-hidden="true" />}
               <div className="battle-feedback" role="status">
                 {overchargeActive && <strong className="game-overcharge-warning">危険！過充電</strong>}
+                {attackEvolution && <strong className="battle-evolution">攻撃進化：{attackEvolution}</strong>}
                 {comboNotice !== undefined && <strong key={correctCount} className="battle-combo">{comboNotice} COMBO</strong>}
                 {criticalAnswer !== undefined && <strong key={`critical-${criticalAnswer}`} className="charge-critical-status">CRITICAL CHARGE!</strong>}
               </div>
