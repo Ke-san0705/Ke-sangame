@@ -162,10 +162,15 @@ export function GameScreen({
       if (kind === 'correctCount') {
         const stage = ATTACK_STAGES.find(({ stage }) => stage === battle.attackStage) ?? ATTACK_STAGES[0]
         const targets = selectAttackTargets(previous.enemies, Math.min(stage.targets, ATTACK_EFFECTS.maxImpacts))
-        const attack = { id: next.correctCount, stage: stage.stage, targets }
+        const special = battle.comboSpecial
+        const attack = {
+          id: next.correctCount, stage: stage.stage,
+          targets: special?.targets ?? targets,
+          special,
+        }
         setAttacks((current) => queueAttackVisual(current, attack))
         const profile = attackEffectForStage(stage.stage)
-        const cue = evolved ? 'evolution' : critical ? 'hit' : profile.shape === 'shockwave' ? 'shockwave' : undefined
+        const cue = special ? 'comboSpecial' : evolved ? 'evolution' : critical ? 'hit' : profile.shape === 'shockwave' ? 'shockwave' : undefined
         setBattleMotion(cue ? { cue, trigger: ++motionId.current } : undefined)
         onSound?.(profile.sound, battle.combo)
       }

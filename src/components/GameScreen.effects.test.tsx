@@ -101,3 +101,26 @@ test('連続正解で攻撃が進化し、重ねるエフェクトは上限内�
   expect(game.querySelector('[data-attack="shockwave"]')).toBeTruthy()
   expect(game.querySelectorAll('[data-attack]').length).toBeLessThanOrEqual(3)
 })
+
+
+test('10コンボの正解入力でHPが回復し、金色の必殺技を一度表示する', () => {
+  const { game } = play()
+  const generate = createQuestionGenerator()
+  generate(1, 'addition')
+  for (const key of ['0', 'Enter']) fireEvent.keyDown(window, { key })
+  generate(1, 'addition')
+  const hp = screen.getByRole('meter', { name: 'HP' })
+  expect(hp.getAttribute('value')).toBe('90')
+
+  for (let combo = 1; combo <= 10; combo++) {
+    const { answer } = generate(1, 'addition')
+    for (const key of [...answer, 'Enter']) fireEvent.keyDown(window, { key })
+    if (combo < 10) expect(hp.getAttribute('value')).toBe('90')
+  }
+
+  expect(hp.getAttribute('value')).toBe('100')
+  expect(screen.getByText('10 COMBO')).toBeTruthy()
+  expect(screen.getByText('+10 HP')).toBeTruthy()
+  fireEvent.keyDown(window, { key: 'Enter' })
+  expect(game.querySelectorAll('[data-attack="comboSpecial"]')).toHaveLength(1)
+})

@@ -51,3 +51,12 @@ export const COMBAT_CONFIG = {
   initialAttackStage: ATTACK_STAGES[0].stage,
   attackDamage: 1,
 }
+
+// Forward range is expressed as a fraction of the stage width from the hero.
+export const COMBO_SPECIAL = {
+  interval: 10,
+  heal: 10,
+  damage: 3,
+  range: 0.72,
+  maxTargets: 8,
+}
