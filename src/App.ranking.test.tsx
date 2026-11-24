@@ -1,3 +1,4 @@
+import { RELEASE } from './lib/releaseConfig'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { App } from './App'
@@ -76,10 +77,8 @@ test.each(['計算モード', 'モンスター討伐モード'])('%sで任意の
   if (presentation === 'モンスター討伐モード') {
     advance(30_000)
     advance(800)
-    advance(2_000)
     expect(screen.getByText('強化解放')).toBeTruthy()
-    expect(screen.getByText('2,530 KO')).toBeTruthy()
-    advance(800)
+    advance(RELEASE.endMs)
   } else {
     finish()
   }

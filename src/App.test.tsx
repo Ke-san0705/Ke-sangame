@@ -2,6 +2,8 @@ import { act, cleanup, fireEvent, render, screen, within } from '@testing-librar
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { App } from './App'
 import { createQuestionGenerator } from './lib/question-generator'
+import { RELEASE } from './lib/releaseConfig'
+import { readReplayRecords } from './lib/replayRecords'
 import { reactionLimit } from './lib/setsuna'
 import { SETSUNA, setsunaFinishMs, setsunaStrongEnemy } from './lib/setsunaConfig'
 
@@ -351,10 +353,18 @@ test('モンスター討伐モードの30秒でチャージ結果を表示し、
   expect(screen.getByText('FINISH')).toBeTruthy()
   advance(800)
   expect(screen.getByRole('main', { name: '解放' })).toBeTruthy()
-  advance(2_800)
+  const startingKo = screen.getByText(/^\d+ KO$/).textContent
+  advance(RELEASE.firstStrikeMs)
+  const firstStrikeKo = screen.getByText(/^\d+ KO$/).textContent
+  expect(parseInt(firstStrikeKo ?? '')).toBeGreaterThan(parseInt(startingKo ?? ''))
+  advance(RELEASE.aftermathMs - RELEASE.firstStrikeMs)
+  const finalKo = screen.getByText(/^\d+ KO$/).textContent
+  expect(parseInt(finalKo ?? '')).toBeGreaterThan(parseInt(firstStrikeKo ?? ''))
+  expect(document.querySelectorAll('.release-enemy')).toHaveLength(0)
+  advance(RELEASE.endMs - RELEASE.aftermathMs)
   expect(screen.getByRole('heading', { name: 'TIME UP!' })).toBeTruthy()
   expect(screen.getByText('チャージ量').nextElementSibling?.textContent).toBe('23')
-  expect(screen.getByText('KO数').nextElementSibling?.textContent).toBe('230')
+  expect(screen.getByText('KO数').nextElementSibling?.textContent + ' KO').toBe(finalKo)
   expect(screen.getByText('飛距離').nextElementSibling?.textContent).toBe('2,645 km')
   expect(screen.getAllByText('新記録')).toHaveLength(2)
   click('もう1回')
@@ -364,18 +374,19 @@ test('モンスター討伐モードの30秒でチャージ結果を表示し、
   expect(screen.getByText('FINISH')).toBeTruthy()
   advance(800)
   expect(screen.getByRole('main', { name: '解放' })).toBeTruthy()
-  advance(2_800)
+  advance(RELEASE.endMs)
   expect(screen.getByText('チャージ量').nextElementSibling?.textContent).toBe('0')
-  expect(screen.getByText('KO数').nextElementSibling?.textContent).toBe('0')
+  expect(Number(screen.getByText('KO数').nextElementSibling?.textContent)).toBeGreaterThan(0)
   expect(screen.getByText('飛距離').nextElementSibling?.textContent).toBe('0 km')
-  expect(screen.queryByText('新記録')).toBeNull()
+  expect(screen.getAllByText('新記録')).toHaveLength(1)
+  const cumulativeKo = readReplayRecords().totalKoCount
   click('モード選択に戻る')
-  expect(screen.getByText('累計KO数 230')).toBeTruthy()
+  expect(screen.getByText(`累計KO数 ${cumulativeKo}`)).toBeTruthy()
   expect(screen.getByText('最大飛距離 2,645 km')).toBeTruthy()
   expect(screen.getByText('地球爆破 0 回')).toBeTruthy()
   cleanup()
   render(<App />)
-  expect(screen.getByText('累計KO数 230')).toBeTruthy()
+  expect(screen.getByText(`累計KO数 ${cumulativeKo}`)).toBeTruthy()
 })
 
 test.each(['30秒', 'サバイバル'])('計算モードの%sでチャージ画面とチャージ結果を表示しない', (duration) => {
@@ -426,19 +437,25 @@ test('完走とスキップで討伐記録を一度ずつ更新する', () => {
     advance(30_000)
     advance(800)
     if (skip) click('スキップ')
-    advance(2_800)
+    advance(RELEASE.endMs)
   }
 
   clearWithUltimate(false)
+  const firstRecords = readReplayRecords()
+  const firstKo = screen.getByText('KO数').nextElementSibling?.textContent
+  const firstScore = screen.getByText(/点$/).textContent
   expect(screen.getAllByText('新記録')).toHaveLength(3)
   expect(screen.getByText('地球爆破').nextElementSibling?.textContent).toBe('1 回')
   click('もう1回')
   clearWithUltimate(true)
+  expect(screen.getByText('KO数').nextElementSibling?.textContent).toBe(firstKo)
+  expect(screen.getByText(/点$/).textContent).toBe(firstScore)
+  expect(readReplayRecords().totalKoCount).toBe(firstRecords.totalKoCount * 2)
   expect(screen.getAllByText('新記録')).toHaveLength(2)
   expect(within(screen.getByText('飛距離')).queryByText('新記録')).toBeNull()
   expect(screen.getByText('地球爆破').nextElementSibling?.textContent).toBe('2 回')
   click('モード選択に戻る')
-  expect(screen.getByText('累計KO数 8,280')).toBeTruthy()
+  expect(screen.getByText(`累計KO数 ${firstRecords.totalKoCount * 2}`)).toBeTruthy()
   expect(screen.getByText('最大飛距離 856,980 km')).toBeTruthy()
   expect(screen.getByText('地球爆破 2 回')).toBeTruthy()
 })

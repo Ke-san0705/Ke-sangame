@@ -1,8 +1,7 @@
 import { useEffect, useEffectEvent, useRef, useState, type CSSProperties } from 'react'
-import { breaksPlanet, type ReleaseResult } from '../lib/release'
+import { breaksPlanet, type ReleasePlan } from '../lib/release'
 import { RELEASE } from '../lib/releaseConfig'
-import type { Enemy } from '../lib/enemyApproach'
-import { ENEMY_STAGE } from '../lib/enemyApproachConfig'
+import { ENEMY_STAGE, ENEMY_TYPES } from '../lib/enemyApproachConfig'
 import type { SoundCue } from '../lib/soundEffects'
 import { useReducedEffects } from '../lib/useEffectTimeline'
 import { EnemyApproach } from './EnemyApproach'
@@ -10,17 +9,16 @@ import './ReleaseSequence.css'
 
 const castle = `url("${import.meta.env.BASE_URL}stages/demon-castle.jpg")`
 
-export function ReleaseSequence({ release, enemies, lowPower, onSound, onComplete }: {
-  release: ReleaseResult
-  enemies: readonly Enemy[]
+export function ReleaseSequence({ plan, lowPower, onSound, onComplete }: {
+  plan: ReleasePlan
   lowPower: boolean
   onSound?: (cue: SoundCue, volume?: number) => void
   onComplete: () => void
 }) {
-  const [phaseIndex, setPhaseIndex] = useState(0)
+  const { result, waves, startingKo } = plan
+  const [beat, setBeat] = useState(0)
   const completed = useRef(false)
-  const phase = RELEASE.timeline[phaseIndex]
-  const profile = RELEASE.tiers[release.tier - 1]
+  const profile = RELEASE.tiers[result.tier - 1]
   const reduced = useReducedEffects() || lowPower
   const playSound = useEffectEvent((cue: SoundCue) => onSound?.(cue, profile.volume))
 
@@ -34,9 +32,10 @@ export function ReleaseSequence({ release, enemies, lowPower, onSound, onComplet
 
   useEffect(() => {
     const start = performance.now()
+    const boundaries = [0, ...waves.map(({ at }) => at), RELEASE.aftermathMs, RELEASE.endMs]
     let index = 0
     let timeout: number
-    playSound('silence')
+    playSound('ultimateGather')
 
     function advance() {
       if (completed.current) return
@@ -45,16 +44,13 @@ export function ReleaseSequence({ release, enemies, lowPower, onSound, onComplet
         complete()
         return
       }
-      const upcoming = RELEASE.timeline.findIndex(({ at }) => at > elapsed)
-      const next = (upcoming === -1 ? RELEASE.timeline.length : upcoming) - 1
+      const next = boundaries.findIndex((at) => at > elapsed) - 1
       if (next !== index) {
         index = next
-        setPhaseIndex(index)
-        const cue = RELEASE.timeline[index].cue
-        if (cue) playSound(cue)
+        setBeat(index)
+        playSound(index === 1 ? 'ultimateSlash' : index <= waves.length ? 'ultimateBlast' : 'silence')
       }
-      const nextAt = RELEASE.timeline[index + 1]?.at ?? RELEASE.endMs
-      timeout = window.setTimeout(advance, Math.max(1, Math.ceil(nextAt - elapsed)))
+      timeout = window.setTimeout(advance, Math.max(1, Math.ceil(boundaries[index + 1] - elapsed)))
     }
 
     advance()
@@ -62,9 +58,13 @@ export function ReleaseSequence({ release, enemies, lowPower, onSound, onComplet
       window.clearTimeout(timeout)
       playSound('silence')
     }
-  }, [])
+  }, [waves])
 
-  const duration = (RELEASE.timeline[phaseIndex + 1]?.at ?? RELEASE.endMs) - phase.at
+  const wave = waves[beat - 1]
+  const phase = beat === 0 ? 'gather' : beat === 1 ? 'slash' : wave ? 'blast' : 'aftermath'
+  const phaseStart = wave?.at ?? (beat === 0 ? 0 : RELEASE.aftermathMs)
+  const phaseEnd = waves[beat]?.at ?? (phase === 'aftermath' ? RELEASE.endMs : RELEASE.aftermathMs)
+  const koCount = wave?.koCount ?? (beat === 0 ? startingKo : result.koCount)
   const style = {
     '--release-color': RELEASE.color,
     '--release-castle': castle,
@@ -72,44 +72,51 @@ export function ReleaseSequence({ release, enemies, lowPower, onSound, onComplet
     '--release-glow': profile.glow,
     '--release-reach': profile.reach,
     '--release-shake': `${profile.shake}px`,
-    '--release-phase-ms': `${duration}ms`,
+    '--release-phase-ms': `${phaseEnd - phaseStart}ms`,
   } as CSSProperties
 
   const { angleStep, minDistance, distanceStep, distanceVariants, delayStepMs, delayVariants } = RELEASE.particles
 
   return (
-    <main className="release-scene" aria-label="解放" data-phase={phase.phase} data-tier={release.tier}
-      data-reduced={reduced} style={style}>
+    <main className="release-scene" aria-label="解放" data-phase={phase} data-tier={result.tier}
+      data-reduced={reduced} data-beat={beat % 2} style={style}>
       <div className="release-camera" aria-hidden="true">
         <div className="release-land" />
-        {breaksPlanet(release) && <div className="release-planet" />}
-        <EnemyApproach enemies={enemies} attackId={0} stage={1} lowPower />
-        <div className="release-effects" key={phase.phase}>
-          {phase.phase === 'gather' && <div className="release-blade" />}
-          {phase.phase === 'slash' && <div className="release-slash" />}
-          {phase.phase === 'blast' && (
-            <>
-              <div className="release-burst" />
-              <div className="release-ring" />
-            </>
-          )}
+        {phase !== 'aftermath' && breaksPlanet(result) && <div className="release-planet" data-broken={beat === waves.length} />}
+        <EnemyApproach enemies={[]} attackId={wave ? beat : 0} stage={beat === 1 ? 2 : 4} lowPower={reduced} />
+        {waves.slice(Math.max(0, beat - 1)).flatMap(({ targets }, index) => {
+          const targetBeat = Math.max(0, beat - 1) + index + 1
+          return targets.filter(({ reinforcement }) => !reinforcement || targetBeat <= beat + 1)
+            .map(({ enemy, reinforcement, lane }) => (
+              <img key={enemy.id} className="release-enemy" alt=""
+                data-motion={targetBeat === beat ? 'flight' : reinforcement ? 'approach' : 'ready'}
+                src={`${import.meta.env.BASE_URL}monsters/${ENEMY_TYPES[enemy.type].sprite}.png`}
+                style={{
+                  '--enemy-x': `${(reinforcement ? enemy.x : Math.min(enemy.x, 0.96)) * 100}%`,
+                  '--enemy-arrival': `${(RELEASE.crowd.startX - enemy.x) * 100}vw`,
+                  '--enemy-lane': `${lane * RELEASE.crowd.laneStep}vmin`,
+                } as CSSProperties} />
+            ))
+        })}
+        <div className="release-effects" key={beat}>
+          {phase === 'gather' && <div className="release-blade" />}
+          {phase === 'slash' && <div className="release-slash" />}
+          {phase === 'blast' && <div className="release-ring" />}
+          {!reduced && wave && Array.from({ length: profile.sparks }, (_, index) => (
+            <i className="release-spark" key={index} style={{
+              '--spark-angle': `${index * angleStep}deg`,
+              '--spark-distance': `${minDistance + (index % distanceVariants) * distanceStep}vmin`,
+              '--spark-delay': `${(index % delayVariants) * delayStepMs}ms`,
+            } as CSSProperties} />
+          ))}
         </div>
-        {!reduced && Array.from({ length: profile.sparks }, (_, index) => (
-          <i className="release-spark" key={index} style={{
-            '--spark-angle': `${index * angleStep}deg`,
-            '--spark-distance': `${minDistance + (index % distanceVariants) * distanceStep}vmin`,
-            '--spark-delay': `${(index % delayVariants) * delayStepMs}ms`,
-          } as CSSProperties} />
-        ))}
       </div>
-      {phase.phase !== 'blackout' && (
-        <div className="release-status" role="status">
-          <strong>{profile.label}</strong>
-          {phase.phase === 'aftermath' && (
-            <span className="release-ko">{release.koCount.toLocaleString('ja-JP')} KO</span>
-          )}
-        </div>
-      )}
+      <div className="release-status">
+        <strong>{profile.label}</strong>
+        <span className="release-ko" role="status" aria-live={phase === 'aftermath' ? 'polite' : 'off'}>
+          {koCount.toLocaleString('ja-JP')} KO
+        </span>
+      </div>
       <button type="button" className="release-skip" onClick={finish}>スキップ</button>
     </main>
   )

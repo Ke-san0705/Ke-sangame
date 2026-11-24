@@ -4,7 +4,7 @@ import { createQuestionGenerator, isCorrectAnswer } from '../lib/question-genera
 import type { Level, Question, QuestionMode } from '../lib/question-generator'
 import { calculateCharge } from '../lib/charge'
 import type { ChargeResult } from '../lib/charge'
-import { calculateRelease, type ReleaseResult } from '../lib/release'
+import { planRelease, type ReleasePlan, type ReleaseResult } from '../lib/release'
 import { calculateScore } from '../lib/score'
 import { BATTLE_FEEDBACK } from '../lib/battleUi'
 import { advanceCombat, applyCombatAnswer, createCombat, finishCombat } from '../lib/combat'
@@ -94,7 +94,8 @@ export function GameScreen({
   const [countdown, setCountdown] = useState(skipCountdown ? 0 : START_COUNTDOWN_SECONDS)
   const [ending, setEnding] = useState<{
     phase: 'finish' | 'release'
-    result: GameResult & { release: ReleaseResult }
+    result: GameResult
+    finale: ReleasePlan
   }>()
   const timedHunt = showMonsterBattle && !survival
   const playing = countdown === 0 && ending === undefined
@@ -209,7 +210,8 @@ export function GameScreen({
     }
     if (ultimate && result.charge) {
       setRemaining(0)
-      setEnding({ phase: 'finish', result: { ...result, release: calculateRelease(result.charge.power) } })
+      const finale = planRelease(result.charge.power, latestCombat.current)
+      setEnding({ phase: 'finish', result: { ...result, release: finale.result }, finale })
     } else {
       onFinish(result)
     }
@@ -413,7 +415,7 @@ export function GameScreen({
   useEffect(() => {
     if (ending?.phase !== 'finish') return
     const timeout = window.setTimeout(() => {
-      setEnding({ phase: 'release', result: ending.result })
+      setEnding({ ...ending, phase: 'release' })
     }, HUNT_TIMING.finishDisplayMs)
     return () => window.clearTimeout(timeout)
   }, [ending])
@@ -421,8 +423,7 @@ export function GameScreen({
   if (ending?.phase === 'release') {
     return (
       <ReleaseSequence
-        release={ending.result.release}
-        enemies={combat.enemies}
+        plan={ending.finale}
         lowPower={lowPower}
         onSound={onSound}
         onComplete={() => onFinish(ending.result)}
