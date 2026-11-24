@@ -1,0 +1,196 @@
+{
+  "chromium": "156.0.8078.79",
+  "profiles": [
+    {
+      "name": "desktop",
+      "width": 1280,
+      "height": 800,
+      "cpu": 1
+    },
+    {
+      "name": "mobile-4x",
+      "width": 390,
+      "height": 844,
+      "cpu": 4,
+      "touch": true
+    },
+    {
+      "name": "mobile-4x-reduced",
+      "width": 390,
+      "height": 844,
+      "cpu": 4,
+      "touch": true,
+      "reduced": true
+    }
+  ],
+  "results": [
+    {
+      "name": "baseline",
+      "profile": "desktop",
+      "rounds": 32,
+      "maxEnemies": 10,
+      "maxFlight": 4,
+      "golemFlights": 0,
+      "flinches": 0,
+      "frameMs": {
+        "count": 927,
+        "p50": 16.7,
+        "p95": 16.7,
+        "max": 33.4
+      },
+      "inputDomMs": {
+        "count": 133,
+        "p50": 0.8,
+        "p95": 3.2,
+        "max": 4.4
+      },
+      "inputFrameMs": {
+        "count": 133,
+        "p50": 5.8,
+        "p95": 17.9,
+        "max": 22.2
+      },
+      "framesOver25Ms": 4
+    },
+    {
+      "name": "candidate",
+      "profile": "desktop",
+      "rounds": 32,
+      "maxEnemies": 12,
+      "maxFlight": 9,
+      "golemFlights": 16,
+      "flinches": 79,
+      "frameMs": {
+        "count": 930,
+        "p50": 16.7,
+        "p95": 16.7,
+        "max": 33.4
+      },
+      "inputDomMs": {
+        "count": 133,
+        "p50": 0.8,
+        "p95": 2,
+        "max": 8.2
+      },
+      "inputFrameMs": {
+        "count": 133,
+        "p50": 8.2,
+        "p95": 16.3,
+        "max": 18.9
+      },
+      "framesOver25Ms": 1
+    },
+    {
+      "name": "baseline",
+      "profile": "mobile-4x",
+      "rounds": 32,
+      "maxEnemies": 10,
+      "maxFlight": 2,
+      "golemFlights": 0,
+      "flinches": 0,
+      "frameMs": {
+        "count": 1250,
+        "p50": 16.7,
+        "p95": 16.8,
+        "max": 133.3
+      },
+      "inputDomMs": {
+        "count": 133,
+        "p50": 42.6,
+        "p95": 64.3,
+        "max": 165.1
+      },
+      "inputFrameMs": {
+        "count": 133,
+        "p50": 45,
+        "p95": 67.4,
+        "max": 171.8
+      },
+      "framesOver25Ms": 33
+    },
+    {
+      "name": "candidate",
+      "profile": "mobile-4x",
+      "rounds": 32,
+      "maxEnemies": 12,
+      "maxFlight": 5,
+      "golemFlights": 15,
+      "flinches": 78,
+      "frameMs": {
+        "count": 1186,
+        "p50": 16.7,
+        "p95": 16.8,
+        "max": 66.6
+      },
+      "inputDomMs": {
+        "count": 133,
+        "p50": 39.3,
+        "p95": 53.9,
+        "max": 72.4
+      },
+      "inputFrameMs": {
+        "count": 133,
+        "p50": 41.8,
+        "p95": 56.8,
+        "max": 76
+      },
+      "framesOver25Ms": 26
+    },
+    {
+      "name": "baseline",
+      "profile": "mobile-4x-reduced",
+      "rounds": 32,
+      "maxEnemies": 10,
+      "maxFlight": 0,
+      "golemFlights": 0,
+      "flinches": 0,
+      "frameMs": {
+        "count": 1109,
+        "p50": 16.7,
+        "p95": 16.8,
+        "max": 50
+      },
+      "inputDomMs": {
+        "count": 133,
+        "p50": 31.2,
+        "p95": 45.8,
+        "max": 65.6
+      },
+      "inputFrameMs": {
+        "count": 133,
+        "p50": 34.2,
+        "p95": 49.7,
+        "max": 73.1
+      },
+      "framesOver25Ms": 9
+    },
+    {
+      "name": "candidate",
+      "profile": "mobile-4x-reduced",
+      "rounds": 32,
+      "maxEnemies": 10,
+      "maxFlight": 0,
+      "golemFlights": 0,
+      "flinches": 0,
+      "frameMs": {
+        "count": 980,
+        "p50": 16.7,
+        "p95": 16.7,
+        "max": 66.7
+      },
+      "inputDomMs": {
+        "count": 133,
+        "p50": 28.6,
+        "p95": 44,
+        "max": 80.5
+      },
+      "inputFrameMs": {
+        "count": 133,
+        "p50": 31.3,
+        "p95": 46.6,
+        "max": 83.8
+      },
+      "framesOver25Ms": 6
+    }
+  ]
+}
