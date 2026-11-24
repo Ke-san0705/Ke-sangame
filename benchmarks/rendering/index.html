@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DEV-01 描画比較</title>
+  <style>
+    body { color: #fff; background: #111827; font: 16px system-ui; }
+    #arena { position: relative; overflow: hidden; background: #26354d; contain: strict; }
+    .actor { position: absolute; inset: 0 auto auto 0; pointer-events: none; }
+    .particle { border-radius: 50%; background: #ffd166; }
+  </style>
+</head>
+<body>
+  <h1>DEV-01 描画比較</h1>
+  <p><a href="?renderer=dom">DOM/CSS</a> · <a href="?renderer=pixi">PixiJS</a></p>
+  <p id="status"></p>
+  <div id="arena" aria-hidden="true"></div>
+  <script type="module" src="/scene.mjs"></script>
+</body>
+</html>

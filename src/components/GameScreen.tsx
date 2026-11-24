@@ -5,10 +5,13 @@ import { calculateCharge } from '../lib/charge'
 import type { ChargeResult } from '../lib/charge'
 import type { ReleaseResult } from '../lib/release'
 import { calculateScore } from '../lib/score'
+import { useEffectTimeline } from '../lib/useEffectTimeline'
 import type { SoundCue } from '../lib/soundEffects'
 import { ChargeArena, preloadChargeSprites } from './ChargeArena'
 import { ReleaseSequence } from './ReleaseSequence'
 import { GameKeypad, gameKey, keypadRows } from './GameKeypad'
+
+const CORRECT_SHAKE = { offsets: [0, -3, 3, -2, 0], durationSeconds: 0.18 }
 
 const FINAL_INPUT_DRAIN_MS = 50
 const START_COUNTDOWN_SECONDS = 3
@@ -51,13 +54,14 @@ type GameScreenProps = {
   duration: number | 'survival'
   skipCountdown?: boolean
   showMonsterBattle?: boolean
+  lowPower?: boolean
   bestCurve?: number[]
   onSound?: (cue: SoundCue, combo?: number) => void
   onFinish: (result: GameResult) => void
 }
 
 export function GameScreen({
-  level, mode, duration, skipCountdown = false, showMonsterBattle = false, bestCurve, onSound, onFinish,
+  level, mode, duration, skipCountdown = false, showMonsterBattle = false, lowPower = false, bestCurve, onSound, onFinish,
 }: GameScreenProps) {
   const survival = duration === 'survival'
   const battleSurvival = survival && showMonsterBattle
@@ -346,21 +350,21 @@ export function GameScreen({
     if (showMonsterBattle) preloadChargeSprites()
   }, [showMonsterBattle])
 
-  useEffect(() => {
-    if (!showMonsterBattle || correctCount === 0) return
-    const motion = window.matchMedia('(prefers-reduced-motion: no-preference)')
-    if (!motion.matches) return
-    const shake = gameScreen.current?.animate?.(
-      [0, -3, 3, -2, 0].map((x) => ({ transform: `translateX(${x}px)` })),
-      { duration: 180 },
-    )
-    const finishShake = () => shake?.finish()
-    motion.addEventListener('change', finishShake)
-    return () => {
-      motion.removeEventListener('change', finishShake)
-      finishShake()
-    }
-  }, [correctCount, showMonsterBattle])
+  useEffectTimeline({
+    scope: gameScreen,
+    active: playing && showMonsterBattle && correctCount > 0,
+    trigger: correctCount,
+    lowPower,
+  }, (timeline, target) => {
+    timeline.to(target, {
+      keyframes: {
+        x: CORRECT_SHAKE.offsets,
+        easeEach: 'none',
+      },
+      duration: CORRECT_SHAKE.durationSeconds,
+      ease: 'none',
+    })
+  })
 
   if (pendingRelease?.result.charge) {
     return (
