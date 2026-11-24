@@ -1,4 +1,5 @@
 import { readSetsunaBest } from '../lib/setsuna'
+import { setsunaDifficulties, type SetsunaDifficulty } from '../lib/setsunaConfig'
 import { SetsunaRecords } from './SetsunaScreen'
 import { DifficultyInfo } from './DifficultyInfo'
 import { durations, levels, operations, presentations, type GamePresentation, type PlayMode } from '../lib/gameMode'
@@ -9,6 +10,8 @@ type TopScreenProps = {
   mode: PlayMode
   replayRecords: ReplayRecords
   presentation: GamePresentation
+  setsunaDifficulty: SetsunaDifficulty
+  onSetsunaDifficultyChange: (difficulty: SetsunaDifficulty) => void
   onPresentationChange: (presentation: GamePresentation) => void
   volume: number
   onVolumeChange: (volume: number) => void
@@ -22,10 +25,12 @@ type TopScreenProps = {
 const operationKeys = Object.keys(operations) as PlayMode['operation'][]
 const levelKeys = Object.keys(levels).map(Number) as PlayMode['level'][]
 
+const setsunaDifficultyKeys = Object.keys(setsunaDifficulties) as SetsunaDifficulty[]
 const presentationKeys = Object.keys(presentations) as GamePresentation[]
 
 export function TopScreen({
-  mode, replayRecords, presentation, onPresentationChange, volume, onVolumeChange, muted, onToggleMute, onModeChange, onStart, onRanking,
+  mode, replayRecords, presentation, onPresentationChange, setsunaDifficulty, onSetsunaDifficultyChange,
+  volume, onVolumeChange, muted, onToggleMute, onModeChange, onStart, onRanking,
 }: TopScreenProps) {
   const { min, max, step } = SOUND_CONFIG.volumeControl
   const volumePercent = Math.round(volume * max)
@@ -60,7 +65,22 @@ export function TopScreen({
       </header>
 
       {presentation === 'setsuna' ? (
-        <SetsunaRecords best={readSetsunaBest()} />
+        <section className="setsuna-setup" aria-labelledby="setsuna-difficulty">
+          <h2 id="setsuna-difficulty">計算難易度</h2>
+          <div className="level-options" role="group" aria-labelledby="setsuna-difficulty">
+            {setsunaDifficultyKeys.map((difficulty) => (
+              <button
+                key={difficulty}
+                type="button"
+                aria-pressed={setsunaDifficulty === difficulty}
+                onClick={() => onSetsunaDifficultyChange(difficulty)}
+              >
+                {setsunaDifficulties[difficulty].label}
+              </button>
+            ))}
+          </div>
+          <SetsunaRecords best={readSetsunaBest()} />
+        </section>
       ) : (
         <>
           <div className="operation-options" role="group" aria-label="演算">
