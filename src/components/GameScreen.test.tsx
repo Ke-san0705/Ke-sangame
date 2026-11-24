@@ -1,6 +1,7 @@
 import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, expect, test, vi } from 'vitest'
 import { createQuestionGenerator } from '../lib/question-generator'
+import { RELEASE } from '../lib/releaseConfig'
 import { durations, levels, type GameMode } from '../lib/gameMode'
 import { App } from '../App'
 import { GameScreen } from './GameScreen'
@@ -522,7 +523,7 @@ test('パスで短縮した制限時間に達すると、正解表示と出題�
 })
 
 function finishReleaseWithoutInput() {
-  act(() => vi.advanceTimersByTime(2_800))
+  act(() => vi.advanceTimersByTime(RELEASE.endMs))
 }
 
 test('時間切れ後に操作なしで超必殺技を発動し、全段階を経て終了する', () => {
@@ -559,11 +560,13 @@ test('時間切れ後に操作なしで超必殺技を発動し、全段階を�
   expect(screen.queryByText('FINISH')).toBeNull()
   const scene = container.querySelector('.release-scene')
   expect(scene?.getAttribute('data-tier')).toBe('1')
-  expect(scene?.getAttribute('data-phase')).toBe('blackout')
+  expect(scene?.getAttribute('data-phase')).toBe('gather')
   expect(onSound).not.toHaveBeenCalledWith('timeUp')
   expect(screen.queryByRole('group', { name: 'テンキー' })).toBeNull()
   fireEvent.keyDown(window, { key: 'Enter' })
-  for (const [ms, phase] of [[400, 'gather'], [600, 'slash'], [300, 'blast'], [700, 'aftermath']] as const) {
+  const interval = (RELEASE.aftermathMs - RELEASE.firstStrikeMs) / RELEASE.tiers[0].waves
+  const phases = [[RELEASE.firstStrikeMs, 'slash'], [interval, 'blast'], [interval, 'aftermath']] as const
+  for (const [ms, phase] of phases) {
     act(() => vi.advanceTimersByTime(ms - 1))
     expect(scene?.getAttribute('data-phase')).not.toBe(phase)
     act(() => vi.advanceTimersByTime(1))
@@ -572,12 +575,13 @@ test('時間切れ後に操作なしで超必殺技を発動し、全段階を�
   }
   expect(onSound.mock.calls.filter(([cue]) => cue === 'silence' || cue.startsWith('ultimate')))
     .toEqual([
-      ['silence', 0.45], ['ultimateGather', 0.45], ['ultimateSlash', 0.45], ['ultimateBlast', 0.45],
+      ['ultimateGather', 0.45], ['ultimateSlash', 0.45], ['ultimateBlast', 0.45], ['silence', 0.45],
     ])
-  expect(screen.getByText('0 KO')).toBeTruthy()
-  act(() => vi.advanceTimersByTime(800))
+  const koCount = Number(screen.getByText(/^\d+ KO$/).textContent?.split(' ')[0])
+  expect(koCount).toBeGreaterThanOrEqual(RELEASE.tiers[0].reinforcements)
+  act(() => vi.advanceTimersByTime(RELEASE.endMs - RELEASE.aftermathMs))
   expect(onFinish).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
-    score: 0, release: { koCount: 0, distanceKm: 0, tier: 1 },
+    score: 0, release: { koCount, distanceKm: 0, tier: 1 },
   }))
 })
 

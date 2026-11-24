@@ -1,3 +1,4 @@
+import { RELEASE } from '../lib/releaseConfig'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import gsap from 'gsap'
 import { afterEach, expect, test, vi } from 'vitest'
@@ -69,7 +70,7 @@ test.each([{ lowPower: true }, { reduced: true }, { slow: true }])('演出を抑
   act(() => vi.advanceTimersByTime(30_000))
   expect(screen.getByText('FINISH')).toBeTruthy()
   act(() => vi.advanceTimersByTime(800))
-  act(() => vi.advanceTimersByTime(1_300))
+  act(() => vi.advanceTimersByTime((RELEASE.aftermathMs + RELEASE.firstStrikeMs) / 2))
   const release = screen.getByRole('main', { name: '解放' })
   expect(release.getAttribute('data-phase')).toBe('blast')
   expect(release.querySelector('.release-beam')).toBeNull()
@@ -148,20 +149,20 @@ test('10コンボでもHPは回復せず、通常攻撃だけを表示する', (
   expect(game.querySelectorAll('[data-attack="comboSpecial"]')).toHaveLength(0)
 })
 
-test('解放の収束と爆発で粒子スロットを再利用する', () => {
+test('解放の連撃で粒子数が上限を超えず、静寂に入ると消える', () => {
   play()
   act(() => vi.advanceTimersByTime(30_000))
-  expect(screen.getByText('FINISH')).toBeTruthy()
   act(() => vi.advanceTimersByTime(800))
   const scene = screen.getByRole('main', { name: '解放' })
-  act(() => vi.advanceTimersByTime(400))
-  const sparks = [...scene.querySelectorAll('.release-spark')]
-  expect(sparks).toHaveLength(16)
-  act(() => vi.advanceTimersByTime(900))
-  expect(scene.getAttribute('data-phase')).toBe('blast')
-  const blastSparks = [...scene.querySelectorAll('.release-spark')]
-  expect(blastSparks).toHaveLength(sparks.length)
-  expect(blastSparks.every((spark, index) => spark === sparks[index])).toBe(true)
+  const interval = (RELEASE.aftermathMs - RELEASE.firstStrikeMs) / RELEASE.tiers[0].waves
+  expect(scene.querySelectorAll('.release-spark')).toHaveLength(0)
+  act(() => vi.advanceTimersByTime(RELEASE.firstStrikeMs))
+  expect(scene.querySelectorAll('.release-spark')).toHaveLength(RELEASE.tiers[0].sparks)
+  act(() => vi.advanceTimersByTime(interval))
+  expect(scene.querySelector('.release-ring')).toBeTruthy()
+  expect(scene.querySelectorAll('.release-spark')).toHaveLength(RELEASE.tiers[0].sparks)
+  act(() => vi.advanceTimersByTime(interval))
+  expect(scene.querySelectorAll('.release-spark')).toHaveLength(0)
 })
 
 test('敵が消えた後に次の敵が同じ描画スロットを使う', () => {
