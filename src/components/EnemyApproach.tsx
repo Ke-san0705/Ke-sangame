@@ -1,7 +1,7 @@
 import { useRef, type CSSProperties } from 'react'
 import samuraiJson from '../../public/assets/initial/characters/samurai.json?raw'
 import { useEffectTimeline } from '../lib/useEffectTimeline'
-import { loadSpriteAnimation, resolveSpriteClip } from '../lib/spriteAnimation'
+import { loadSpriteAnimation, resolveSpriteClip, spriteFramePosition } from '../lib/spriteAnimation'
 import { ATTACK_EFFECTS, attackEffectForStage } from '../lib/attackEffects'
 import { ENEMY_STAGE, ENEMY_TYPES } from '../lib/enemyApproachConfig'
 import type { Enemy } from '../lib/enemyApproach'
@@ -9,13 +9,7 @@ import type { Enemy } from '../lib/enemyApproach'
 const sprite = (name: string) => `${import.meta.env.BASE_URL}monsters/${name}.png`
 const sheet = loadSpriteAnimation(samuraiJson)
 const idle = resolveSpriteClip(sheet, 'idle', 'attack')
-const framePosition = (frame: number) => {
-  const { columns, rows } = sheet.grid
-  const column = frame % columns
-  const row = Math.floor(frame / columns)
-  return `${column * 100 / Math.max(1, columns - 1)}% ${row * 100 / Math.max(1, rows - 1)}%`
-}
-const idlePosition = framePosition(idle?.startFrame ?? 0)
+const idlePosition = spriteFramePosition(sheet, idle?.startFrame ?? 0)
 
 export function EnemyApproach({ enemies, attackId, stage, lowPower }: {
   enemies: readonly Enemy[]
@@ -35,7 +29,7 @@ export function EnemyApproach({ enemies, attackId, stage, lowPower }: {
       const cycle = windup * 2 + shortDuration
       const interval = Math.min(1 / clip.fps, cycle / count)
       for (let index = 0; index < count; index++) {
-        timeline.set(cell, { backgroundPosition: framePosition(clip.startFrame + index) }, index * interval)
+        timeline.set(cell, { backgroundPosition: spriteFramePosition(sheet, clip.startFrame + index) }, index * interval)
       }
       timeline.set(cell, { backgroundPosition: idlePosition }, count * interval)
     }

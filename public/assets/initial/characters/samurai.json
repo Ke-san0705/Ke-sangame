@@ -80,6 +80,15 @@
         "x": 64,
         "y": 112
       }
+    },
+    "sheathed": {
+      "startFrame": 46,
+      "endFrame": 46,
+      "fps": 6,
+      "anchor": {
+        "x": 64,
+        "y": 112
+      }
     }
   }
 }

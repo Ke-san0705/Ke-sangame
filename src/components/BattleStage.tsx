@@ -4,7 +4,7 @@ import { useEffectTimeline } from '../lib/useEffectTimeline'
 import { BATTLE_FEEDBACK } from '../lib/battleUi'
 import './BattleStage.css'
 
-export type BattleMotion = { cue: 'hit' | 'shockwave' | 'evolution' | 'comboSpecial' | 'duelWin'; trigger: number }
+export type BattleMotion = { cue: 'hit' | 'shockwave' | 'evolution' | 'comboSpecial'; trigger: number }
 
 type BattleStageProps = {
   className?: string

@@ -82,3 +82,9 @@ export function loadSpriteAnimation(json: string): SpriteAnimation {
 export function resolveSpriteClip(definition: SpriteAnimation, key: string, fallback: string) {
   return definition.animations[key] ?? definition.animations[fallback]
 }
+
+export function spriteFramePosition({ grid: { columns, rows } }: SpriteAnimation, frame: number) {
+  const column = frame % columns
+  const row = Math.floor(frame / columns)
+  return `${column * 100 / Math.max(1, columns - 1)}% ${row * 100 / Math.max(1, rows - 1)}%`
+}

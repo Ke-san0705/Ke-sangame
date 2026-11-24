@@ -17,6 +17,7 @@ export const SOUND_CUES = {
   incorrect: { notes: [180], waveform: 'triangle', spacing: 0.11, duration: 0.1, peak: 0.07 },
   countdown: { notes: [520], waveform: 'sine', spacing: 0.11, duration: 0.1, peak: SOUND_CONFIG.standardPeak },
   heartbeat: { notes: [62, 48], waveform: 'sine', spacing: 0.11, duration: 0.1, peak: SOUND_CONFIG.standardPeak },
+  duelSignal: { notes: [960], waveform: 'sine', spacing: 0, duration: 0.09, peak: 0.08 },
   timeUp: { notes: [660, 494, 330], waveform: 'sine', spacing: 0.11, duration: 0.16, peak: SOUND_CONFIG.standardPeak },
   slash: { notes: [980, 570], waveform: 'triangle', spacing: 0.028, duration: 0.06, peak: 0.07 },
   flying: { notes: [420, 710, 960], waveform: 'sine', spacing: 0.035, duration: 0.09, peak: 0.07 },

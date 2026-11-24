@@ -10,7 +10,11 @@ export default defineConfig({
     react(),
     VitePWA({
       injectRegister: 'script',
-      includeAssets: ['monsters/*.png', 'stages/*.jpg'],
+      includeAssets: [
+        'monsters/*.png', 'stages/*.jpg',
+        'assets/initial/characters/{samurai,enemy-swordsman}.png',
+        'assets/initial/backgrounds/sunset-plain/*.png',
+      ],
       manifest: {
         name: '計算無双',
         short_name: '計算無双',
