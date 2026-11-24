@@ -423,7 +423,7 @@ export function GameScreen({
             </div>
           )}
           <div className="battle-stat battle-health">
-            <span>HP {combat.hp} / {COMBAT_CONFIG.maxHp}</span>
+            <span>HP</span>
             <meter aria-label="HP" min={0} max={COMBAT_CONFIG.maxHp} value={combat.hp} />
           </div>
           <div className="battle-stat">
