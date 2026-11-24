@@ -2,6 +2,7 @@ import { readSetsunaBest } from '../lib/setsuna'
 import { SetsunaRecords } from './SetsunaScreen'
 import { DifficultyInfo } from './DifficultyInfo'
 import { durations, levels, operations, presentations, type GamePresentation, type PlayMode } from '../lib/gameMode'
+import { SOUND_CONFIG } from '../lib/soundConfig'
 import type { ReplayRecords } from '../lib/replayRecords'
 
 type TopScreenProps = {
@@ -9,6 +10,8 @@ type TopScreenProps = {
   replayRecords: ReplayRecords
   presentation: GamePresentation
   onPresentationChange: (presentation: GamePresentation) => void
+  volume: number
+  onVolumeChange: (volume: number) => void
   muted: boolean
   onToggleMute: () => void
   onModeChange: (mode: PlayMode) => void
@@ -22,8 +25,10 @@ const levelKeys = Object.keys(levels).map(Number) as PlayMode['level'][]
 const presentationKeys = Object.keys(presentations) as GamePresentation[]
 
 export function TopScreen({
-  mode, replayRecords, presentation, onPresentationChange, muted, onToggleMute, onModeChange, onStart, onRanking,
+  mode, replayRecords, presentation, onPresentationChange, volume, onVolumeChange, muted, onToggleMute, onModeChange, onStart, onRanking,
 }: TopScreenProps) {
+  const { min, max, step } = SOUND_CONFIG.volumeControl
+  const volumePercent = Math.round(volume * max)
   return (
     <main className="top-screen">
       <header className="top-header">
@@ -31,6 +36,12 @@ export function TopScreen({
           <button type="button" className="mute-button" aria-pressed={muted} onClick={onToggleMute}>
             ミュート<span aria-hidden="true">{muted ? ' ON' : ' OFF'}</span>
           </button>
+          <label className="volume-control">
+            音量
+            <input type="range" min={min} max={max} step={step} value={volumePercent}
+              aria-valuetext={`${volumePercent}%`}
+              onChange={(event) => onVolumeChange(event.currentTarget.valueAsNumber / max)} />
+          </label>
           <button type="button" className="ranking-button" onClick={onRanking}>ランキング</button>
         </div>
         <h1>計算無双</h1>
