@@ -1,16 +1,17 @@
 import type { Level } from './question-generator'
 import { COMBO_SPAWN_MULTIPLIERS, ENEMY_DIFFICULTY, ENEMY_SPAWN_ORDER, ENEMY_STAGE, ENEMY_TYPES } from './enemyApproachConfig'
 
-type Enemy = { id: number; type: keyof typeof ENEMY_TYPES; x: number }
+export type Enemy = { id: number; type: keyof typeof ENEMY_TYPES; x: number; hp: number }
 
-type EnemyApproach = {
+export type EnemyApproach = {
   elapsedSeconds: number
+  nextEnemyId: number
   spawnProgress: number
   enemies: readonly Enemy[]
 }
 
 export function createEnemyApproach(): EnemyApproach {
-  return { elapsedSeconds: 0, spawnProgress: 0, enemies: [] }
+  return { elapsedSeconds: 0, nextEnemyId: 0, spawnProgress: 0, enemies: [] }
 }
 
 function moveEnemies(enemies: readonly Enemy[], seconds: number): Enemy[] {
@@ -31,7 +32,7 @@ export function advanceEnemies(state: EnemyApproach, seconds: number, level: Lev
   const growth = rateGrowth * multiplier
   let rate = (baseRate + rateGrowth * state.elapsedSeconds) * multiplier
   let timeLeft = seconds
-  let { enemies, spawnProgress } = state
+  let { enemies, nextEnemyId, spawnProgress } = state
 
   while (enemies.length < maxEnemies) {
     const progressNeeded = 1 - spawnProgress
@@ -39,14 +40,16 @@ export function advanceEnemies(state: EnemyApproach, seconds: number, level: Lev
     const untilSpawn = 2 * progressNeeded / (rate + Math.sqrt(rate ** 2 + 2 * growth * progressNeeded))
     if (untilSpawn > timeLeft) break
     enemies = moveEnemies(enemies, untilSpawn)
-    const id = enemies.length
-    enemies = [...enemies, { id, type: ENEMY_SPAWN_ORDER[id % ENEMY_SPAWN_ORDER.length], x: ENEMY_STAGE.spawnX }]
+    const id = nextEnemyId++
+    const type = ENEMY_SPAWN_ORDER[id % ENEMY_SPAWN_ORDER.length]
+    enemies = [...enemies, { id, type, x: ENEMY_STAGE.spawnX, hp: ENEMY_TYPES[type].durability }]
     rate += growth * untilSpawn
     timeLeft -= untilSpawn
     spawnProgress = 0
   }
 
   return {
+    nextEnemyId,
     elapsedSeconds: state.elapsedSeconds + seconds,
     spawnProgress: enemies.length < maxEnemies ? spawnProgress + (rate + growth * timeLeft / 2) * timeLeft : 0,
     enemies: moveEnemies(enemies, timeLeft),

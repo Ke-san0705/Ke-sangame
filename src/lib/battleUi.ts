@@ -1,6 +1,3 @@
-// Phase 1 starts before the existing release sequence resolves any defeats.
-export const CHARGE_HUD = { health: 1, defeated: 0 }
-
 export const BATTLE_FEEDBACK = {
   comboMinimum: 2,
   comboDurationMs: 850,

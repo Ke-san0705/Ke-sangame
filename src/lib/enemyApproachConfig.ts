@@ -35,3 +35,10 @@ export const COMBO_SPAWN_MULTIPLIERS = [
   { combo: 30, multiplier: 4 },
   { combo: 50, multiplier: 5 },
 ]
+
+export const COMBAT_CONFIG = {
+  maxHp: 100,
+  incorrectDamage: 10,
+  initialAttackStage: 1,
+  attackDamage: 1,
+}
