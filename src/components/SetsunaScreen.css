@@ -1,6 +1,14 @@
 .setsuna-screen {
 
   text-align: center;
+  background: radial-gradient(ellipse at 50% 12%, #242437, #0a1020 72%);
+}
+
+@media (orientation: portrait) {
+  main.setsuna-screen {
+    grid-template-rows: auto minmax(64px, min(calc((100vw - 24px) * 9 / 16), 35dvh)) auto auto;
+    align-content: center;
+  }
 }
 
 .setsuna-header {
@@ -28,24 +36,126 @@
   justify-self: start;
 }
 
+.setsuna-stage {
+  display: grid;
+  min-block-size: 0;
+}
+
+.setsuna-arena .battle-distance,
+.setsuna-arena .battle-ground {
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 100% 100%;
+}
+
 .setsuna-arena .battle-distance {
-  background: linear-gradient(#101a2d66, #101a2da6), url('/stages/forest.jpg') center 42% / cover;
+  background-image: url('/assets/initial/backgrounds/sunset-plain/mid.png'),
+    url('/assets/initial/backgrounds/sunset-plain/far.png');
 }
 
-.setsuna-arena .battle-characters {
-  display: flex;
-  justify-content: space-around;
-  align-items: end;
+.setsuna-arena .battle-ground {
+  inset: 0;
+  border: 0;
+  background-color: transparent;
+  background-image: url('/assets/initial/backgrounds/sunset-plain/ground.png');
 }
 
-.setsuna-arena img {
-  inline-size: min(40%, 75cqh);
-  max-block-size: 85%;
-  object-fit: contain;
+.setsuna-fighter {
+  position: absolute;
+  inset-block-start: 84%;
+  left: var(--fighter-home);
+  transform-origin: center;
 }
 
-.setsuna-mirrored {
-  transform: scaleX(-1);
+.setsuna-fighter[data-fighter="player"] { --fighter-home: 24%; --facing: 1; }
+.setsuna-fighter[data-fighter="opponent"] { --fighter-home: 76%; --facing: -1; }
+
+.setsuna-cell {
+  position: absolute;
+  inline-size: 108cqh;
+  aspect-ratio: 1;
+  translate: calc(-1 * var(--foot-x)) calc(-1 * var(--foot-y));
+  scale: var(--facing) 1;
+  transform-origin: var(--foot-x) var(--foot-y);
+  image-rendering: pixelated;
+  filter: drop-shadow(0 3px 2px #18162285);
+}
+
+.setsuna-stage[data-waiting="true"] .setsuna-cell {
+  animation: setsuna-stance 1.45s ease-in-out infinite alternate;
+}
+
+@keyframes setsuna-stance {
+  to { scale: var(--facing) 1.025; }
+}
+
+.setsuna-wind {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.setsuna-wind i {
+  position: absolute;
+  inset-block-start: var(--wind-height, 45%);
+  inset-inline-start: 0;
+  inline-size: 18%;
+  block-size: 1px;
+  background: linear-gradient(90deg, transparent, #fff5);
+  opacity: 0;
+}
+
+.setsuna-wind i:nth-child(2) { --wind-height: 61%; --wind-delay: -1.5s; }
+.setsuna-wind i:nth-child(3) { --wind-height: 71%; --wind-delay: -2.6s; }
+
+.setsuna-stage[data-waiting="true"] .setsuna-wind i {
+  animation: setsuna-wind 4s var(--wind-delay, 0s) linear infinite;
+}
+
+@keyframes setsuna-wind {
+  from { translate: -20cqw 0; }
+  30%, 70% { opacity: 1; }
+  to { translate: 100cqw -4cqh; }
+}
+
+.setsuna-stage[data-finished="true"][data-duel-winner="player"] [data-fighter="player"],
+.setsuna-stage[data-finished="true"][data-duel-winner="opponent"] [data-fighter="opponent"] {
+  left: calc(var(--fighter-home) + var(--facing) * var(--setsuna-pass));
+}
+
+.setsuna-stage[data-finished="true"][data-duel-winner="player"] [data-fighter="opponent"],
+.setsuna-stage[data-finished="true"][data-duel-winner="opponent"] [data-fighter="player"] {
+  left: calc(var(--fighter-home) + var(--facing) * var(--setsuna-setback));
+  rotate: calc(var(--facing) * var(--setsuna-fall));
+}
+
+.setsuna-flash {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, #e4f9ff75, #83c5ff12 70%);
+  opacity: 0;
+}
+
+.setsuna-slash {
+  position: absolute;
+  inset: 52% 4% auto;
+  block-size: max(5px, 2cqh);
+  rotate: -9deg;
+  background: linear-gradient(90deg, transparent, #e6f9ff 35%, #fff 55%, transparent);
+  box-shadow: 0 0 22px #99d9fb;
+  border-radius: 50%;
+  opacity: 0;
+  filter: drop-shadow(0 0 14px #a9e7ff);
+}
+
+.setsuna-stage[data-duel-winner="opponent"] .setsuna-slash {
+  rotate: 9deg;
+}
+
+@media (prefers-reduced-motion: reduce), (update: slow) {
+  .setsuna-stage[data-waiting="true"] :is(.setsuna-cell, .setsuna-wind i) {
+    animation: none;
+  }
 }
 
 .setsuna-message {
@@ -69,7 +179,7 @@
 .setsuna-signal {
   position: absolute;
   inset-inline-end: 100%;
-  color: var(--color-accent);
+  color: #b8ebff;
 }
 
 .setsuna-reaction {
@@ -88,41 +198,6 @@
   grid-column: 1 / -1;
 }
 
-.setsuna-screen[data-outcome="loss"] .battle-distance {
-  background: radial-gradient(#621e35, #201428);
-}
-
-.setsuna-screen[data-outcome="win"] .battle-distance {
-  background: repeating-conic-gradient(at 50% 55%, #fff 0deg 9deg, #dedede 9deg 10deg);
-}
-
-.setsuna-screen[data-outcome="win"] img {
-  filter: grayscale(1) contrast(2.5);
-}
-
-.setsuna-slash {
-  position: absolute;
-  inset: 50% -15% auto;
-  block-size: 5px;
-  background: #ed172e;
-  box-shadow: 0 0 12px #e3162b;
-  transform: rotate(-15deg);
-  animation: setsuna-slash 400ms ease-out both;
-}
-
-@keyframes setsuna-slash {
-  from { clip-path: inset(0 100% 0 0); }
-  65% { clip-path: inset(0); }
-  to { opacity: 0; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .setsuna-slash {
-    animation: none;
-    inset-block-start: 80%;
-  }
-}
-
 .setsuna-controls {
   display: grid;
   align-items: center;
@@ -131,8 +206,27 @@
 
 @media (pointer: fine) {
   .setsuna-controls {
-    min-block-size: 104px;
+    min-block-size: 148px;
   }
+}
+
+.setsuna-skip {
+  min-block-size: 44px;
+  margin-block-start: 6px;
+}
+
+.setsuna-skip button {
+  color: #b8ebff;
+}
+
+.setsuna-key-hint {
+  display: none;
+  color: var(--battle-muted);
+  margin: 0;
+}
+
+@media (pointer: fine) {
+  .setsuna-key-hint { display: block; }
 }
 
 .setsuna-actions p {

@@ -1,7 +1,10 @@
-export const reactionLimits = [650, 450, 350, 250, 180] as const
+import { SETSUNA } from './setsunaConfig'
+
+export const reactionLimits = SETSUNA.reactionLimits
 
 export function createDuel(random = Math.random) {
-  const waitMs = 1500 + Math.floor(random() * 2501)
+  const { minMs, maxMs } = SETSUNA.wait
+  const waitMs = minMs + Math.floor(random() * (maxMs - minMs + 1))
   const addition = random() < 0.5
   const left = Math.floor(random() * 10)
   const right = Math.floor(random() * (addition ? 10 - left : left + 1))

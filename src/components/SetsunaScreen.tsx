@@ -1,19 +1,14 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import { createDuel, formatReaction, judgeDuel, reactionLimits, saveSetsunaBest } from '../lib/setsuna'
 import type { SoundCue } from '../lib/soundEffects'
-import { BattleStage } from './BattleStage'
+import { flushSync } from 'react-dom'
+import { SETSUNA, setsunaFinishMs } from '../lib/setsunaConfig'
+import { useReducedEffects } from '../lib/useEffectTimeline'
+import { SetsunaArena } from './SetsunaArena'
 import { GameKeypad, gameKey } from './GameKeypad'
 import './SetsunaScreen.css'
 
-const enemies = [
-  { sprite: 'goblin', mirrored: true },
-  { sprite: 'wolf', mirrored: true },
-  { sprite: 'skeleton', mirrored: true },
-  { sprite: 'death-knight', mirrored: false },
-  { sprite: 'demon-king', mirrored: false },
-]
 const digits = ['7', '8', '9', '4', '5', '6', '1', '2', '3', '0']
-const sprite = (name: string) => `${import.meta.env.BASE_URL}monsters/${name}.png`
 const lossLabels = { wrong: '誤答', slow: 'CPUに先を越された', falseStart: 'お手つき2回' }
 
 type RoundResult = { outcome: 'win' | keyof typeof lossLabels; reactionMs: number | null }
@@ -32,19 +27,26 @@ export function SetsunaScreen({ onBack, onReplay, onSound }: SetsunaScreenProps)
   const [submittedAnswer, setSubmittedAnswer] = useState('')
   const [result, setResult] = useState<RoundResult | null>(null)
   const [best, setBest] = useState<ReturnType<typeof saveSetsunaBest> | null>(null)
+  const [finishPlaying, setFinishPlaying] = useState(false)
+  const reducedEffects = useReducedEffects()
+  const playing = finishPlaying && !reducedEffects
+  const roundStart = useRef(0)
   const signalTime = useRef<number | null>(null)
   const earlyInputs = useRef(0)
   const settled = useRef(false)
 
-  const heartbeat = useEffectEvent(() => onSound?.('heartbeat'))
+  const playSound = useEffectEvent((cue: SoundCue) => onSound?.(cue))
   const waiting = !signal && result === null
   useEffect(() => {
     if (!waiting) return
-    heartbeat()
-    const pulse = window.setInterval(() => heartbeat(), 720)
+    playSound('heartbeat')
+    const pulse = window.setInterval(() => playSound('heartbeat'), SETSUNA.heartbeatIntervalMs)
     const reveal = window.setTimeout(() => {
+      if (settled.current) return
+      // Commit the equation and cue in the same task that starts the reaction clock.
       signalTime.current = performance.now()
-      setSignal(true)
+      flushSync(() => setSignal(true))
+      playSound('duelSignal')
     }, duel.waitMs)
     return () => {
       window.clearInterval(pulse)
@@ -52,8 +54,18 @@ export function SetsunaScreen({ onBack, onReplay, onSound }: SetsunaScreenProps)
     }
   }, [duel, waiting])
 
+  useEffect(() => {
+    if (!playing) return
+    const slash = window.setTimeout(() => playSound('slash'), SETSUNA.finish.stepMs)
+    const finish = window.setTimeout(() => setFinishPlaying(false), setsunaFinishMs)
+    return () => {
+      window.clearTimeout(slash)
+      window.clearTimeout(finish)
+    }
+  }, [playing])
+
   function handleAnswer(key: string, eventTime = performance.now()) {
-    if (settled.current) return
+    if (settled.current || eventTime < roundStart.current) return
     const elapsed = signalTime.current === null ? -1 : eventTime - signalTime.current
     const outcome = judgeDuel(Number(key), duel.answer, elapsed, enemy, earlyInputs.current)
     if (outcome === 'early') {
@@ -63,13 +75,20 @@ export function SetsunaScreen({ onBack, onReplay, onSound }: SetsunaScreenProps)
     }
 
     settled.current = true
+    onSound?.('silence')
     if (signalTime.current !== null) setSubmittedAnswer(key)
     const reactionMs = outcome === 'win' || outcome === 'slow' ? elapsed : null
     setResult({ outcome, reactionMs })
+    setFinishPlaying(!reducedEffects)
     setBest(saveSetsunaBest(reactionMs, outcome === 'win' ? enemy + 1 : enemy))
   }
 
   const handleKeyboard = useEffectEvent((event: KeyboardEvent) => {
+    if (event.key === 'Escape' && playing && !event.repeat) {
+      event.preventDefault()
+      setFinishPlaying(false)
+      return
+    }
     const key = gameKey(event)
     if (!key || !digits.includes(key)) return
     event.preventDefault()
@@ -77,14 +96,17 @@ export function SetsunaScreen({ onBack, onReplay, onSound }: SetsunaScreenProps)
   })
 
   useEffect(() => {
+    roundStart.current = performance.now()
     const onKeyDown = (event: KeyboardEvent) => handleKeyboard(event)
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [])
 
   function nextDuel() {
+    roundStart.current = performance.now()
     signalTime.current = null
     settled.current = false
+    setFinishPlaying(false)
     setEnemy(enemy + 1)
     setDuel(createDuel())
     setSignal(false)
@@ -103,21 +125,7 @@ export function SetsunaScreen({ onBack, onReplay, onSound }: SetsunaScreenProps)
         <h1>刹那</h1>
         <span>{enemy + 1} / {reactionLimits.length}</span>
       </header>
-      <BattleStage
-        className="setsuna-arena"
-        motion={won ? { cue: 'duelWin', trigger: enemy } : undefined}
-        characters={
-          <>
-            <img src={sprite('hero')} alt="主人公" />
-            <img
-              className={enemies[enemy].mirrored ? 'setsuna-mirrored' : undefined}
-              src={sprite(enemies[enemy].sprite)}
-              alt={`対戦相手 ${enemy + 1}`}
-            />
-          </>
-        }
-        foreground={won && <span className="setsuna-slash" aria-hidden="true" />}
-      />
+      <SetsunaArena key={enemy} waiting={waiting} winner={result ? (won ? 'player' : 'opponent') : null} playing={playing} />
       <div className="game-problem setsuna-problem">
         <div className="setsuna-message" role="status">
           {result ? (
@@ -146,14 +154,20 @@ export function SetsunaScreen({ onBack, onReplay, onSound }: SetsunaScreenProps)
               <>
                 <p>{won ? enemy + 1 : enemy}人抜き</p>
                 {best && <SetsunaRecords best={best} />}
-                <button type="button" onClick={onReplay}>もう一度</button>
+                <button type="button" disabled={playing} onClick={onReplay}>もう一度</button>
               </>
             ) : (
-              <button type="button" onClick={nextDuel}>次の相手</button>
+              <button type="button" disabled={playing} onClick={nextDuel}>次の相手</button>
             )}
+            <div className="setsuna-skip">
+              {playing && <button type="button" onClick={() => setFinishPlaying(false)}>演出をスキップ</button>}
+            </div>
           </div>
         ) : (
-          <GameKeypad keys={digits} onKey={handleAnswer} />
+          <>
+            <GameKeypad keys={digits} onKey={handleAnswer} />
+            <p className="setsuna-key-hint">数字キーで回答</p>
+          </>
         )}
       </div>
     </main>
