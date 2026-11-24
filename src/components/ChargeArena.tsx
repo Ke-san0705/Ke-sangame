@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react'
 import { preload } from 'react-dom'
 import { ENEMY_STAGE } from '../lib/enemyApproachConfig'
-import type { Level } from '../lib/question-generator'
+import type { Enemy } from '../lib/enemyApproach'
 import { EnemyApproach } from './EnemyApproach'
 import { BattleStage } from './BattleStage'
 import './ChargeArena.css'
@@ -27,13 +27,13 @@ export function preloadChargeSprites() {
 export function ChargeArena({ correctCount, overcharged = false, battle }: {
   correctCount: number
   overcharged?: boolean
-  battle?: { lowPower: boolean; foreground: ReactNode; level: Level; combo: number; active: boolean }
+  battle?: { lowPower: boolean; foreground: ReactNode; enemies: readonly Enemy[] }
 }) {
   const color = correctCount >= 15 ? 'black' : correctCount >= 9 ? 'red' : correctCount >= 4 ? 'yellow' : 'blue'
   if (battle) {
     return (
       <BattleStage className="charge-arena" color={color} overcharged={overcharged}
-        characters={<EnemyApproach level={battle.level} combo={battle.combo} active={battle.active} />}
+        characters={<EnemyApproach enemies={battle.enemies} />}
         foreground={
           <>
             <div className="battle-hero-effects" aria-hidden="true" style={{ left: `${ENEMY_STAGE.heroX * 100}%` }}>

@@ -324,11 +324,11 @@ test('スコアだけの自己ベストは維持し、タイ記録でカーブ�
 })
 
 
-test.each(['30秒', 'サバイバル'])('モンスター討伐モードの%sでチャージ結果を表示し、再戦時にリセットする', (duration) => {
+test('モンスター討伐モードの30秒でチャージ結果を表示し、再戦時にリセットする', () => {
   render(<App />)
   click('掛け算')
   click('モンスター討伐モード')
-  click(duration)
+  click('30秒')
   click('START')
   advance(3_000)
   enter(first().answer)

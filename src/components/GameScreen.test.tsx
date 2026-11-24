@@ -172,9 +172,7 @@ test.each([
   { duration: 30, showMonsterBattle: false, keypad: false, beforeDeadline: true },
   { duration: 30, showMonsterBattle: true, keypad: true, beforeDeadline: true },
   { duration: 'survival', showMonsterBattle: false, keypad: true, beforeDeadline: true },
-  { duration: 'survival', showMonsterBattle: true, keypad: false, beforeDeadline: true },
   { duration: 30, showMonsterBattle: false, keypad: true, beforeDeadline: false },
-  { duration: 'survival', showMonsterBattle: true, keypad: false, beforeDeadline: false },
 ] as const)('タイマーがゼロを表示した後に届いた確定（%o）', ({
   duration, showMonsterBattle, keypad, beforeDeadline,
 }) => {
@@ -337,7 +335,7 @@ test('ベスト比の表示中も幅に合わせて問題文と入力を縮小�
   expect(screen.getByText('ベスト比 0問')).toBeTruthy()
 })
 
-test.each([30, 'survival'] as const)('討伐のチャージ・復習・時間切れの引き渡し（%s）', (duration) => {
+test('討伐のチャージ・復習・時間切れの引き渡し', () => {
   vi.useFakeTimers()
   vi.spyOn(Math, 'random').mockReturnValue(0.25)
   const generate = createQuestionGenerator()
@@ -350,7 +348,7 @@ test.each([30, 'survival'] as const)('討伐のチャージ・復習・時間切
   const onSound = vi.fn()
   const onFinish = vi.fn()
   const { container } = render(
-    <GameScreen level={1} mode="addition" duration={duration} skipCountdown showMonsterBattle
+    <GameScreen level={1} mode="addition" duration={30} skipCountdown showMonsterBattle
       onSound={onSound} onFinish={onFinish} />,
   )
   const arena = container.querySelector<HTMLElement>('.charge-arena')!
@@ -371,7 +369,7 @@ test.each([30, 'survival'] as const)('討伐のチャージ・復習・時間切
   expect(approachingEnemies).toBeGreaterThan(earlyEnemies)
   submit(question.answer)
   expect(screen.queryByText('CRITICAL CHARGE!')).toBeNull()
-  expect(enemyCount()).toBe(approachingEnemies)
+  expect(enemyCount()).toBe(approachingEnemies - 1)
   const firstRing = arena.querySelector('.charge-shockwave')
   expect(firstRing).not.toBeNull()
 
@@ -433,78 +431,67 @@ test('問題と入力欄の上でチャージ色が青・黄・赤・黒の順�
   }
 })
 
-test('討伐サバイバルは残り10秒で過充電し、旧ラッシュなしで時間切れ後に解放する', () => {
+test('討伐サバイバルでは制限時間がなく、HPゼロで解放せずに終了する', () => {
   vi.useFakeTimers()
   vi.spyOn(Math, 'random').mockReturnValue(0.25)
-  const generate = createQuestionGenerator()
-  const correct = () => {
-    const { answer } = generate(1, 'addition')
-    for (const key of answer) fireEvent.keyDown(window, { key })
-    fireEvent.keyDown(window, { key: 'Enter' })
-  }
   const onFinish = vi.fn()
   render(<GameScreen level={1} mode="addition" duration="survival" skipCountdown showMonsterBattle onFinish={onFinish} />)
-  const warning = () => screen.queryByText('危険！過充電')
-  const rush = () => screen.queryByText('ラッシュ！')
-  const timer = screen.getByRole('timer', { name: '残り時間' })
-  for (let i = 0; i < 3; i++) correct()
-
-  act(() => vi.advanceTimersByTime(15_950))
-  expect(warning()).toBeNull()
-  act(() => vi.advanceTimersByTime(50))
-  expect(timer.textContent).toBe('10')
-  expect(warning()).toBeTruthy()
-  expect(rush()).toBeNull()
-  expect(screen.getByRole('main').hasAttribute('data-rush')).toBe(false)
-
-  correct()
-  expect(timer.textContent).toBe('12')
-  expect(screen.getByText('＋2秒')).toBeTruthy()
-  expect(warning()).toBeNull()
-
-  act(() => vi.advanceTimersByTime(3_500))
-  expect(warning()).toBeTruthy()
-  expect(rush()).toBeNull()
-  expect(screen.queryByText('＋2秒')).toBeNull()
-  correct()
-  expect(screen.queryByText('CRITICAL CHARGE!')).toBeNull()
-  expect(timer.textContent).toBe('11')
-
-  act(() => vi.advanceTimersByTime(10_450))
-  expect(screen.queryByText('CHARGE COMPLETE')).toBeNull()
-  act(() => vi.advanceTimersByTime(100))
-  expect(screen.getByText('CHARGE COMPLETE')).toBeTruthy()
+  const hp = () => Number(screen.getByRole('meter').getAttribute('value'))
+  expect(hp()).toBe(100)
+  expect(screen.queryByRole('timer')).toBeNull()
+  act(() => vi.advanceTimersByTime(21_000))
+  expect(hp()).toBeLessThan(100)
   expect(onFinish).not.toHaveBeenCalled()
-  finishReleaseWithoutInput()
-  expect(onFinish).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({
-    correctCount: 5,
-    charge: { power: 99, criticalCount: 3 },
-    release: { tier: 2, koCount: 990, distanceKm: 49_005 },
-  }))
+
+  for (let i = 0; i < 10; i++) {
+    fireEvent.keyDown(window, { key: '0' })
+    fireEvent.keyDown(window, { key: 'Enter' })
+  }
+  expect(hp()).toBe(0)
+  expect(screen.queryByText('CHARGE COMPLETE')).toBeNull()
+  expect(onFinish).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ battleOutcome: 'defeat' }))
 })
 
-test('討伐サバイバルの時間加算ポップは減衰し、加算終了後は再表示されない', () => {
+test('パス中も敵が進み、次の正解で討伐コンボを引き継ぐ', () => {
   vi.useFakeTimers()
   vi.spyOn(Math, 'random').mockReturnValue(0.25)
   const generate = createQuestionGenerator()
-  const correct = () => {
-    const { answer } = generate(1, 'addition')
+  const onSound = vi.fn()
+  const { container } = render(<GameScreen level={1} mode="addition" duration={30}
+    skipCountdown showMonsterBattle onSound={onSound} onFinish={vi.fn()} />)
+  const submit = (answer: string) => {
     for (const key of answer) fireEvent.keyDown(window, { key })
     fireEvent.keyDown(window, { key: 'Enter' })
   }
-  render(<GameScreen level={1} mode="addition" duration="survival" skipCountdown showMonsterBattle onFinish={vi.fn()} />)
-
-  for (let i = 0; i < 29; i++) correct()
-  const firstPop = screen.getByText('＋2秒')
-  correct()
-  expect(screen.getByText('＋1秒')).toBeTruthy()
-  expect(firstPop.isConnected).toBe(false)
-  for (let i = 0; i < 29; i++) correct()
+  submit(generate(1, 'addition').answer)
+  generate(1, 'addition')
+  act(() => vi.advanceTimersByTime(4_000))
+  const enemy = container.querySelector<HTMLElement>('.battle-enemy')!
+  const position = parseFloat(enemy.style.left)
+  fireEvent.keyDown(window, { key: 'Tab' })
   act(() => vi.advanceTimersByTime(1_000))
-  correct()
-  expect(screen.queryByText('＋1秒')).toBeNull()
+  expect(parseFloat(enemy.style.left)).toBeLessThan(position)
+  expect(screen.getByText('HP', { exact: true })).toBeTruthy()
+  expect(screen.getByRole('meter', { name: 'HP' }).getAttribute('value')).toBe('100')
+  submit(generate(1, 'addition').answer)
+  expect(onSound).toHaveBeenCalledWith('correct', 2)
 })
 
+test('制限時間ちょうどの誤答でHPがゼロになると敗北する', () => {
+  vi.useFakeTimers()
+  vi.spyOn(Math, 'random').mockReturnValue(0.25)
+  const onFinish = vi.fn()
+  render(<GameScreen level={1} mode="addition" duration={1} skipCountdown showMonsterBattle onFinish={onFinish} />)
+  const miss = () => {
+    fireEvent.keyDown(window, { key: '0' })
+    fireEvent.keyDown(window, { key: 'Enter' })
+  }
+  for (let i = 0; i < 9; i++) miss()
+  act(() => vi.advanceTimersByTime(1_000))
+  miss()
+  expect(onFinish).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ battleOutcome: 'defeat' }))
+  expect(screen.queryByText('CHARGE COMPLETE')).toBeNull()
+})
 
 function finishReleaseWithoutInput() {
   for (const ms of [450, 1000, 200, 1400]) {

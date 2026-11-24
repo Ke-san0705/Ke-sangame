@@ -33,7 +33,7 @@ export function ResultScreen({
 
   return (
     <main className="result-screen">
-      <h1>TIME UP!</h1>
+      <h1>{result.battleOutcome === 'defeat' ? '敗北' : 'TIME UP!'}</h1>
       <div className="result-rank">
         <span>ランク</span>
         <strong>{title}</strong>

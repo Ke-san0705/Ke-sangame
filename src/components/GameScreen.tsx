@@ -5,7 +5,9 @@ import { calculateCharge } from '../lib/charge'
 import type { ChargeResult } from '../lib/charge'
 import type { ReleaseResult } from '../lib/release'
 import { calculateScore } from '../lib/score'
-import { BATTLE_FEEDBACK, CHARGE_HUD } from '../lib/battleUi'
+import { BATTLE_FEEDBACK } from '../lib/battleUi'
+import { advanceCombat, applyCombatAnswer, createCombat, finishCombat } from '../lib/combat'
+import { COMBAT_CONFIG, ENEMY_STAGE } from '../lib/enemyApproachConfig'
 import type { SoundCue } from '../lib/soundEffects'
 import { ChargeArena, preloadChargeSprites } from './ChargeArena'
 import { ReleaseSequence } from './ReleaseSequence'
@@ -16,7 +18,6 @@ const START_COUNTDOWN_SECONDS = 3
 const SURVIVAL_INITIAL_SECONDS = 20
 const TIMER_WARNING_SECONDS = 10
 const TIMER_SOUND_SECONDS = 5
-const TIME_BONUS_POP_MS = 800
 const CRITICAL_NOTICE_MS = 650
 const OVERCHARGE_MISS_MS = 3_000
 const OVERCHARGE_TIME_MS = 10_000
@@ -41,6 +42,7 @@ export type GameResult = ReturnType<typeof calculateScore> & {
   charge?: ChargeResult
   release?: ReleaseResult
   maxCombo: number
+  battleOutcome?: 'defeat'
   averageAnswerSeconds: number
   paceCurve?: number[]
   reviewQuestions: ReviewQuestion[]
@@ -63,6 +65,9 @@ export function GameScreen({
 }: GameScreenProps) {
   const survival = duration === 'survival'
   const battleSurvival = survival && showMonsterBattle
+  const [combat, setCombat] = useState(createCombat)
+  const latestCombat = useRef(combat)
+  const lastCombatTick = useRef(0)
   const initialTimeMs = (survival ? SURVIVAL_INITIAL_SECONDS : duration) * 1000
   const [{ generateQuestion, firstQuestion }] = useState(() => {
     const generateQuestion = createQuestionGenerator()
@@ -91,10 +96,7 @@ export function GameScreen({
   const [missOvercharge, setMissOvercharge] = useState(false)
   const missOverchargeTimeout = useRef<number | undefined>(undefined)
   const wasOvercharged = useRef(false)
-  const overchargeActive = showMonsterBattle && remaining > 0
-    && (missOvercharge || remaining <= OVERCHARGE_TIME_MS)
-  const [timeBonus, setTimeBonus] = useState<{ seconds: number; answerCount: number }>()
-  const timeBonusTimeout = useRef<number | undefined>(undefined)
+  const overchargeActive = showMonsterBattle && (missOvercharge || (!battleSurvival && remaining > 0 && remaining <= OVERCHARGE_TIME_MS))
   const deadline = useRef(0)
   const gameStartedAt = useRef(0)
   const [elapsedSecond, setElapsedSecond] = useState(0)
@@ -112,6 +114,19 @@ export function GameScreen({
     setAnswer(value)
   }
 
+  function updateCombat(next: typeof combat) {
+    if (latestCombat.current === next) return
+    latestCombat.current = next
+    setCombat(next)
+  }
+
+  function advanceBattle(now: number) {
+    if (!showMonsterBattle || now <= lastCombatTick.current) return
+    updateCombat(advanceCombat(latestCombat.current, (now - lastCombatTick.current) / 1_000, level))
+    lastCombatTick.current = now
+    if (latestCombat.current.phase === 'defeat') finish()
+  }
+
   function recordAnswer(kind: 'correctCount' | 'incorrectCount' | 'passCount', critical = false) {
     const current = latestCounts.current
     const combo = kind === 'correctCount' ? current.combo + 1 : 0
@@ -125,9 +140,12 @@ export function GameScreen({
     latestCounts.current = next
     setCounts(next)
     if (showMonsterBattle) {
+      if (kind === 'passCount') return
+      updateCombat(applyCombatAnswer(latestCombat.current, kind === 'correctCount' ? 'correct' : 'incorrect'))
+      const battleCombo = latestCombat.current.combo
       window.clearTimeout(comboTimeout.current)
-      setComboNotice(combo >= BATTLE_FEEDBACK.comboMinimum ? combo : undefined)
-      if (combo >= BATTLE_FEEDBACK.comboMinimum) {
+      setComboNotice(battleCombo >= BATTLE_FEEDBACK.comboMinimum ? battleCombo : undefined)
+      if (battleCombo >= BATTLE_FEEDBACK.comboMinimum) {
         comboTimeout.current = window.setTimeout(() => setComboNotice(undefined), BATTLE_FEEDBACK.comboDurationMs)
       }
     }
@@ -151,10 +169,13 @@ export function GameScreen({
       cumulativeCorrect += count
       return cumulativeCorrect
     })
-    onSound?.('timeUp')
+    const defeated = showMonsterBattle && latestCombat.current.phase === 'defeat'
+    if (!defeated) onSound?.('timeUp')
+    if (showMonsterBattle && !defeated) updateCombat(finishCombat(latestCombat.current))
     const result: GameResult = {
       correctCount,
       maxCombo,
+      ...(defeated && { battleOutcome: 'defeat' as const }),
       ...(showMonsterBattle && {
         charge: { power: calculateCharge(finalCounts), criticalCount: finalCounts.criticalCount },
       }),
@@ -163,7 +184,7 @@ export function GameScreen({
       reviewQuestions: reviewQuestions.current,
       averageAnswerSeconds: correctCount === 0 ? 0 : totalCorrectAnswerMs.current / correctCount / 1000,
     }
-    if (result.charge) setPendingRelease({ result, overcharged: wasOvercharged.current })
+    if (result.charge && latestCombat.current.phase === 'special') setPendingRelease({ result, overcharged: wasOvercharged.current })
     else onFinish(result)
   }
 
@@ -192,6 +213,8 @@ export function GameScreen({
     const answerTime = eventTime ?? now
     if (answerTime < questionStartedAt.current || answerTime > deadline.current) return
     if (key === 'pass' && now >= deadline.current) return
+    if (key === 'pass' || key === 'Enter') advanceBattle(Math.min(answerTime, deadline.current))
+    if (finished.current) return
     const answer = latestAnswer.current
 
     switch (key) {
@@ -203,7 +226,7 @@ export function GameScreen({
         currentQuestionResolved.current = true
         recordReviewQuestion('pass')
         if (!survival) deadline.current -= PASS_PENALTY_MS
-        updateRemaining(Math.max(0, deadline.current - now))
+        if (!battleSurvival) updateRemaining(Math.max(0, deadline.current - now))
         updateAnswer('')
         setShowPassAnswer(true)
         passTimeout.current = window.setTimeout(() => {
@@ -238,21 +261,10 @@ export function GameScreen({
               criticalTimeout.current = window.setTimeout(() => setCriticalAnswer(undefined), CRITICAL_NOTICE_MS)
             }
           }
-          onSound?.('correct', latestCounts.current.combo)
-          if (survival) {
-            // A bonus can bring the timer back above the threshold before the next tick.
-            if (battleSurvival && deadline.current - answerTime <= OVERCHARGE_TIME_MS) {
-              wasOvercharged.current = true
-            }
-            const answerCount = latestCounts.current.correctCount
-            const bonusMs = survivalBonusMs(answerCount)
-            deadline.current += bonusMs
+          onSound?.('correct', showMonsterBattle ? latestCombat.current.combo : latestCounts.current.combo)
+          if (survival && !battleSurvival) {
+            deadline.current += survivalBonusMs(latestCounts.current.correctCount)
             updateRemaining(Math.max(0, deadline.current - now))
-            if (battleSurvival && bonusMs > 0) {
-              window.clearTimeout(timeBonusTimeout.current)
-              setTimeBonus({ seconds: bonusMs / 1000, answerCount })
-              timeBonusTimeout.current = window.setTimeout(() => setTimeBonus(undefined), TIME_BONUS_POP_MS)
-            }
           }
           if (wrongAnswers.current.length > 0) recordReviewQuestion('miss')
           if (now < deadline.current) {
@@ -270,6 +282,11 @@ export function GameScreen({
             window.clearTimeout(missOverchargeTimeout.current)
             missOverchargeTimeout.current = window.setTimeout(() => setMissOvercharge(false), OVERCHARGE_MISS_MS)
             recordReviewQuestion('miss')
+            if (latestCombat.current.phase === 'defeat') {
+              currentQuestionResolved.current = true
+              finish()
+              return
+            }
             if (now < deadline.current) nextQuestion(now)
             else currentQuestionResolved.current = true
           }
@@ -295,6 +312,8 @@ export function GameScreen({
   const updateTimer = useEffectEvent(() => {
     if (finished.current) return false
     const now = performance.now()
+    advanceBattle(Math.min(now, deadline.current))
+    if (finished.current || battleSurvival) return false
     const timeLeft = Math.max(0, deadline.current - now)
     if (bestCurve) {
       const seconds = Math.floor((now - gameStartedAt.current) / 1000)
@@ -305,7 +324,10 @@ export function GameScreen({
   })
 
   const finishOnTimeUp = useEffectEvent(() => {
-    if (performance.now() >= deadline.current) finish()
+    if (performance.now() >= deadline.current) {
+      advanceBattle(deadline.current)
+      finish()
+    }
   })
 
   useEffect(() => {
@@ -326,7 +348,8 @@ export function GameScreen({
     gameStartedAt.current = now
     questionStartedAt.current = now
     lastCountdownSecond.current = Math.ceil(initialTimeMs / 1000) + 1
-    deadline.current = now + initialTimeMs
+    lastCombatTick.current = now
+    deadline.current = battleSurvival ? Infinity : now + initialTimeMs
     let finishTimeout: number | undefined
     const tick = () => {
       if (!updateTimer() || finishTimeout !== undefined) return
@@ -336,8 +359,8 @@ export function GameScreen({
         finishOnTimeUp()
       }, FINAL_INPUT_DRAIN_MS)
     }
-    const interval = window.setInterval(tick, 50)
-    const timeout = window.setTimeout(tick, initialTimeMs)
+    const interval = window.setInterval(tick, ENEMY_STAGE.tickMs)
+    const timeout = battleSurvival ? undefined : window.setTimeout(tick, initialTimeMs)
     const onKeyDown = (event: KeyboardEvent) => handleKeyboard(event)
     window.addEventListener('keydown', onKeyDown)
     return () => {
@@ -345,13 +368,12 @@ export function GameScreen({
       window.clearTimeout(timeout)
       window.clearTimeout(finishTimeout)
       window.clearTimeout(passTimeout.current)
-      window.clearTimeout(timeBonusTimeout.current)
       window.clearTimeout(criticalTimeout.current)
       window.clearTimeout(comboTimeout.current)
       window.clearTimeout(missOverchargeTimeout.current)
       window.removeEventListener('keydown', onKeyDown)
     }
-  }, [duration, initialTimeMs, playing])
+  }, [battleSurvival, duration, initialTimeMs, playing])
 
   useEffect(() => {
     if (showMonsterBattle) preloadChargeSprites()
@@ -387,27 +409,26 @@ export function GameScreen({
   return (
     <main className={showMonsterBattle ? 'game-screen game-screen-charge battle-screen' : 'game-screen'} aria-label="ゲーム">
       {showMonsterBattle ? (
-        <header className="battle-hud">
-          <div className="battle-stat game-time">
-            <span>残り時間</span>
-            <strong
-              role="timer"
-              aria-label="残り時間"
-              data-time={remainingSeconds <= TIMER_WARNING_SECONDS ? 'low' : 'normal'}
-            >
-              {remainingSeconds}
-            </strong>
-            <span role="status" className="game-time-bonus">
-              {timeBonus && <span key={timeBonus.answerCount}>＋{timeBonus.seconds}秒</span>}
-            </span>
-          </div>
+        <header className="battle-hud" data-survival={battleSurvival}>
+          {!battleSurvival && (
+            <div className="battle-stat game-time">
+              <span>残り時間</span>
+              <strong
+                role="timer"
+                aria-label="残り時間"
+                data-time={remainingSeconds <= TIMER_WARNING_SECONDS ? 'low' : 'normal'}
+              >
+                {remainingSeconds}
+              </strong>
+            </div>
+          )}
           <div className="battle-stat battle-health">
             <span>HP</span>
-            <meter aria-label="HP" value={CHARGE_HUD.health} />
+            <meter aria-label="HP" min={0} max={COMBAT_CONFIG.maxHp} value={combat.hp} />
           </div>
           <div className="battle-stat">
             <span>討伐数</span>
-            <strong>{CHARGE_HUD.defeated}</strong>
+            <strong>{combat.defeated}</strong>
           </div>
         </header>
       ) : (
@@ -447,9 +468,7 @@ export function GameScreen({
       {showMonsterBattle && (
         <ChargeArena correctCount={correctCount} overcharged={overchargeActive} battle={{
           lowPower,
-          level,
-          combo: counts.combo,
-          active: remaining > 0,
+          enemies: combat.enemies,
           foreground: (
             <>
               {criticalAnswer !== undefined && <div key={criticalAnswer} className="charge-flash" aria-hidden="true" />}

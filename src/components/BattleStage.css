@@ -78,6 +78,10 @@ main.battle-screen {
   text-align: center;
 }
 
+.battle-hud[data-survival="true"] {
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+}
+
 .battle-stat {
   display: grid;
   gap: 1px;
